@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#1a1a1a"/>
+  <title>juA.kali Innovation Platform</title>
+
+  <!-- External Dependencies -->
+  <script defer src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.1/dist/ort.min.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <!-- Payment Processors -->
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+  <script src="https://js.stripe.com/v3/"></script>
+
+  <!-- React for Payment Modal -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    :root {
+      --primary-color: #4285f4;
+      --dark-bg: #1a1a1a;
+      --light-text: #ffffff;
+      --accent-green: #00C853;
+      --accent-blue: #2962FF;
+      --transition-speed: 0.3s;
+      --chat-border: 1px solid #00C853;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: var(--dark-bg);
+      color: var(--light-text);
+      overflow-x: hidden;
+    }
+
+    .logo {
+      position: fixed;
+      top: 20px;
+      left: 30px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      z-index: 1000;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .nav-menu {
+      position: fixed;
+      top: 20px;
+      right: 30px;
+      display: flex;
+      gap: 20px;
+      z-index: 1000;
+    }
+
+    .nav-menu button {
+      background: none;
+      border: none;
+      color: var(--light-text);
+      cursor: pointer;
+      padding: 10px 20px;
+      border-radius: 25px;
+      transition: all var(--transition-speed) ease;
+    }
+
+    .nav-menu button:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .widget {
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+      scroll-snap-align: start;
+    }
+
+    .widget-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: relative;
+    }
+
+    .overlay-button {
+      position: absolute;
+      bottom: 6%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 15px 40px;
+      background-color: var(--accent-blue);
+      color: white;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: all var(--transition-speed) ease;
+    }
+
+    .overlay-button:hover {
+      background-color: #1e50cc;
+      transform: translateX(-50%) scale(1.05);
+    }
+
+    footer {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      padding: 20px;
+      text-align: center;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(10px);
+    }
+
+    .chat-box {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 320px;
+      height: 450px;
+      background-color: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeIn 0.5s forwards;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .chat-box .messages {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+
+    .chat-box .message {
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      max-width: 80%;
+      word-wrap: break-word;
+      animation: messageSlide 0.3s ease-out;
+    }
+
+    @keyframes messageSlide {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .chat-box .message.user {
+      background: var(--accent-blue);
+      color: white;
+      margin-left: auto;
+    }
+
+    .chat-box .message.reply {
+      background: var(--accent-green);
+      color: white;
+      margin-right: auto;
+    }
+
+    .chat-box input {
+      width: calc(100% - 20px);
+      margin: 10px;
+      padding: 12px;
+      border: var(--chat-border);
+      border-radius: 8px;
+      font-size: 14px;
+      background: white;
+    }
+
+    .chat-box button {
+      margin: 0 10px 10px;
+      padding: 12px;
+      background: var(--accent-green);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background var(--transition-speed);
+    }
+
+    .chat-box button:hover {
+      background: #009245;
+    }
+
+    .api-key-input {
+      position: fixed;
+      top: 120px;
+      right: 30px;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 15px;
+      border-radius: 12px;
+      color: white;
+      backdrop-filter: blur(5px);
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      width: 300px;
+    }
+
+    .api-key-input input {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--accent-green);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .api-key-input input::placeholder {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    #save-status {
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .model-status {
+      position: fixed;
+      bottom: 80px;
+      left: 30px;
+      padding: 8px 15px;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 20px;
+      font-size: 0.9rem;
+    }
+
+    .model-selector {
+      position: fixed;
+      top: 80px;
+      right: 30px;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 8px 15px;
+      border-radius: 20px;
+    }
+
+    /* Payment Modal Styles */
+    .payment-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      backdrop-filter: blur(5px);
+    }
+
+    .payment-modal {
+      background-color: #2a2a2a;
+      padding: 30px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+      color: white;
+      text-align: center;
+      position: relative;
+    }
+
+    .payment-modal h2 {
+      margin-top: 0;
+      color: #4285f4;
+    }
+
+    .payment-modal p {
+      margin-bottom: 25px;
+      color: #ccc;
+    }
+
+    .payment-email {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .payment-email label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .payment-email input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background-color: #1a1a1a;
+      color: white;
+      font-size: 16px;
+    }
+
+    .payment-methods {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 25px;
+      justify-content: center;
+    }
+
+    .payment-methods button {
+      padding: 10px 20px;
+      border-radius: 6px;
+      background-color: #333;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .payment-methods button.active {
+      background-color: #4285f4;
+    }
+
+    .pay-button {
+      background-color: #00C853;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 15px;
+      transition: background-color 0.3s;
+    }
+
+    .pay-button:hover {
+      background-color: #009245;
+    }
+
+    .pay-button:disabled {
+      background-color: #555;
+      cursor: not-allowed;
+    }
+
+    .close-button {
+      background: none;
+      border: 1px solid #666;
+      color: #ccc;
+      padding: 8px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .close-button:hover {
+      background-color: #333;
+    }
+
+    .payment-success {
+      padding: 20px;
+    }
+
+    .payment-success h2 {
+      color: #00C853;
+    }
+
+    .loader {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top: 4px solid #4285f4;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .chat-box {
+        width: 90%;
+        right: 5%;
+        height: 60vh;
+      }
+
+      .nav-menu {
+        flex-direction: column;
+        right: 10px;
+        top: 60px;
+      }
+
+      .model-selector {
+        top: 140px;
+        right: 10px;
+      }
+
+      .api-key-input {
+        top: 180px;
+        right: 10px;
+        width: 80%;
+      }
+
+      .payment-modal {
+        padding: 20px;
+        width: 95%;
+      }
+      
+      .payment-methods {
+        flex-direction: column;
+      }
+    }
+  </style>
+<script defer src="/runtime.js"></script><script defer src="/vendor.react-dom.js"></script><script defer src="/vendor.core-js-pure.js"></script><script defer src="/vendor.buffer.js"></script><script defer src="/vendor.core-js.js"></script><script defer src="/57.js"></script><script defer src="/secondary.js"></script></head>
+<body>
+  <div class="logo">juA.kali iNC</div>
+
+  <nav class="nav-menu">
+    <button id="consultation-tab">Consultation</button>
+    <button id="discoveries-tab">Discoveries</button>
+    <button id="about-us-tab">About Us</button>
+    <button id="contact-tab">Contact</button>
+  </nav>
+
+  <div class="model-selector">
+    <select id="model-select">
+      <option value="local">Local Model (GPT-2)</option>
+      <option value="mindsdb">Cloud Model (MindsDB)</option>
+    </select>
+  </div>
+
+  <div class="api-key-input" id="api-key-container">
+    <input type="password" id="api-key" placeholder="MindsDB API Key">
+    <input type="text" id="base-url" placeholder="Base URL (e.g. https://llm.mdb.ai/)">
+    <input type="text" id="assistant-id" placeholder="Assistant ID (Minds Name)">
+    <button type="button" onclick="saveApiKey()">Save</button>
+    <div id="save-status"></div>
+  </div>
+
+  <main>
+    <section class="widget" id="widget1">
+      <img src="img/kastone1.png" alt="Innovation showcase" class="widget-image">
+      <button class="overlay-button" id="explore-btn">Explore Innovations</button>
+    </section>
+    <section class="widget" id="widget2">
+      <img src="img/kastone2.png" alt="Technology preview" class="widget-image">
+    </section>
+    <section class="widget" id="widget3">
+      <img src="img/kastone3.png" alt="Research developments" class="widget-image">
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 juA.kali iNC. All rights reserved.</p>
+  </footer>
+
+  <div class="chat-box">
+    <div class="messages" id="chat-messages"></div>
+    <input type="text" id="chat-input" placeholder="Ask our AI assistant...">
+    <button id="send-message">Send</button>
+  </div>
+
+  <div class="model-status" id="model-status">Initializing AI...</div>
+  
+  <!-- Payment Modal Container -->
+  <div id="payment-root"></div>
+
+  <!-- Payment Modal Script -->
+  <script type="text/babel">
+    const PaymentModal = () => {
+      const [showModal, setShowModal] = React.useState(false);
+      const [paymentMethod, setPaymentMethod] = React.useState('paystack');
+      const [email, setEmail] = React.useState('');
+      const [loading, setLoading] = React.useState(false);
+      const [paymentSuccess, setPaymentSuccess] = React.useState(false);
+      const [destination, setDestination] = React.useState('');
+
+      React.useEffect(() => {
+        window.showPaymentModal = (dest) => {
+          setDestination(dest);
+          setShowModal(true);
+        };
+      }, []);
+
+      const handlePayment = async () => {
+        if (!email) return;
+        
+        setLoading(true);
+        try {
+          if (paymentMethod === 'paystack') {
+            await new Promise((resolve, reject) => {
+              const handler = PaystackPop.setup({
+                key: 'pk_test_your_paystack_key', // Replace with your Paystack key
+                email: email,
+                amount: 1000, // Fixed $10 amount (1000 kobo)
+                currency: 'USD',
+                ref: 'PAY_' + Math.floor(Math.random() * 1000000000 + 1),
+                onClose: () => reject(new Error('Payment closed')),
+                callback: (response) => {
+                  if (response.status === 'success') resolve();
+                  else reject(new Error('Payment failed'));
+                }
+              });
+              handler.openIframe();
+            });
+          } else {
+            const stripe = Stripe('pk_test_your_stripe_key'); // Replace with your Stripe key
+            const { error } = await stripe.redirectToCheckout({
+              lineItems: [{price: 'your_price_id', quantity: 1}], // Replace with your $10 price ID
+              mode: 'payment',
+              successUrl: window.location.href,
+              cancelUrl: window.location.href
+            });
+            if (error) throw error;
+          }
+          setPaymentSuccess(true);
+          setTimeout(() => window.location.href = destination, 2000);
+        } catch (error) {
+          alert(`Payment failed: ${error.message}`);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      if (!showModal) return null;
+
+      return (
+        <div className="payment-modal-overlay">
+          <div className="payment-modal">
+            {paymentSuccess ? (
+              <div className="payment-success">
+                <h2>Payment Successful!</h2>
+                <p>You will be redirected shortly...</p>
+                <div className="loader"></div>
+              </div>
+            ) : (
+              <>
+                <h2>Premium Access - $10</h2>
+                <p>Unlock full access to our premium content</p>
+                
+                <div className="payment-email">
+                  <label>Email:</label>
+                  <input 
+                    type="email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    required
+                  />
+                </div>
+                
+                <div className="payment-methods">
+                  <button 
+                    className={paymentMethod === 'paystack' ? 'active' : ''}
+                    onClick={() => setPaymentMethod('paystack')}
+                  >
+                    Paystack
+                  </button>
+                  <button 
+                    className={paymentMethod === 'stripe' ? 'active' : ''}
+                    onClick={() => setPaymentMethod('stripe')}
+                  >
+                    Stripe
+                  </button>
+                </div>
+                
+                <button 
+                  className="pay-button"
+                  onClick={handlePayment}
+                  disabled={loading || !email}
+                >
+                  {loading ? 'Processing...' : 'Pay $10'}
+                </button>
+                
+                <button 
+                  className="close-button"
+                  onClick={() => setShowModal(false)}
+                >
+                  Close
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // Render the payment modal as soon as React is loaded
+    function initPaymentModal() {
+      if (window.React && window.ReactDOM) {
+        ReactDOM.render(<PaymentModal />, document.getElementById('payment-root'));
+      } else {
+        setTimeout(initPaymentModal, 100);
+      }
+    }
+    initPaymentModal();
+  </script>
+
+  <!-- Main Application Script -->
+  <script>
+    // Debug initialization
+    console.log("Main script initializing...");
+    
+    // Initialize everything when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log("DOM fully loaded, initializing application");
+
+      // Setup payment button handlers
+      function handlePaymentButtonClick(destination) {
+        return function(e) {
+          e.preventDefault();
+          if (typeof showPaymentModal === 'function') {
+            showPaymentModal(destination);
+          } else {
+            console.error("Payment modal function not available");
+            window.location.href = destination;
+          }
+        }
+      }
+
+      document.getElementById('explore-btn').addEventListener('click', 
+        handlePaymentButtonClick('secondary.html'));
+
+      document.getElementById('discoveries-tab').addEventListener('click', 
+        handlePaymentButtonClick('QuorumDEEP.html'));
+
+      let currentModel = localStorage.getItem('model-choice') || 'local';
+      let mindsdbApiKey = localStorage.getItem('mindsdb-api-key') || '';
+      let mindsdbBaseUrl = localStorage.getItem('mindsdb-base-url') || '';
+      let mindsdbAssistantId = localStorage.getItem('mindsdb-assistant-id') || '';
+      let generator;
+
+      // Initialize input fields
+      document.getElementById('api-key').value = mindsdbApiKey;
+      document.getElementById('base-url').value = mindsdbBaseUrl;
+      document.getElementById('assistant-id').value = mindsdbAssistantId;
+
+      // Model selection handler
+      document.getElementById('model-select').value = currentModel;
+      document.getElementById('model-select').addEventListener('change', async (e) => {
+          currentModel = e.target.value;
+          localStorage.setItem('model-choice', currentModel);
+          document.getElementById('api-key-container').style.display = 
+              currentModel === 'mindsdb' ? 'flex' : 'none';
+          await initializeModel();
+      });
+
+      // Initialize model based on selection
+      async function initializeModel() {
+          const status = document.getElementById('model-status');
+          
+          try {
+              if (currentModel === 'local') {
+                  status.textContent = '🚀 Loading Local Model...';
+                  const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
+                  generator = await pipeline('text-generation', 'Xenova/gpt2');
+                  status.textContent = '✅ Local Model Ready';
+              } else if (currentModel === 'mindsdb') {
+                  status.textContent = mindsdbApiKey && mindsdbBaseUrl && mindsdbAssistantId 
+                      ? `☁️ Connected to ${new URL(mindsdbBaseUrl).hostname}` 
+                      : '⚠️ Configure MindsDB Settings';
+              }
+          } catch (error) {
+              status.textContent = '❌ Initialization Failed';
+              console.error('Model initialization error:', error);
+          }
+      }
+
+      // API key saving with validation
+      function saveApiKey() {
+          const key = document.getElementById('api-key').value.trim();
+          const baseUrl = document.getElementById('base-url').value.trim();
+          const assistantId = document.getElementById('assistant-id').value.trim();
+          const statusElement = document.getElementById('save-status');
+
+          try {
+              // Validate URL format if provided
+              if (baseUrl && !isValidUrl(baseUrl)) {
+                  throw new Error('Invalid URL format');
+              }
+
+              // Store values individually
+              if (key) localStorage.setItem('mindsdb-api-key', key);
+              if (baseUrl) localStorage.setItem('mindsdb-base-url', baseUrl);
+              if (assistantId) localStorage.setItem('mindsdb-assistant-id', assistantId);
+
+              // Update current values
+              mindsdbApiKey = key || mindsdbApiKey;
+              mindsdbBaseUrl = baseUrl || mindsdbBaseUrl;
+              mindsdbAssistantId = assistantId || mindsdbAssistantId;
+
+              // Update status
+              statusElement.textContent = 'Settings saved successfully!';
+              statusElement.style.color = '#00C853';
+
+              // Hide container if all fields are filled
+              if (key && baseUrl && assistantId) {
+                  setTimeout(() => {
+                      document.getElementById('api-key-container').style.display = 'none';
+                      initializeModel();
+                  }, 1500);
+              }
+          } catch (error) {
+              statusElement.textContent = error.message;
+              statusElement.style.color = '#ff4444';
+          }
+      }
+
+      function isValidUrl(string) {
+          try {
+              new URL(string);
+              return true;
+          } catch (_) {
+              return false;
+          }
+      }
+
+      // Chat functionality
+      function addMessage(text, isUser = true) {
+          const msgDiv = document.createElement('div');
+          msgDiv.className = `message ${isUser ? 'user' : 'reply'}`;
+          msgDiv.textContent = text;
+          document.getElementById('chat-messages').appendChild(msgDiv);
+          document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+      }
+
+      async function handleMindsDBThread(message) {
+        try {
+            // Validate configuration first
+            if (!mindsdbApiKey || !mindsdbBaseUrl || !mindsdbAssistantId) {
+                throw new Error('MindsDB configuration incomplete');
+            }
+
+            // Ensure base URL ends with slash
+            const apiBaseUrl = mindsdbBaseUrl.endsWith('/') ? mindsdbBaseUrl : mindsdbBaseUrl + '/';
+            
+            // 1. Create Thread
+            const threadResponse = await fetch(`${apiBaseUrl}v1/threads`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${mindsdbApiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!threadResponse.ok) {
+                const errorData = await tryParseJson(threadResponse);
+                throw new Error(`Thread creation failed: ${errorData?.detail || threadResponse.statusText}`);
+            }
+
+            const threadData = await threadResponse.json();
+            if (!threadData?.id) {
+                throw new Error('Invalid thread creation response');
+            }
+            const threadId = threadData.id;
+
+            // 2. Add Message to Thread
+            const messageResponse = await fetch(`${apiBaseUrl}v1/threads/${threadId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${mindsdbApiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    role: 'user',
+                    content: message
+                })
+            });
+
+            if (!messageResponse.ok) {
+                const errorData = await tryParseJson(messageResponse);
+                throw new Error(`Message creation failed: ${errorData?.detail || messageResponse.statusText}`);
+            }
+
+            // 3. Create and Poll Run
+            const runResponse = await fetch(`${apiBaseUrl}v1/threads/${threadId}/runs`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${mindsdbApiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    assistant_id: mindsdbAssistantId
+                })
+            });
+
+            if (!runResponse.ok) {
+                const errorData = await tryParseJson(runResponse);
+                throw new Error(`Run creation failed: ${errorData?.detail || runResponse.statusText}`);
+            }
+
+            const runData = await runResponse.json();
+            const runId = runData.id;
+
+            // Poll run status with timeout (30 seconds)
+            const startTime = Date.now();
+            let runStatus = runData.status;
+            while (runStatus !== 'completed' && Date.now() - startTime < 30000) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                const statusResponse = await fetch(
+                    `${apiBaseUrl}v1/threads/${threadId}/runs/${runId}`,
+                    { headers: { 'Authorization': `Bearer ${mindsdbApiKey}` } }
+                );
+                
+                if (!statusResponse.ok) {
+                    const errorData = await tryParseJson(statusResponse);
+                    throw new Error(`Status check failed: ${errorData?.detail || statusResponse.statusText}`);
+                }
+                
+                const statusData = await statusResponse.json();
+                runStatus = statusData.status;
+                
+                if (runStatus === 'failed') {
+                    throw new Error(`Run failed: ${statusData.last_error?.message || 'Unknown error'}`);
+                }
+            }
+
+            if (runStatus !== 'completed') {
+                throw new Error('Run timed out after 30 seconds');
+            }
+
+            // 4. Retrieve Messages
+            const messagesResponse = await fetch(
+                `${apiBaseUrl}v1/threads/${threadId}/messages`,
+                { headers: { 'Authorization': `Bearer ${mindsdbApiKey}` } }
+            );
+
+            if (!messagesResponse.ok) {
+                const errorData = await tryParseJson(messagesResponse);
+                throw new Error(`Message retrieval failed: ${errorData?.detail || messagesResponse.statusText}`);
+            }
+
+            const messagesData = await messagesResponse.json();
+            const assistantMessage = messagesData.data?.find(m => m.role === 'assistant');
+            
+            if (!assistantMessage?.content?.[0]?.text?.value) {
+                throw new Error('Invalid assistant response format');
+            }
+
+            // 5. Cleanup Thread
+            try {
+                await fetch(`${apiBaseUrl}v1/threads/${threadId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${mindsdbApiKey}` }
+                });
+            } catch (cleanupError) {
+                console.warn('Thread cleanup failed:', cleanupError);
+            }
+
+            return assistantMessage.content[0].text.value;
+        } catch (error) {
+            console.error('MindsDB Error:', error);
+            throw new Error(`MindsDB processing failed: ${error.message}`);
+        }
+      }
+
+      // Helper function to safely parse JSON responses
+      async function tryParseJson(response) {
+          try {
+              return await response.json();
+          } catch {
+              return null;
+          }
+      }
+
+      async function handleMessage() {
+          const input = document.getElementById('chat-input');
+          const text = input.value.trim();
+          if (!text) return;
+
+          addMessage(text, true);
+          input.value = '';
+          
+          try {
+              if (currentModel === 'local' && generator) {
+                  const output = await generator(text, {
+                      max_new_tokens: 100,
+                      pad_token_id: generator.tokenizer.eos_token_id
+                  });
+                  const response = output[0].generated_text.replace(text, '').trim();
+                  addMessage(response, false);
+              } else if (currentModel === 'mindsdb') {
+                  if (!mindsdbApiKey || !mindsdbBaseUrl || !mindsdbAssistantId) {
+                      addMessage("⚠️ Please configure all MindsDB settings", false);
+                      document.getElementById('api-key-container').style.display = 'flex';
+                      return;
+                  }
+                  
+                  const response = await handleMindsDBThread(text);
+                  addMessage(response, false);
+              }
+          } catch (error) {
+              addMessage(`❌ Error: ${error.message}`, false);
+          }
+      }
+
+      document.getElementById('send-message').addEventListener('click', handleMessage);
+      document.getElementById('chat-input').addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') handleMessage();
+      });
+
+      // Initial setup
+      if (currentModel === 'mindsdb') {
+          document.getElementById('api-key-container').style.display = 
+              (mindsdbApiKey && mindsdbBaseUrl && mindsdbAssistantId) ? 'none' : 'flex';
+      }
+
+      initializeModel();
+    });
+  </script>
+</body>
+</html>

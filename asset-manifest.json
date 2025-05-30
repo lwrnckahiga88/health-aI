@@ -1,0 +1,21 @@
+{
+  "files": {
+    "main.js": "/main.js",
+    "secondary.js": "/secondary.js",
+    "runtime.js": "/runtime.js",
+    "vendor.react-dom.js": "/vendor.react-dom.js",
+    "vendor.core-js-pure.js": "/vendor.core-js-pure.js",
+    "vendor.buffer.js": "/vendor.buffer.js",
+    "vendor.core-js.js": "/vendor.core-js.js",
+    "vendor.axios.js": "/vendor.axios.js",
+    "vendor.xenova.js": "/vendor.xenova.js",
+    "vendor.onnxruntime-common.js": "/vendor.onnxruntime-common.js",
+    "vendor.onnxruntime-web.js": "/vendor.onnxruntime-web.js",
+    "vendor.huggingface.js": "/vendor.huggingface.js",
+    "57.js": "/57.js",
+    "assets/ort-wasm-simd-threaded.jsep.wasm": "/assets/ce14fe5a0a12cc7d4389.wasm",
+    "assets/ort.bundle.min.mjs": "/assets/09e1953d76fe53867150.mjs",
+    "index.html": "/index.html",
+    "secondary.html": "/secondary.html"
+  }
+}
