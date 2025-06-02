@@ -299,7 +299,7 @@
 
   <!-- Main Application Script -->
   <script>
-    // Configuration Manager (same as previous optimized version)
+  // Configuration Manager
     class MindsDBConfig {
       static STORAGE_KEY = 'mindsdb-config-v3';
 
@@ -369,185 +369,78 @@
       }
     }
 
-    // API Client (same as previous optimized version)
-    class MindsDBClient {
-      constructor(config) {
-        this.config = config;
-        this.retryCount = 0;
-        this.maxRetries = 3;
-        this.timeout = 15000;
-        this.activeThreadId = null;
+    // Netlify Functions Client
+    class NetlifyFunctionsClient {
+      constructor() {
+        this.baseUrl = '/.netlify/functions';
       }
 
-      async _fetchWithRetry(endpoint, options = {}) {
-        const url = `${this.config.baseUrl}${endpoint.replace(/^\//, '')}`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-
-        const headers = {
-          'Authorization': `Bearer ${this.config.apiKey}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Client': 'juA.kali-webapp/1.1',
-          'X-Request-ID': crypto.randomUUID()
-        };
-
+      async post(endpoint, data) {
         try {
-          const response = await fetch(url, {
-            ...options,
-            headers: { ...headers, ...options.headers },
-            signal: controller.signal
+          const response = await fetch(`${this.baseUrl}/${endpoint}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
           });
 
-          clearTimeout(timeoutId);
-
           if (!response.ok) {
-            const errorData = await this._parseError(response);
-            if (response.status === 401 && this.retryCount < this.maxRetries) {
-              this.retryCount++;
-              console.warn(`Retrying (${this.retryCount}/${this.maxRetries}) after auth error`);
-              return this._fetchWithRetry(endpoint, options);
-            }
-            throw new Error(errorData.message || `HTTP ${response.status}`);
+            const error = await response.json();
+            throw new Error(error.message || 'Request failed');
           }
 
           return response.json();
         } catch (error) {
-          clearTimeout(timeoutId);
-          console.error(`API request failed: ${error.message}`);
-          throw error.name === 'AbortError' 
-            ? new Error('Request timed out')
-            : error;
-        }
-      }
-
-      async _parseError(response) {
-        try {
-          const errorData = await response.json();
-          return {
-            message: errorData.error?.message || errorData.message || response.statusText,
-            code: errorData.error?.code || response.status
-          };
-        } catch {
-          return { message: response.statusText, code: response.status };
-        }
-      }
-
-      async createThread() {
-        const thread = await this._fetchWithRetry('v1/threads', { method: 'POST' });
-        this.activeThreadId = thread.id;
-        return thread;
-      }
-
-      async postMessage(threadId, content) {
-        return this._fetchWithRetry(`v1/threads/${threadId}/messages`, {
-          method: 'POST',
-          body: JSON.stringify({
-            role: 'user',
-            content: content
-          })
-        });
-      }
-
-      async createRun(threadId, additionalParams = {}) {
-        return this._fetchWithRetry(`v1/threads/${threadId}/runs`, {
-          method: 'POST',
-          body: JSON.stringify({
-            assistant_id: this.config.assistantId,
-            model: this.config.model,
-            temperature: this.config.temperature,
-            max_tokens: this.config.maxTokens,
-            ...additionalParams
-          })
-        });
-      }
-
-      async getRunStatus(threadId, runId) {
-        return this._fetchWithRetry(`v1/threads/${threadId}/runs/${runId}`);
-      }
-
-      async getMessages(threadId) {
-        return this._fetchWithRetry(`v1/threads/${threadId}/messages`);
-      }
-
-      async deleteThread(threadId) {
-        try {
-          await this._fetchWithRetry(`v1/threads/${threadId}`, {
-            method: 'DELETE'
-          });
-          if (this.activeThreadId === threadId) {
-            this.activeThreadId = null;
-          }
-        } catch (error) {
-          console.warn('Thread cleanup failed:', error);
+          console.error('Netlify Function error:', error);
+          throw error;
         }
       }
     }
 
-    // Chat Handler (same as previous optimized version)
+    // Chat Handler for Netlify Functions
     async function handleMindsDBThread(message) {
       const config = MindsDBConfig.load();
-      const client = new MindsDBClient(config);
+      const client = new NetlifyFunctionsClient();
       
       try {
+        // Create typing indicator
         const typingIndicator = addMessage('...', false);
         
-        let threadId = client.activeThreadId;
-        if (!threadId) {
-          const thread = await client.createThread();
-          threadId = thread.id;
-        }
-        
-        const history = config.threadHistory.slice(-4);
-        if (history.length > 0) {
-          for (const { role, content } of history) {
-            await client.postMessage(threadId, content);
-          }
-        }
-        await client.postMessage(threadId, message);
-        
-        const run = await client.createRun(threadId);
-        
-        let status = run.status;
-        let backoff = 1000;
-        const startTime = Date.now();
-        
-        while (status !== 'completed' && Date.now() - startTime < 30000) {
-          await new Promise(r => setTimeout(r, backoff));
-          const statusObj = await client.getRunStatus(threadId, run.id);
-          status = statusObj.status;
-          
-          if (status === 'failed') throw new Error(statusObj.last_error?.message || 'Run failed');
-          if (status === 'requires_action') throw new Error('Assistant requires action');
-          
-          backoff = Math.min(backoff * 1.5, 3000);
-        }
-        
-        if (status !== 'completed') throw new Error('Run timed out');
-        
-        const messages = await client.getMessages(threadId);
-        const reply = messages.data.find(m => m.role === 'assistant')?.content?.[0]?.text?.value;
-        
-        if (!reply) throw new Error('No valid assistant reply');
-        
+        // Send request to Netlify Function
+        const response = await client.post('mindsdb-chat', {
+          message,
+          config: {
+            apiKey: config.apiKey,
+            baseUrl: config.baseUrl,
+            assistantId: config.assistantId,
+            model: config.model,
+            temperature: config.temperature,
+            maxTokens: config.maxTokens
+          },
+          history: config.threadHistory.slice(-4) // Send last 4 messages as context
+        });
+
+        // Update conversation history
         const updatedHistory = [
           ...config.threadHistory,
           { role: 'user', content: message },
-          { role: 'assistant', content: reply }
+          { role: 'assistant', content: response.reply }
         ];
         MindsDBConfig.save({ threadHistory: updatedHistory });
-        
-        return reply;
+
+        return response.reply;
       } catch (error) {
-        console.error('MindsDB API error:', error);
+        console.error('Chat API error:', error);
         throw error;
       } finally {
+        // Remove typing indicator
         const indicator = document.getElementById('typing-indicator');
         if (indicator) indicator.remove();
       }
     }
 
-    // Message Handling (same as previous optimized version)
+    // Local Model Handling
     let localGenerator = null;
 
     async function initializeLocalModel() {
@@ -556,17 +449,24 @@
         status.textContent = '🚀 Loading Local Model...';
         
         const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
-        localGenerator = await pipeline('text-generation', 'Xenova/gpt2');
+        localGenerator = await pipeline('text-generation', 'Xenova/gpt2', {
+          progress_callback: (progress) => {
+            status.textContent = `🚀 Loading Model (${Math.round(progress * 100)}%)...`;
+          }
+        });
         
         status.textContent = '✅ Local Model Ready';
         status.style.color = '#00C853';
+        return true;
       } catch (error) {
         console.error('Local model initialization failed:', error);
         document.getElementById('model-status').textContent = '❌ Local Model Failed';
         document.getElementById('model-status').style.color = '#FF5252';
+        throw error;
       }
     }
 
+    // Message Handling
     function addMessage(text, isUser = true) {
       const msgDiv = document.createElement('div');
       msgDiv.className = `message ${isUser ? 'user' : 'reply'}`;
@@ -595,13 +495,21 @@
       input.value = '';
       
       try {
-        const response = await handleMindsDBThread(text);
-        addMessage(response, false);
-      } catch (error) {
-        console.error('MindsDB failed, falling back to local:', error);
-        addMessage("⚠ Cloud service unavailable, using local model...", false);
-        
-        if (!localGenerator) await initializeLocalModel();
+        // First try MindsDB via Netlify Function
+        try {
+          const response = await handleMindsDBThread(text);
+          addMessage(response, false);
+          return;
+        } catch (error) {
+          console.error('MindsDB failed:', error);
+          addMessage("⚠ Cloud service unavailable, using local model...", false);
+        }
+
+        // Fallback to local model
+        if (!localGenerator) {
+          await initializeLocalModel();
+        }
+
         const output = await localGenerator(text, {
           max_new_tokens: 100,
           pad_token_id: localGenerator.tokenizer.eos_token_id
@@ -609,6 +517,10 @@
         
         const localResponse = output[0].generated_text.replace(text, '').trim();
         addMessage(localResponse, false);
+        
+      } catch (error) {
+        console.error('Message handling failed:', error);
+        addMessage(`❌ Error: ${error.message}`, false);
       } finally {
         input.disabled = false;
         input.focus();
@@ -617,39 +529,108 @@
 
     // Initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
-      // Set up event listeners
+      // Initialize configuration
+      const config = MindsDBConfig.load();
+      const modelSelect = document.getElementById('model-select');
+      
+      // Set initial values
+      document.getElementById('api-key').value = config.apiKey;
+      document.getElementById('base-url').value = config.baseUrl.replace(/\/$/, '');
+      document.getElementById('assistant-id').value = config.assistantId;
+      
+      // Set model selection
+      modelSelect.value = localStorage.getItem('model-choice') || 'mindsdb';
+      document.getElementById('api-key-container').style.display = 
+        modelSelect.value === 'mindsdb' ? 'flex' : 'none';
+
+      // Model selector handler
+      modelSelect.addEventListener('change', (e) => {
+        localStorage.setItem('model-choice', e.target.value);
+        document.getElementById('api-key-container').style.display = 
+          e.target.value === 'mindsdb' ? 'flex' : 'none';
+        updateModelStatus();
+      });
+
+      // Save config handler
+      window.saveApiKey = () => {
+        const newConfig = MindsDBConfig.save({
+          apiKey: document.getElementById('api-key').value.trim(),
+          baseUrl: document.getElementById('base-url').value.trim(),
+          assistantId: document.getElementById('assistant-id').value.trim()
+        });
+
+        const statusElement = document.getElementById('save-status');
+        const validation = MindsDBConfig.validate(newConfig);
+
+        if (validation.isValid) {
+          statusElement.textContent = '✓ Configuration saved';
+          statusElement.style.color = '#00C853';
+          setTimeout(() => {
+            document.getElementById('api-key-container').style.display = 'none';
+            updateModelStatus();
+          }, 1500);
+        } else {
+          statusElement.textContent = `⚠ ${validation.errors.join(', ')}`;
+          statusElement.style.color = '#FF5252';
+        }
+      };
+
+      // Update status display
+      function updateModelStatus() {
+        const status = document.getElementById('model-status');
+        const model = localStorage.getItem('model-choice') || 'mindsdb';
+        
+        if (model === 'local') {
+          status.textContent = '🖥 Local model selected';
+          status.style.color = '#FFFFFF';
+        } else {
+          const config = MindsDBConfig.load();
+          const validation = MindsDBConfig.validate(config);
+          
+          if (validation.isValid) {
+            status.textContent = `☁ Connected to ${new URL(config.baseUrl).hostname}`;
+            status.style.color = '#00C853';
+          } else {
+            status.textContent = '⚠ Configure MindsDB settings';
+            status.style.color = '#FF5252';
+          }
+        }
+      }
+
+      // Initialize chat event listeners
       document.getElementById('send-message').addEventListener('click', handleMessage);
       document.getElementById('chat-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleMessage();
       });
 
-      document.getElementById('explore-btn').addEventListener('click', function(e) {
-        e.preventDefault();
-        window.location.href = 'secondary.html';
-      });
+      // Payment button handlers
+      function handlePaymentButtonClick(destination) {
+        return function(e) {
+          e.preventDefault();
+          if (typeof showPaymentModal === 'function') {
+            showPaymentModal(destination);
+          } else {
+            console.error("Payment modal function not available");
+            window.location.href = destination;
+          }
+        }
+      }
 
-      // Navigation handlers
-      document.getElementById('consultation-tab').addEventListener('click', function() {
-        // Add consultation functionality
-        console.log('Consultation clicked');
-      });
+      document.getElementById('explore-btn').addEventListener('click', 
+        handlePaymentButtonClick('secondary.html'));
 
-      document.getElementById('discoveries-tab').addEventListener('click', function() {
-        window.location.href = 'QuorumDEEP.html';
-      });
+      document.getElementById('discoveries-tab').addEventListener('click', 
+        handlePaymentButtonClick('QuorumDEEP.html'));
 
-      document.getElementById('about-us-tab').addEventListener('click', function() {
-        // Add about us functionality
-        console.log('About Us clicked');
-      });
-
-      // Initialize AI status
-      document.getElementById('model-status').textContent = '☁ Connected to api.mdb.ai';
-      document.getElementById('model-status').style.color = '#00C853';
-
+      // Initialize model status
+      updateModelStatus();
+      
       // Initialize local model in background
-      initializeLocalModel();
+      initializeLocalModel().catch(() => {
+        console.log('Background model loading failed, will try again when needed');
+      });
     });
+
   </script>
 </body>
 </html>
