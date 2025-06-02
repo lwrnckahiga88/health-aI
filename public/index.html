@@ -300,41 +300,25 @@
   <!-- Main Application Script -->
   <script>
   // Configuration Manager
+   <script>
+    // Configuration Manager
     class MindsDBConfig {
       static STORAGE_KEY = 'mindsdb-config-v3';
 
       static load() {
         try {
-          const config = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
-          return {
-            apiKey: config.apiKey || '',
-            baseUrl: config.baseUrl?.endsWith('/') ? config.baseUrl : (config.baseUrl || '') + '/',
-            assistantId: config.assistantId || '',
-            model: config.model || 'gpt-4',
-            temperature: config.temperature || 0.7,
-            maxTokens: config.maxTokens || 1000,
-            lastUpdated: config.lastUpdated || 0,
-            threadHistory: config.threadHistory || []
-          };
+          return JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || this.getDefaults();
         } catch (e) {
           return this.getDefaults();
         }
       }
 
       static save(config) {
-        const currentConfig = this.load();
-        const fullConfig = {
-          ...currentConfig,
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+          ...this.getDefaults(),
           ...config,
           lastUpdated: Date.now()
-        };
-        
-        if (!config.threadHistory && currentConfig.threadHistory) {
-          fullConfig.threadHistory = currentConfig.threadHistory;
-        }
-        
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(fullConfig));
-        return fullConfig;
+        }));
       }
 
       static getDefaults() {
@@ -345,98 +329,32 @@
           model: 'gpt-4',
           temperature: 0.7,
           maxTokens: 1000,
-          lastUpdated: 0,
           threadHistory: []
         };
       }
-
-      static validate(config) {
-        const errors = [];
-        if (!config.apiKey) errors.push('API key required');
-        if (!config.baseUrl) errors.push('Base URL required');
-        if (!config.assistantId) errors.push('Assistant ID required');
-        
-        try {
-          new URL(config.baseUrl);
-        } catch (e) {
-          errors.push('Invalid base URL format');
-        }
-
-        return {
-          isValid: errors.length === 0,
-          errors
-        };
-      }
     }
 
-    // Netlify Functions Client
-    class NetlifyFunctionsClient {
-      constructor() {
-        this.baseUrl = '/.netlify/functions';
-      }
-
-      async post(endpoint, data) {
-        try {
-          const response = await fetch(`${this.baseUrl}/${endpoint}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Request failed');
-          }
-
-          return response.json();
-        } catch (error) {
-          console.error('Netlify Function error:', error);
-          throw error;
-        }
-      }
-    }
-
-    // Chat Handler for Netlify Functions
+    // Chat Handler
     async function handleMindsDBThread(message) {
-      const config = MindsDBConfig.load();
-      const client = new NetlifyFunctionsClient();
-      
       try {
-        // Create typing indicator
-        const typingIndicator = addMessage('...', false);
-        
-        // Send request to Netlify Function
-        const response = await client.post('mindsdb-chat', {
-          message,
-          config: {
-            apiKey: config.apiKey,
-            baseUrl: config.baseUrl,
-            assistantId: config.assistantId,
-            model: config.model,
-            temperature: config.temperature,
-            maxTokens: config.maxTokens
-          },
-          history: config.threadHistory.slice(-4) // Send last 4 messages as context
+        const response = await fetch('/.netlify/functions/mindsdb-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            message,
+            config: MindsDBConfig.load()
+          })
         });
 
-        // Update conversation history
-        const updatedHistory = [
-          ...config.threadHistory,
-          { role: 'user', content: message },
-          { role: 'assistant', content: response.reply }
-        ];
-        MindsDBConfig.save({ threadHistory: updatedHistory });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Request failed');
+        }
 
-        return response.reply;
+        return (await response.json()).reply;
       } catch (error) {
-        console.error('Chat API error:', error);
+        console.error('API Error:', error);
         throw error;
-      } finally {
-        // Remove typing indicator
-        const indicator = document.getElementById('typing-indicator');
-        if (indicator) indicator.remove();
       }
     }
 
@@ -449,37 +367,23 @@
         status.textContent = '🚀 Loading Local Model...';
         
         const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
-        localGenerator = await pipeline('text-generation', 'Xenova/gpt2', {
-          progress_callback: (progress) => {
-            status.textContent = `🚀 Loading Model (${Math.round(progress * 100)}%)...`;
-          }
-        });
+        localGenerator = await pipeline('text-generation', 'Xenova/gpt2');
         
         status.textContent = '✅ Local Model Ready';
         status.style.color = '#00C853';
-        return true;
       } catch (error) {
-        console.error('Local model initialization failed:', error);
+        console.error('Local model failed:', error);
         document.getElementById('model-status').textContent = '❌ Local Model Failed';
         document.getElementById('model-status').style.color = '#FF5252';
         throw error;
       }
     }
 
-    // Message Handling
+    // UI Functions
     function addMessage(text, isUser = true) {
       const msgDiv = document.createElement('div');
       msgDiv.className = `message ${isUser ? 'user' : 'reply'}`;
-      
-      if (!isUser && text === '...') {
-        msgDiv.id = 'typing-indicator';
-        const dots = msgDiv.appendChild(document.createElement('span'));
-        dots.className = 'typing-dots';
-        dots.innerHTML = '&nbsp;.&nbsp;.&nbsp;.';
-      } else {
-        msgDiv.textContent = text;
-      }
-      
+      msgDiv.textContent = text;
       document.getElementById('chat-messages').appendChild(msgDiv);
       document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
       return msgDiv;
@@ -495,31 +399,25 @@
       input.value = '';
       
       try {
-        // First try MindsDB via Netlify Function
+        // Try MindsDB first
         try {
           const response = await handleMindsDBThread(text);
           addMessage(response, false);
           return;
         } catch (error) {
-          console.error('MindsDB failed:', error);
-          addMessage("⚠ Cloud service unavailable, using local model...", false);
+          console.log('MindsDB failed, trying local:', error);
+          addMessage("⚠ Using local model...", false);
         }
 
-        // Fallback to local model
-        if (!localGenerator) {
-          await initializeLocalModel();
-        }
-
+        // Fallback to local
+        if (!localGenerator) await initializeLocalModel();
         const output = await localGenerator(text, {
           max_new_tokens: 100,
           pad_token_id: localGenerator.tokenizer.eos_token_id
         });
-        
-        const localResponse = output[0].generated_text.replace(text, '').trim();
-        addMessage(localResponse, false);
-        
+        addMessage(output[0].generated_text.replace(text, '').trim(), false);
       } catch (error) {
-        console.error('Message handling failed:', error);
+        console.error('Chat failed:', error);
         addMessage(`❌ Error: ${error.message}`, false);
       } finally {
         input.disabled = false;
@@ -527,110 +425,38 @@
       }
     }
 
-    // Initialize when DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
-      // Initialize configuration
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load config
       const config = MindsDBConfig.load();
-      const modelSelect = document.getElementById('model-select');
-      
-      // Set initial values
       document.getElementById('api-key').value = config.apiKey;
-      document.getElementById('base-url').value = config.baseUrl.replace(/\/$/, '');
+      document.getElementById('base-url').value = config.baseUrl;
       document.getElementById('assistant-id').value = config.assistantId;
-      
-      // Set model selection
-      modelSelect.value = localStorage.getItem('model-choice') || 'mindsdb';
-      document.getElementById('api-key-container').style.display = 
-        modelSelect.value === 'mindsdb' ? 'flex' : 'none';
 
-      // Model selector handler
-      modelSelect.addEventListener('change', (e) => {
-        localStorage.setItem('model-choice', e.target.value);
-        document.getElementById('api-key-container').style.display = 
-          e.target.value === 'mindsdb' ? 'flex' : 'none';
-        updateModelStatus();
-      });
-
-      // Save config handler
-      window.saveApiKey = () => {
-        const newConfig = MindsDBConfig.save({
-          apiKey: document.getElementById('api-key').value.trim(),
-          baseUrl: document.getElementById('base-url').value.trim(),
-          assistantId: document.getElementById('assistant-id').value.trim()
-        });
-
-        const statusElement = document.getElementById('save-status');
-        const validation = MindsDBConfig.validate(newConfig);
-
-        if (validation.isValid) {
-          statusElement.textContent = '✓ Configuration saved';
-          statusElement.style.color = '#00C853';
-          setTimeout(() => {
-            document.getElementById('api-key-container').style.display = 'none';
-            updateModelStatus();
-          }, 1500);
-        } else {
-          statusElement.textContent = `⚠ ${validation.errors.join(', ')}`;
-          statusElement.style.color = '#FF5252';
-        }
-      };
-
-      // Update status display
-      function updateModelStatus() {
-        const status = document.getElementById('model-status');
-        const model = localStorage.getItem('model-choice') || 'mindsdb';
-        
-        if (model === 'local') {
-          status.textContent = '🖥 Local model selected';
-          status.style.color = '#FFFFFF';
-        } else {
-          const config = MindsDBConfig.load();
-          const validation = MindsDBConfig.validate(config);
-          
-          if (validation.isValid) {
-            status.textContent = `☁ Connected to ${new URL(config.baseUrl).hostname}`;
-            status.style.color = '#00C853';
-          } else {
-            status.textContent = '⚠ Configure MindsDB settings';
-            status.style.color = '#FF5252';
-          }
-        }
-      }
-
-      // Initialize chat event listeners
+      // Set up UI
       document.getElementById('send-message').addEventListener('click', handleMessage);
       document.getElementById('chat-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleMessage();
       });
 
-      // Payment button handlers
-      function handlePaymentButtonClick(destination) {
-        return function(e) {
-          e.preventDefault();
-          if (typeof showPaymentModal === 'function') {
-            showPaymentModal(destination);
-          } else {
-            console.error("Payment modal function not available");
-            window.location.href = destination;
-          }
-        }
-      }
-
-      document.getElementById('explore-btn').addEventListener('click', 
-        handlePaymentButtonClick('secondary.html'));
-
-      document.getElementById('discoveries-tab').addEventListener('click', 
-        handlePaymentButtonClick('QuorumDEEP.html'));
-
-      // Initialize model status
-      updateModelStatus();
-      
       // Initialize local model in background
-      initializeLocalModel().catch(() => {
-        console.log('Background model loading failed, will try again when needed');
-      });
-    });
+      initializeLocalModel().catch(() => {});
 
+      // Save config handler
+      window.saveApiKey = () => {
+        const newConfig = {
+          apiKey: document.getElementById('api-key').value.trim(),
+          baseUrl: document.getElementById('base-url').value.trim(),
+          assistantId: document.getElementById('assistant-id').value.trim()
+        };
+        MindsDBConfig.save(newConfig);
+        document.getElementById('save-status').textContent = '✓ Saved';
+        setTimeout(() => {
+          document.getElementById('api-key-container').style.display = 'none';
+        }, 1500);
+      };
+    });
+  
   </script>
 </body>
 </html>
