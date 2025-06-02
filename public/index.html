@@ -505,7 +505,7 @@
             apiKey: config.apiKey || '',
             baseUrl: config.baseUrl?.endsWith('/') ? config.baseUrl : (config.baseUrl || '') + '/',
             assistantId: config.assistantId || '',
-            model: config.model || 'gpt-4',
+            model: config.model || 'Netlify/functions',
             temperature: config.temperature || 0.7,
             maxTokens: config.maxTokens || 1000,
             lastUpdated: config.lastUpdated || 0,
@@ -583,7 +583,7 @@
           'Authorization': `Bearer ${this.config.apiKey}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'X-Client': 'juA.kali-webapp/1.1',
+          'X-Client': 'Netlify/functions/',
           'X-Request-ID': crypto.randomUUID()
         };
 
