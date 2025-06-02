@@ -22,7 +22,7 @@ exports.handler = async function(event) {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-Client': 'juA.kali-webapp/1.0'
+        'X-Client': 'netlify/functions'
       };
 
       let retries = 0, maxRetries = 3;
