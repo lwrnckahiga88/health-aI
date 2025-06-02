@@ -512,7 +512,7 @@
       static getDefaults() {
         return {
           apiKey: '',
-          baseUrl: 'https://llm.mdb.ai/',
+          baseUrl: 'https://api.mdb.ai/',
           assistantId: '',
           lastUpdated: 0
         };
@@ -551,7 +551,7 @@
           'Authorization': `Bearer ${this.config.apiKey}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'X-Client': 'netlify/functions/1.0'
+          'X-Client': 'Netlify/functions/1.0'
         };
 
         try {
@@ -629,7 +629,7 @@
 
     // Chat Handler
   async function handleMindsDBThread(message) {
-  const response = await fetch('/netlify/functions/mindsdb-chat', {
+  const response = await fetch('/Netlify/functions/mindsdb-chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message })
