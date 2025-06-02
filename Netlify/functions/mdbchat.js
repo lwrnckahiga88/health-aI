@@ -6,95 +6,105 @@ exports.handler = async function(event) {
   }
 
   try {
-    const { message, apiKey, baseUrl, assistantId } = JSON.parse(event.body);
-
-    if (!apiKey || !baseUrl || !assistantId || !message) {
+    const { message, config } = JSON.parse(event.body);
+    
+    // Validate config
+    if (!config.apiKey || !config.baseUrl || !config.assistantId) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ message: 'Missing required fields' }),
+        body: JSON.stringify({ error: 'Invalid configuration' })
       };
-    }
-
-    // Helper for MindsDB API calls with retries on 401
-    async function fetchWithRetry(endpoint, options = {}) {
-      const url = `${baseUrl.replace(/\/+$/, '')}/${endpoint.replace(/^\//, '')}`;
-      const headers = {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-Client': 'juA.kali-webapp/1.0'
-      };
-
-      let retries = 0, maxRetries = 3;
-      while (true) {
-        const res = await fetch(url, { ...options, headers: { ...headers, ...options.headers } });
-        if (res.ok) return res.json();
-        if (res.status === 401 && retries < maxRetries) {
-          retries++;
-          continue; // retry
-        }
-        let errorData;
-        try {
-          errorData = await res.json();
-        } catch {
-          errorData = { message: res.statusText };
-        }
-        throw new Error(errorData.message || `HTTP ${res.status}`);
-      }
     }
 
     // Create thread
-    const thread = await fetchWithRetry('v1/threads', { method: 'POST' });
-    const threadId = thread.id;
+    const thread = await fetch(`${config.baseUrl}/v1/threads`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    }).then(res => res.json());
 
     try {
-      // Post user message
-      await fetchWithRetry(`v1/threads/${threadId}/messages`, {
+      // Post message
+      await fetch(`${config.baseUrl}/v1/threads/${thread.id}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ role: 'user', content: message }),
+        headers: {
+          'Authorization': `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          role: 'user',
+          content: message
+        })
       });
 
-      // Create run with assistant ID
-      const run = await fetchWithRetry(`v1/threads/${threadId}/runs`, {
+      // Create run
+      const run = await fetch(`${config.baseUrl}/v1/threads/${thread.id}/runs`, {
         method: 'POST',
-        body: JSON.stringify({ assistant_id: assistantId }),
-      });
+        headers: {
+          'Authorization': `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          assistant_id: config.assistantId,
+          model: config.model || 'gpt-4',
+          temperature: config.temperature || 0.7
+        })
+      }).then(res => res.json());
 
+      // Wait for completion
       let status = run.status;
       const start = Date.now();
-
-      // Poll run status (timeout 30 seconds)
       while (status !== 'completed' && Date.now() - start < 30000) {
         await new Promise(r => setTimeout(r, 1000));
-        const statusObj = await fetchWithRetry(`v1/threads/${threadId}/runs/${run.id}`);
-        status = statusObj.status;
-        if (status === 'failed') throw new Error(statusObj.last_error?.message || 'Run failed');
+        const statusRes = await fetch(`${config.baseUrl}/v1/threads/${thread.id}/runs/${run.id}`, {
+          headers: {
+            'Authorization': `Bearer ${config.apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        status = (await statusRes.json()).status;
       }
 
-      if (status !== 'completed') throw new Error('Run timed out');
+      if (status !== 'completed') {
+        throw new Error('Run timed out');
+      }
 
-      // Get messages and find assistant reply
-      const messages = await fetchWithRetry(`v1/threads/${threadId}/messages`);
+      // Get response
+      const messages = await fetch(`${config.baseUrl}/v1/threads/${thread.id}/messages`, {
+        headers: {
+          'Authorization': `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      }).then(res => res.json());
+
       const reply = messages.data.find(m => m.role === 'assistant')?.content?.[0]?.text?.value;
-
-      if (!reply) throw new Error('No valid assistant reply');
+      
+      if (!reply) throw new Error('No reply received');
 
       return {
         statusCode: 200,
-        body: JSON.stringify({ reply }),
+        body: JSON.stringify({ reply })
       };
     } finally {
-      // Delete thread to clean up
+      // Clean up thread
       try {
-        await fetchWithRetry(`v1/threads/${threadId}`, { method: 'DELETE' });
+        await fetch(`${config.baseUrl}/v1/threads/${thread.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${config.apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
       } catch (e) {
-        // Ignore cleanup errors
+        console.error('Cleanup failed:', e);
       }
     }
-  } catch (err) {
+  } catch (error) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ message: err.message || 'Internal Server Error' }),
+      body: JSON.stringify({ error: error.message })
     };
   }
 };
