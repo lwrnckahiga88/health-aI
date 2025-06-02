@@ -629,7 +629,7 @@
 
     // Chat Handler
   async function handleMindsDBThread(message) {
-  const response = await fetch('/Netlify/functions/mindsdb-chat', {
+  const response = await fetch('.netlify/functions/mindsdb-chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message })
