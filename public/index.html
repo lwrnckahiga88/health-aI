@@ -628,68 +628,21 @@
     }
 
     // Chat Handler
-    async function handleMindsDBThread(message) {
-      const config = MindsDBConfig.load();
-      const validation = MindsDBConfig.validate(config);
+  async function handleMindsDBThread(message) {
+  const response = await fetch('/.netlify/functions/mindsdb-chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message })
+  });
 
-      if (!validation.isValid) {
-        throw new Error(`Configuration invalid: ${validation.errors.join(', ')}`);
-      }
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error);
+  }
 
-      const client = new MindsDBClient(config);
-      let threadId, runId;
-
-      try {
-        // 1. Create thread
-        const thread = await client.createThread();
-        threadId = thread.id;
-        console.debug('Thread created:', threadId);
-
-        // 2. Post message
-        await client.postMessage(threadId, message);
-        console.debug('Message posted');
-
-        // 3. Create and monitor run
-        const run = await client.createRun(threadId);
-        runId = run.id;
-        console.debug('Run started:', runId);
-
-        // Poll run status with timeout (30s)
-        const startTime = Date.now();
-        let runStatus = run.status;
-        
-        while (runStatus !== 'completed' && Date.now() - startTime < 30000) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          const status = await client.getRunStatus(threadId, runId);
-          runStatus = status.status;
-          console.debug('Run status:', runStatus);
-
-          if (runStatus === 'failed') {
-            throw new Error(status.last_error?.message || 'Run failed');
-          }
-        }
-
-        if (runStatus !== 'completed') {
-          throw new Error('Run timed out');
-        }
-
-        // 4. Get response
-        const messages = await client.getMessages(threadId);
-        const assistantMessage = messages.data.find(m => m.role === 'assistant');
-        
-        if (!assistantMessage?.content?.[0]?.text?.value) {
-          throw new Error('No valid assistant response');
-        }
-
-        return assistantMessage.content[0].text.value;
-      } finally {
-        // 5. Cleanup
-        if (threadId) {
-          await client.deleteThread(threadId);
-          console.debug('Thread cleaned up');
-        }
-      }
-    }
+  const data = await response.json();
+  return data.reply;
+  }
 
     // Initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
