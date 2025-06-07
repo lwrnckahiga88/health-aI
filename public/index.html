@@ -455,7 +455,7 @@
     <button id="consultation-tab">Consultation</button>
     <button id="discoveries-tab">Discoveries</button>
     <button id="about-us-tab">About Us</button>
-    <button id="contact-tab">Contact</button>
+    <button id="courses-tab">Courses</button>
   </nav>
 
   <div class="model-selector">
@@ -1444,6 +1444,34 @@
     // Global functions for UI actions
     window.toggleApiKeyInput = toggleApiKeyInput;
     window.saveApiKey = saveApiKey;
+
+      // Event listeners
+    document.addEventListener('DOMContentLoaded', function () {
+    // Navigate to secondary.html when Explore Innovations is clicked
+    const exploreButton = document.getElementById('explore-btn');
+    if (exploreButton) {
+      exploreButton.addEventListener('click', function () {
+        window.location.href = 'secondary.html';
+      });
+    }
+
+   // Navigate to QuorumDEEP.html when Discoveries tab is clicked
+    const discoveriesTab = document.getElementById('discoveries-tab');
+    if (discoveriesTab) {
+      discoveriesTab.addEventListener('click', function () {
+        window.location.href = 'QuorumDeep.html';
+      });
+    }
+  });
+  
+  // Navigate to QuorumDEEP.html when Discoveries tab is clicked
+    const coursesTab = document.getElementById('courses-tab');
+    if (coursesTab) {
+      coursesTab.addEventListener('click', function () {
+        window.location.href = 'techskills.html';
+      });
+    }
+  });
   </script>
 
   <!-- Payment Modal Script -->
