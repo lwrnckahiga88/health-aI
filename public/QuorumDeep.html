@@ -1,0 +1,2518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuorumED Genomic Analysis Platform</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gene-suggestions-container {
+            position: absolute;
+            z-index: 1000;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 0 0 4px 4px;
+            display: none;
+        }
+        .suggestion-item {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .suggestion-item:hover {
+            background-color: #f5f5f5;
+        }
+        .history-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .history-item:hover {
+            background-color: #f8f9fa;
+        }
+        .gene-badge {
+            background-color: #6c757d;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+        .variant-id {
+            font-family: monospace;
+            margin-left: 5px;
+        }
+        .timestamp {
+            color: #6c757d;
+        }
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1100;
+        }
+        .toast {
+            margin-bottom: 10px;
+        }
+        .impact-visualization {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .data-preview {
+            margin-top: 20px;
+            display: none;
+        }
+        .data-preview table {
+            width: 100%;
+        }
+        #training-logs, #model-logs {
+            height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        #variant-result-container {
+            margin-top: 20px;
+        }
+        .confidence-indicator-container {
+            height: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        #confidence-indicator {
+            height: 100%;
+            border-radius: 5px;
+            background-color: #0d6efd;
+            width: 0%;
+            transition: width 0.5s;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 bg-dark text-white p-3 min-vh-100">
+                <div class="d-flex flex-column">
+                    <div class="text-center mb-4">
+                        <h4>QuorumED</h4>
+                        <small class="text-muted">Genomic Analysis</small>
+                    </div>
+                    <ul class="nav nav-pills flex-column mb-auto">
+                        <li class="nav-item">
+                            <a href="#analysis" class="nav-link active" data-bs-toggle="tab">
+                                <i class="fas fa-dna me-2"></i>Variant Analysis
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#training" class="nav-link" data-bs-toggle="tab">
+                                <i class="fas fa-brain me-2"></i>Model Training
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#deployment" class="nav-link" data-bs-toggle="tab">
+                                <i class="fas fa-rocket me-2"></i>Deployment
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#monitoring" class="nav-link" data-bs-toggle="tab">
+                                <i class="fas fa-chart-line me-2"></i>Monitoring
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#integrations" class="nav-link" data-bs-toggle="tab">
+                                <i class="fas fa-plug me-2"></i>Integrations
+                            </a>
+                        </li>
+                    </ul>
+                    <hr>
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle me-2 fs-4"></i>
+                            <span id="username">Guest</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
+                            <li><a class="dropdown-item" href="#">Profile</a></li>
+                            <li><a class="dropdown-item" href="#">Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" id="logoutLink">Sign out</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-10 p-4">
+                <div class="tab-content" id="mainTabs">
+                    <!-- Analysis Tab -->
+                    <div class="tab-pane fade show active" id="analysis">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="mb-0">Variant Information</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="variant-form">
+                                            <div class="mb-3">
+                                                <label for="gene-input" class="form-label">Gene</label>
+                                                <input type="text" class="form-control" id="gene-input" placeholder="e.g. BRCA1">
+                                                <div id="gene-suggestions" class="gene-suggestions-container"></div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="variant-input" class="form-label">Variant ID</label>
+                                                <input type="text" class="form-control" id="variant-input" placeholder="e.g. chr17:41276045:G>A">
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="aa-change-input" class="form-label">Amino Acid Change</label>
+                                                    <input type="text" class="form-control" id="aa-change-input" placeholder="e.g. p.Arg1443Ter">
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="sift-input" class="form-label">SIFT Score (0-1)</label>
+                                                    <input type="number" class="form-control" id="sift-input" min="0" max="1" step="0.01" placeholder="0.01">
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="polyphen-input" class="form-label">PolyPhen Score (0-1)</label>
+                                                    <input type="number" class="form-control" id="polyphen-input" min="0" max="1" step="0.01" placeholder="0.95">
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="af-input" class="form-label">Allele Frequency (0-1)</label>
+                                                    <input type="number" class="form-control" id="af-input" min="0" max="1" step="0.0001" placeholder="0.0001">
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="conservation-input" class="form-label">Conservation Score (0-1)</label>
+                                                <input type="number" class="form-control" id="conservation-input" min="0" max="1" step="0.1" placeholder="0.9">
+                                            </div>
+                                            <button type="button" class="btn btn-primary" id="analyze-variant-btn">
+                                                <i class="fas fa-search me-2"></i>Analyze Variant
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <div class="card">
+                                    <div class="card-header bg-secondary text-white">
+                                        <h5 class="mb-0">Analysis History</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="variant-history"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0">Analysis Results</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="variant-result-container" style="display: none;">
+                                            <h4 class="mb-3">Variant Analysis Report</h4>
+                                            
+                                            <div class="mb-4">
+                                                <h5>Variant Impact</h5>
+                                                <div id="impact-result"></div>
+                                                <div class="confidence-indicator-container">
+                                                    <div id="confidence-indicator"></div>
+                                                </div>
+                                                <button class="btn btn-outline-secondary btn-sm me-2" id="export-impact-btn">
+                                                    <i class="fas fa-download me-1"></i>Export Impact
+                                                </button>
+                                            </div>
+                                            
+                                            <div class="mb-4">
+                                                <h5>Therapeutic Approach</h5>
+                                                <div id="therapy-result"></div>
+                                                <div class="mt-3">
+                                                    <h6>Recommended Drugs</h6>
+                                                    <ul class="list-group" id="drug-list"></ul>
+                                                </div>
+                                                <button class="btn btn-outline-secondary btn-sm mt-2" id="export-therapy-btn">
+                                                    <i class="fas fa-download me-1"></i>Export Therapy
+                                                </button>
+                                            </div>
+                                            
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <div class="card">
+                                                        <div class="card-header bg-info text-white">
+                                                            <h6 class="mb-0">Molecular Impact</h6>
+                                                        </div>
+                                                        <div class="card-body">
+                                                            <p id="molecular-impact" class="card-text small">No data available</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <div class="card">
+                                                        <div class="card-header bg-info text-white">
+                                                            <h6 class="mb-0">Clinical Impact</h6>
+                                                        </div>
+                                                        <div class="card-body">
+                                                            <p id="clinical-impact" class="card-text small">No data available</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="card mb-3">
+                                                <div class="card-header bg-warning text-dark">
+                                                    <h6 class="mb-0">Monitoring Guidance</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <p id="monitoring-guidance" class="card-text small">No monitoring guidance available</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Training Tab -->
+                    <div class="tab-pane fade" id="training">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="mb-0">Projects</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <button class="btn btn-primary mb-3" id="new-project-btn">
+                                            <i class="fas fa-plus me-2"></i>New Project
+                                        </button>
+                                        <div class="list-group" id="project-list"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-8">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0">Model Training</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Project Status: <span id="project-status" class="badge bg-secondary">Not started</span></label>
+                                        </div>
+                                        
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label for="training-data-source" class="form-label">Data Source</label>
+                                                <input type="text" class="form-control" id="training-data-source" placeholder="e.g. mindsdb.file_storage.genomic_variants">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="target-column" class="form-label">Target Column</label>
+                                                <input type="text" class="form-control" id="target-column" placeholder="e.g. therapeutic_response">
+                                            </div>
+                                        </div>
+                                        
+                                        <button class="btn btn-sm btn-outline-secondary mb-3" id="preview-data-btn">
+                                            <i class="fas fa-eye me-1"></i>Preview Data
+                                        </button>
+                                        
+                                        <div class="data-preview">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr id="preview-headers"></tr>
+                                                </thead>
+                                                <tbody id="preview-rows"></tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        <hr>
+                                        
+                                        <h5 class="mb-3">Training Parameters</h5>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="model-architecture" class="form-label">Model Architecture</label>
+                                                <select class="form-select" id="model-architecture">
+                                                    <option value="classifier">Classifier</option>
+                                                    <option value="regressor">Regressor</option>
+                                                    <option value="llm">LLM Fine-tuning</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="training-engine" class="form-label">Training Engine</label>
+                                                <select class="form-select" id="training-engine">
+                                                    <option value="lightwood">Lightwood</option>
+                                                    <option value="pytorch">PyTorch</option>
+                                                    <option value="tensorflow">TensorFlow</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <label for="epochs" class="form-label">Epochs</label>
+                                                <input type="number" class="form-control" id="epochs" value="10" min="1">
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label for="batch-size" class="form-label">Batch Size</label>
+                                                <input type="number" class="form-control" id="batch-size" value="32" min="1">
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label for="learning-rate" class="form-label">Learning Rate</label>
+                                                <input type="range" class="form-range" id="learning-rate" min="0.0001" max="0.1" step="0.0001" value="0.001">
+                                                <div>Value: <span id="learning-rate-value">0.001</span></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="validation-split" class="form-label">Validation Split</label>
+                                                <input type="range" class="form-range" id="validation-split" min="0.1" max="0.5" step="0.01" value="0.2">
+                                                <div>Value: <span id="validation-split-value">20%</span></div>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <div class="form-check form-switch mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="transfer-learning" checked>
+                                                    <label class="form-check-label" for="transfer-learning">Transfer Learning</label>
+                                                </div>
+                                                <div class="form-check form-switch mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="early-stopping" checked>
+                                                    <label class="form-check-label" for="early-stopping">Early Stopping</label>
+                                                </div>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="enable-gpu">
+                                                    <label class="form-check-label" for="enable-gpu">Enable GPU</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-flex justify-content-between">
+                                            <button class="btn btn-success" id="start-training-btn">
+                                                <i class="fas fa-play me-2"></i>Start Training
+                                            </button>
+                                            <button class="btn btn-danger" id="stop-training-btn" style="display: none;">
+                                                <i class="fas fa-stop me-2"></i>Stop Training
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="card">
+                                    <div class="card-header bg-secondary text-white">
+                                        <h5 class="mb-0">Training Logs</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="training-logs"></div>
+                                        <div class="d-flex justify-content-end mt-2">
+                                            <button class="btn btn-sm btn-outline-secondary me-2" id="clear-logs">
+                                                <i class="fas fa-trash me-1"></i>Clear Logs
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary" id="export-logs">
+                                                <i class="fas fa-download me-1"></i>Export Logs
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Deployment Tab -->
+                    <div class="tab-pane fade" id="deployment">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="mb-0">Deployed Models</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <button class="btn btn-sm btn-outline-light mb-3" id="refresh-deployments">
+                                            <i class="fas fa-sync-alt me-1"></i>Refresh
+                                        </button>
+                                        <div class="list-group" id="deployed-models-list"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-8">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0">Deploy Model</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label for="model-to-deploy" class="form-label">Select Model</label>
+                                                <select class="form-select" id="model-to-deploy"></select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="deployment-name" class="form-label">Deployment Name</label>
+                                                <input type="text" class="form-control" id="deployment-name" placeholder="e.g. Production Oncology API">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label for="deployment-version" class="form-label">Version</label>
+                                                <input type="text" class="form-control" id="deployment-version" placeholder="e.g. 1.0.0" value="1.0.0">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check form-switch pt-4">
+                                                    <input class="form-check-input" type="checkbox" id="enable-monitoring" checked>
+                                                    <label class="form-check-label" for="enable-monitoring">Enable Monitoring</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <button class="btn btn-success" id="deploy-model-btn">
+                                            <i class="fas fa-rocket me-2"></i>Deploy Model
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="card mb-4">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0">API Endpoint</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="input-group mb-3">
+                                            <input type="text" class="form-control" id="api-endpoint" placeholder="Endpoint will appear here after deployment" readonly>
+                                            <button class="btn btn-outline-secondary" type="button" id="copy-api-endpoint">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                            <button class="btn btn-outline-primary" type="button" id="test-endpoint">
+                                                <i class="fas fa-play"></i> Test
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">API Key</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control" id="api-key" placeholder="API key will be generated after deployment" readonly>
+                                                <button class="btn btn-outline-secondary" type="button" id="show-api-key">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" type="button" id="regenerate-api-key">
+                                                    <i class="fas fa-sync-alt"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Example Request</label>
+                                            <pre id="example-request" class="bg-light p-3 rounded">{
+    "model": "[MODEL_ID]",
+    "input": {
+        "gene": "BRCA1",
+        "variant_id": "chr17:41276045:G>A",
+        "sift_score": 0.01,
+        "polyphen_score": 0.95
+    }
+}</pre>
+                                            <button class="btn btn-sm btn-outline-secondary" id="copy-example-request">
+                                                <i class="fas fa-copy me-1"></i>Copy Example
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monitoring Tab -->
+                    <div class="tab-pane fade" id="monitoring">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="mb-0">Active Models</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <button class="btn btn-sm btn-outline-light mb-3" id="refresh-models">
+                                            <i class="fas fa-sync-alt me-1"></i>Refresh
+                                        </button>
+                                        <div class="list-group" id="active-models-list"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-8">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0">Performance Metrics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="btn-group btn-group-sm mb-3">
+                                            <button type="button" class="btn btn-outline-secondary active" data-range="1h">1h</button>
+                                            <button type="button" class="btn btn-outline-secondary" data-range="24h">24h</button>
+                                            <button type="button" class="btn btn-outline-secondary" data-range="7d">7d</button>
+                                            <button type="button" class="btn btn-outline-secondary" data-range="30d">30d</button>
+                                        </div>
+                                        
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <div class="card">
+                                                    <div class="card-header bg-info text-white">
+                                                        <h6 class="mb-0">Requests</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <canvas id="requestsChart"></canvas>
+                                                        <div class="mt-2">
+                                                            <span class="badge bg-primary">Total: <span id="request-count">0</span></span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="card">
+                                                    <div class="card-header bg-warning text-dark">
+                                                        <h6 class="mb-0">Latency</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <canvas id="latencyChart"></canvas>
+                                                        <div class="mt-2">
+                                                            <span class="badge bg-primary">Avg: <span id="avg-latency">0</span>ms</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="card">
+                                                    <div class="card-header bg-danger text-white">
+                                                        <h6 class="mb-0">Errors</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <canvas id="errorsChart"></canvas>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="card">
+                                                    <div class="card-header bg-secondary text-white">
+                                                        <h6 class="mb-0">Resource Usage</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <canvas id="resourcesChart"></canvas>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="card">
+                                    <div class="card-header bg-secondary text-white">
+                                        <h5 class="mb-0">Model Logs</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="model-logs"></div>
+                                        <div class="d-flex justify-content-end mt-2">
+                                            <button class="btn btn-sm btn-outline-secondary me-2" id="clear-model-logs">
+                                                <i class="fas fa-trash me-1"></i>Clear Logs
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary" id="export-model-logs">
+                                                <i class="fas fa-download me-1"></i>Export Logs
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Integrations Tab -->
+                    <div class="tab-pane fade" id="integrations">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="mb-0">Connected Services</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <button class="btn btn-primary mb-3" id="add-integration-btn">
+                                            <i class="fas fa-plus me-2"></i>Add Integration
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary mb-3" id="refresh-integrations">
+                                            <i class="fas fa-sync-alt me-1"></i>Refresh
+                                        </button>
+                                        <div id="connected-services">
+                                            <div class="alert alert-info">No integrations connected</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0">MindsDB Configuration</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label for="mindsdb-api-key" class="form-label">API Key</label>
+                                            <input type="password" class="form-control" id="mindsdb-api-key" placeholder="Enter your MindsDB API key">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="mindsdb-base-url" class="form-label">Base URL</label>
+                                            <input type="text" class="form-control" id="mindsdb-base-url" placeholder="https://cloud.mindsdb.com/api/sql">
+                                        </div>
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label for="mindsdb-model-name" class="form-label">Model Name</label>
+                                                <input type="text" class="form-control" id="mindsdb-model-name" placeholder="Enter your model name">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="mindsdb-project" class="form-label">Project</label>
+                                                <input type="text" class="form-control" id="mindsdb-project" placeholder="mindsdb">
+                                            </div>
+                                        </div>
+                                        <div class="form-check mb-3">
+                                            <input class="form-check-input" type="checkbox" id="verify-connection">
+                                            <label class="form-check-label" for="verify-connection">Verify connection</label>
+                                        </div>
+                                        <button class="btn btn-success" id="save-mindsdb-config">
+                                            <i class="fas fa-save me-2"></i>Save Configuration
+                                        </button>
+                                        <button class="btn btn-outline-secondary" id="configure-mindsdb">
+                                            <i class="fas fa-cog me-2"></i>Advanced Settings
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="loginModalLabel">Login to QuorumED</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="login-email" class="form-label">Email address</label>
+                            <input type="email" class="form-control" id="login-email" placeholder="name@example.com">
+                        </div>
+                        <div class="mb-3">
+                            <label for="login-password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="login-password">
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="remember-me">
+                            <label class="form-check-label" for="remember-me">Remember me</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="login-submit">Login</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Project Modal -->
+    <div class="modal fade" id="newProjectModal" tabindex="-1" aria-labelledby="newProjectModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="newProjectModalLabel">Create New Project</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="project-name" class="form-label">Project Name</label>
+                            <input type="text" class="form-control" id="project-name" placeholder="e.g. Oncology Predictor">
+                        </div>
+                        <div class="mb-3">
+                            <label for="project-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="project-description" rows="3" placeholder="Brief description of your project"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="project-template" class="form-label">Template</label>
+                            <select class="form-select" id="project-template">
+                                <option value="genomic">Genomic Variant Analysis</option>
+                                <option value="clinical">Clinical Data Analysis</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="enable-versioning" checked>
+                            <label class="form-check-label" for="enable-versioning">Enable Version Control</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="create-project-btn">Create Project</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Endpoint Modal -->
+    <div class="modal fade" id="testEndpointModal" tabindex="-1" aria-labelledby="testEndpointModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="testEndpointModalLabel">Test API Endpoint</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Input Data</label>
+                            <textarea class="form-control" id="test-input-data" rows="10">{
+    "gene": "BRCA1",
+    "variant_id": "chr17:41276045:G>A",
+    "sift_score": 0.01,
+    "polyphen_score": 0.95,
+    "allele_frequency": 0.0001
+}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Response</label>
+                            <pre id="test-response" class="bg-light p-3 rounded" style="height: 250px; overflow: auto;">Response will appear here...</pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="send-test-request">Send Request</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MindsDB Config Modal -->
+    <div class="modal fade" id="mindsdb-config-modal" tabindex="-1" aria-labelledby="mindsdbConfigModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mindsdbConfigModalLabel">MindsDB Configuration</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="mindsdb-api-key" class="form-label">API Key</label>
+                            <input type="password" class="form-control" id="mindsdb-api-key-modal" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="mindsdb-base-url" class="form-label">Base URL</label>
+                            <input type="text" class="form-control" id="mindsdb-base-url-modal" value="https://cloud.mindsdb.com/api/sql">
+                        </div>
+                        <div class="mb-3">
+                            <label for="mindsdb-model-name" class="form-label">Model Name</label>
+                            <input type="text" class="form-control" id="mindsdb-model-name-modal">
+                        </div>
+                        <div class="mb-3">
+                            <label for="mindsdb-project" class="form-label">Project</label>
+                            <input type="text" class="form-control" id="mindsdb-project-modal" value="mindsdb">
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="verify-connection-modal">
+                            <label class="form-check-label" for="verify-connection-modal">Verify Connection</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-mindsdb-config-modal">Save Configuration</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Animation Container -->
+    <div id="animation-container" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; pointer-events: none; display: none;"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script>
+        // Application State
+        const state = {
+            auth: {
+                isAuthenticated: false,
+                token: null,
+                user: null
+            },
+            models: {
+                currentModel: 'mindsdb',
+                localModel: null,
+                customEndpoints: [],
+                mindsdbConfig: {
+                    apiKey: localStorage.getItem('mindsdb-api-key') || '',
+                    baseUrl: localStorage.getItem('mindsdb-base-url') || 'https://cloud.mindsdb.com/api/sql',
+                    model: localStorage.getItem('mindsdb-model') || '',
+                    project: localStorage.getItem('mindsdb-project') || 'mindsdb'
+                }
+            },
+            projects: [],
+            currentProject: null,
+            trainingJobs: [],
+            currentTrainingJob: null,
+            deployments: [],
+            currentDeployment: null,
+            metrics: {
+                requests: [],
+                latency: [],
+                errors: [],
+                resourceUsage: []
+            },
+            integrations: {
+                github: false,
+                slack: false,
+                databases: []
+            },
+            ui: {
+                activeTab: 'analysis',
+                darkMode: false
+            },
+            charts: {
+                requests: null,
+                latency: null,
+                errors: null,
+                resources: null
+            },
+            genomicData: {
+                variantCache: {},
+                therapyCache: {},
+                lastAnalysis: null,
+                apiEndpoints: {
+                    myVariant: "https://myvariant.info/v1/variant/",
+                    clinVar: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=clinvar&term=",
+                    civic: "https://civicdb.org/api/variants?gene=",
+                    ensembl: "http://rest.ensembl.org/lookup/id/"
+                }
+            }
+        };
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeAuth();
+            initializeUI();
+            setupEventListeners();
+            loadSampleData();
+            initializeCharts();
+            initializeGenomicUI();
+            
+            if (!state.auth.isAuthenticated) {
+                const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                loginModal.show();
+            }
+        });
+
+        function initializeAuth() {
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                state.auth.token = token;
+                state.auth.isAuthenticated = true;
+                state.auth.user = {
+                    name: "Demo User",
+                    email: "demo@quorumed.com"
+                };
+                updateUserUI();
+            }
+        }
+
+        function updateUserUI() {
+            if (state.auth.isAuthenticated) {
+                document.getElementById('username').textContent = state.auth.user.name;
+            }
+        }
+
+        function initializeUI() {
+            // Initialize form values
+            document.getElementById('learning-rate-value').textContent = document.getElementById('learning-rate').value;
+            document.getElementById('validation-split-value').textContent = Math.round(document.getElementById('validation-split').value * 100) + '%';
+            
+            // Initialize MindsDB config values
+            document.getElementById('mindsdb-api-key').value = state.models.mindsdbConfig.apiKey;
+            document.getElementById('mindsdb-base-url').value = state.models.mindsdbConfig.baseUrl;
+            document.getElementById('mindsdb-model-name').value = state.models.mindsdbConfig.model;
+            document.getElementById('mindsdb-project').value = state.models.mindsdbConfig.project;
+        }
+
+        function initializeGenomicUI() {
+            // Gene suggestions functionality
+            const geneList = ['BRCA1', 'BRCA2', 'TP53', 'EGFR', 'KRAS', 'ALK', 'BRAF', 'HER2', 'PDGFRA'];
+            document.getElementById('gene-input').addEventListener('input', function() {
+                const input = this.value.toLowerCase();
+                const suggestions = geneList.filter(gene => 
+                    gene.toLowerCase().includes(input)
+                ).slice(0, 5);
+                
+                showGeneSuggestions(suggestions);
+            });
+        }
+
+        function showGeneSuggestions(suggestions) {
+            const suggestionContainer = document.getElementById('gene-suggestions');
+            if (!suggestionContainer) return;
+            
+            if (suggestions.length === 0) {
+                suggestionContainer.style.display = 'none';
+                return;
+            }
+            
+            suggestionContainer.innerHTML = suggestions.map(gene => `
+                <div class="suggestion-item" onclick="selectGeneSuggestion('${gene}')">${gene}</div>
+            `).join('');
+            suggestionContainer.style.display = 'block';
+        }
+
+        function selectGeneSuggestion(gene) {
+            document.getElementById('gene-input').value = gene;
+            document.getElementById('gene-suggestions').style.display = 'none';
+        }
+
+        window.selectGeneSuggestion = selectGeneSuggestion;
+
+        function setupEventListeners() {
+            // Auth event listeners
+            document.getElementById('login-submit').addEventListener('click', handleLogin);
+            document.getElementById('logoutLink').addEventListener('click', handleLogout);
+            
+            // Variant analysis event listeners
+            document.getElementById('analyze-variant-btn').addEventListener('click', analyzeGenomicVariant);
+            document.getElementById('export-impact-btn').addEventListener('click', exportImpactAnalysis);
+            document.getElementById('export-therapy-btn').addEventListener('click', exportTherapyReport);
+            
+            // Project management event listeners
+            document.getElementById('new-project-btn').addEventListener('click', function() {
+                new bootstrap.Modal(document.getElementById('newProjectModal')).show();
+            });
+            document.getElementById('create-project-btn').addEventListener('click', createNewProject);
+            
+            // Training event listeners
+            document.getElementById('start-training-btn').addEventListener('click', startTrainingHandler);
+            document.getElementById('stop-training-btn').addEventListener('click', stopTrainingHandler);
+            document.getElementById('clear-logs').addEventListener('click', clearTrainingLogs);
+            document.getElementById('export-logs').addEventListener('click', exportTrainingLogs);
+            document.getElementById('preview-data-btn').addEventListener('click', previewTrainingData);
+            
+            // Deployment event listeners
+            document.getElementById('deploy-model-btn').addEventListener('click', deployMindsDBModel);
+            document.getElementById('copy-api-endpoint').addEventListener('click', copyApiEndpointToClipboard);
+            document.getElementById('test-endpoint').addEventListener('click', showTestEndpointModal);
+            document.getElementById('send-test-request').addEventListener('click', sendTestRequest);
+            document.getElementById('copy-example-request').addEventListener('click', copyExampleRequestToClipboard);
+            document.getElementById('show-api-key').addEventListener('click', toggleApiKeyVisibility);
+            document.getElementById('regenerate-api-key').addEventListener('click', regenerateApiKey);
+            document.getElementById('refresh-deployments').addEventListener('click', refreshDeployments);
+            
+            // Monitoring event listeners
+            document.getElementById('refresh-models').addEventListener('click', refreshActiveModels);
+            document.getElementById('clear-model-logs').addEventListener('click', clearModelLogs);
+            document.getElementById('export-model-logs').addEventListener('click', exportModelLogs);
+            
+            // Integrations event listeners
+            document.getElementById('add-integration-btn').addEventListener('click', addIntegration);
+            document.getElementById('refresh-integrations').addEventListener('click', refreshIntegrations);
+            document.getElementById('configure-mindsdb').addEventListener('click', function() {
+                new bootstrap.Modal(document.getElementById('mindsdb-config-modal')).show();
+            });
+            document.getElementById('save-mindsdb-config').addEventListener('click', saveMindsDBConfig);
+            document.getElementById('save-mindsdb-config-modal').addEventListener('click', saveMindsDBConfigModal);
+            
+            // Form control event listeners
+            document.getElementById('learning-rate').addEventListener('input', function() {
+                document.getElementById('learning-rate-value').textContent = this.value;
+            });
+            document.getElementById('validation-split').addEventListener('input', function() {
+                document.getElementById('validation-split-value').textContent = Math.round(this.value * 100) + '%';
+            });
+            
+            // Chart range buttons
+            document.querySelectorAll('[data-range]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('[data-range]').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    updateCharts(this.getAttribute('data-range'));
+                });
+            });
+        }
+
+        async function analyzeGenomicVariant() {
+            const variantData = {
+                mutation_id: document.getElementById('variant-input').value.trim(),
+                gene: document.getElementById('gene-input').value.trim(),
+                amino_acid_change: document.getElementById('aa-change-input').value.trim(),
+                sift_score: parseFloat(document.getElementById('sift-input').value) || 0,
+                polyphen_score: parseFloat(document.getElementById('polyphen-input').value) || 0,
+                allele_frequency: parseFloat(document.getElementById('af-input').value) || 0,
+                conservation_score: parseFloat(document.getElementById('conservation-input').value) || 0
+            };
+
+            const validationError = validateVariantInput(variantData);
+            if (validationError) {
+                showToast(validationError, 'warning');
+                return;
+            }
+
+            setLoadingState(true);
+            document.getElementById('variant-result-container').style.display = 'none';
+
+            try {
+                const impact = await getVariantImpactAnalysis(variantData);
+                const therapy = await getVariantTherapeuticApproach(variantData);
+
+                updateVariantResultsUI(variantData, impact, therapy);
+                saveToVariantHistory(variantData, impact, therapy);
+                state.genomicData.lastAnalysis = { variant: variantData, impact, therapy };
+                showToast('Variant analysis completed', 'success');
+                
+            } catch (error) {
+                console.error('Analysis failed:', error);
+                showToast(`Analysis failed: ${error.message}`, 'danger');
+                document.getElementById('variant-result-container').innerHTML = `
+                    <div class="alert alert-danger">
+                        Analysis failed: ${error.message}
+                    </div>
+                `;
+                document.getElementById('variant-result-container').style.display = 'block';
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        function validateVariantInput(variantData) {
+            const errors = [];
+            
+            if (!variantData.gene) {
+                errors.push('Gene name is required');
+            }
+            
+            if (!variantData.mutation_id) {
+                errors.push('Variant ID is required');
+            }
+            
+            if (variantData.sift_score < 0 || variantData.sift_score > 1) {
+                errors.push('SIFT score must be between 0 and 1');
+            }
+            
+            if (variantData.polyphen_score < 0 || variantData.polyphen_score > 1) {
+                errors.push('PolyPhen score must be between 0 and 1');
+            }
+            
+            if (variantData.allele_frequency < 0 || variantData.allele_frequency > 1) {
+                errors.push('Allele frequency must be between 0 and 1');
+            }
+            
+            if (variantData.conservation_score < 0 || variantData.conservation_score > 1) {
+                errors.push('Conservation score must be between 0 and 1');
+            }
+            
+            return errors.length === 0 ? null : errors.join(', ');
+        }
+
+        function setLoadingState(isLoading) {
+            const analyzeBtn = document.getElementById('analyze-variant-btn');
+            if (isLoading) {
+                analyzeBtn.disabled = true;
+                analyzeBtn.innerHTML = `
+                    <span class="spinner-border spinner-border-sm me-2" 
+                          role="status" aria-hidden="true"></span>
+                    Analyzing...
+                `;
+            } else {
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = `
+                    <i class="fas fa-search me-2"></i>
+                    Analyze Variant
+                `;
+            }
+        }
+
+        async function getVariantImpactAnalysis(variantData) {
+            const cacheKey = `${variantData.gene}_${variantData.mutation_id}`;
+            if (state.genomicData.variantCache[cacheKey]) {
+                return state.genomicData.variantCache[cacheKey];
+            }
+
+            try {
+                const response = await axios.get(`${state.genomicData.apiEndpoints.myVariant}${variantData.mutation_id}`);
+                if (response.data) {
+                    const impact = parseMyVariantData(response.data, variantData);
+                    state.genomicData.variantCache[cacheKey] = impact;
+                    return impact;
+                }
+            } catch (error) {
+                console.error('MyVariant failed, trying ClinVar...', error);
+            }
+
+            try {
+                const clinVarUrl = `${state.genomicData.apiEndpoints.clinVar}${variantData.gene}+${variantData.mutation_id}`;
+                const response = await axios.get(clinVarUrl);
+                if (response.data) {
+                    const impact = parseClinVarData(response.data, variantData);
+                    state.genomicData.variantCache[cacheKey] = impact;
+                    return impact;
+                }
+            } catch (error) {
+                console.error('ClinVar failed, using local analysis...', error);
+            }
+
+            return analyzeVariantLocally(variantData);
+        }
+
+        function parseMyVariantData(data, variantData) {
+            const clinvar = data.clinvar || {};
+            const consequence = data.gnomad_exome?.consequence || "Unknown";
+            return {
+                variant: variantData.mutation_id,
+                gene: variantData.gene,
+                effect: clinvar.clinical_significance || "Unknown",
+                molecularImpact: consequence,
+                clinicalImpact: clinvar.review_status || "No data",
+                confidence: clinvar.stars ? clinvar.stars / 4 : 0.5,
+                pathogenicity: data.gnomad_exome?.af ? 1 - data.gnomad_exome.af : 0.5,
+                functionalImpact: clinvar.pathogenic ? "High" : "Low"
+            };
+        }
+
+        function parseClinVarData(data, variantData) {
+            const result = {
+                variant: variantData.mutation_id,
+                gene: variantData.gene,
+                effect: "Unknown",
+                molecularImpact: "Unknown",
+                clinicalImpact: "No data",
+                confidence: 0.5,
+                pathogenicity: 0.5,
+                functionalImpact: "Unknown"
+            };
+
+            try {
+                const resultList = data.result?.uids || [];
+                if (resultList.length > 0) {
+                    const uid = resultList[0];
+                    const summary = data.result[uid];
+                    
+                    result.effect = summary.clinical_significance?.description || "Unknown";
+                    result.clinicalImpact = summary.submission_count ? `${summary.submission_count} submissions` : "No submissions";
+                    result.confidence = summary.submission_count ? Math.min(summary.submission_count / 10, 0.9) : 0.5;
+                    
+                    if (summary.gene) {
+                        result.molecularImpact = `Variant in ${summary.gene.symbol} (${summary.gene.full_name})`;
+                    }
+                    
+                    if (result.effect.toLowerCase().includes('pathogenic')) {
+                        result.pathogenicity = 0.9;
+                        result.functionalImpact = "High";
+                    } else if (result.effect.toLowerCase().includes('benign')) {
+                        result.pathogenicity = 0.1;
+                        result.functionalImpact = "Low";
+                    }
+                }
+            } catch (e) {
+                console.error('Error parsing ClinVar data:', e);
+            }
+            
+            return result;
+        }
+
+        function analyzeVariantLocally(variantData) {
+            let effect = "Unknown";
+            let confidence = 0.5;
+            let molecularImpact = "Unknown";
+            let clinicalImpact = "Unknown";
+            
+            if (variantData.sift_score < 0.05 && variantData.polyphen_score > 0.9) {
+                effect = "Likely Pathogenic";
+                confidence = 0.85;
+                molecularImpact = "High likelihood of protein function disruption";
+                clinicalImpact = "Likely associated with disease phenotype";
+            } else if (variantData.sift_score < 0.1 || variantData.polyphen_score > 0.85) {
+                effect = "Possibly Pathogenic";
+                confidence = 0.7;
+                molecularImpact = "Possible protein function impact";
+                clinicalImpact = "May contribute to disease risk";
+            } else if (variantData.allele_frequency < 0.01) {
+                effect = "Variant of Uncertain Significance";
+                confidence = 0.6;
+                molecularImpact = "Unknown functional impact";
+                clinicalImpact = "Clinical significance uncertain";
+            } else {
+                effect = "Likely Benign";
+                confidence = 0.8;
+                molecularImpact = "Minimal expected functional impact";
+                clinicalImpact = "Unlikely to cause disease";
+            }
+            
+            if (variantData.conservation_score > 0.9) {
+                confidence = Math.min(confidence + 0.1, 0.95);
+                molecularImpact += " (Highly conserved position)";
+            }
+            
+            return {
+                variant: variantData.mutation_id,
+                gene: variantData.gene,
+                effect,
+                molecularImpact,
+                clinicalImpact,
+                confidence,
+                pathogenicity: variantData.sift_score < 0.05 ? 1 - variantData.sift_score : variantData.sift_score,
+                functionalImpact: effect.includes("Pathogenic") ? "High" : "Low"
+            };
+        }
+
+        async function getVariantTherapeuticApproach(variantData) {
+            const cacheKey = `${variantData.gene}_${variantData.mutation_id}`;
+            if (state.genomicData.therapyCache[cacheKey]) {
+                return state.genomicData.therapyCache[cacheKey];
+            }
+
+            try {
+                if (state.models.mindsdbConfig.apiKey && state.models.mindsdbConfig.model) {
+                    const therapy = await queryTherapyModel(variantData);
+                    if (therapy) {
+                        return therapy;
+                    }
+                }
+                
+                const response = await axios.get(
+                    `${state.genomicData.apiEndpoints.civic}${variantData.gene}&variant=${variantData.mutation_id}`
+                );
+                
+                if (response.data?.records?.length > 0) {
+                    const therapy = parseCivicData(response.data.records[0], variantData);
+                    state.genomicData.therapyCache[cacheKey] = therapy;
+                    return therapy;
+                }
+            } catch (error) {
+                console.error('CIViC API failed, using local logic...', error);
+            }
+
+            return getLocalTherapyApproach(variantData);
+        }
+
+        async function queryTherapyModel(variantData) {
+            const fullModelName = state.models.mindsdbConfig.project 
+                ? `${state.models.mindsdbConfig.project}.${state.models.mindsdbConfig.model}`
+                : state.models.mindsdbConfig.model;
+
+            try {
+                const response = await axios.post(state.models.mindsdbConfig.baseUrl, {
+                    query: `
+                        SELECT recommended_therapy, therapy_rationale, evidence_level
+                        FROM ${fullModelName}
+                        WHERE 
+                            gene = '${variantData.gene}' AND
+                            mutation_id = '${variantData.mutation_id}' AND
+                            sift_score = ${variantData.sift_score} AND
+                            polyphen_score = ${variantData.polyphen_score}
+                        LIMIT 1
+                    `
+                }, {
+                    headers: {
+                        'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.data?.data?.length > 0) {
+                    const result = response.data.data[0];
+                    return {
+                        variant: variantData.mutation_id,
+                        gene: variantData.gene,
+                        intervention: result.recommended_therapy || "Standard therapy",
+                        rationale: result.therapy_rationale || "No specific rationale available",
+                        drugs: (result.recommended_therapy || "").split(',').map(d => d.trim()).filter(d => d),
+                        monitoring: "Follow standard monitoring protocol",
+                        evidence: result.evidence_level || "Moderate",
+                        trials: ["Consider clinical trial enrollment"]
+                    };
+                }
+                return null;
+            } catch (error) {
+                console.error('Error querying therapy model:', error);
+                return null;
+            }
+        }
+
+        function parseCivicData(data, variantData) {
+            const evidenceItems = data.evidence_items || [];
+            const therapeuticEvidence = evidenceItems.filter(e => e.evidence_type === 'Predictive');
+            
+            let drugs = new Set();
+            let evidenceLevels = [];
+            let clinicalTrials = [];
+            
+            therapeuticEvidence.forEach(e => {
+                if (e.drugs && e.drugs.length > 0) {
+                    e.drugs.forEach(d => drugs.add(d));
+                }
+                if (e.evidence_level) {
+                    evidenceLevels.push(e.evidence_level);
+                }
+                if (e.source && e.source.citation_id && e.source.source_type === 'PubMed') {
+                    clinicalTrials.push(`https://pubmed.ncbi.nlm.nih.gov/${e.source.citation_id}`);
+                }
+            });
+            
+            const evidenceLevel = evidenceLevels.length > 0 
+                ? evidenceLevels.reduce((a, b) => a.length > b.length ? a : b) 
+                : "No evidence";
+            
+            return {
+                variant: variantData.mutation_id,
+                gene: variantData.gene,
+                intervention: drugs.size > 0 ? Array.from(drugs).join(', ') : "Standard therapy",
+                rationale: therapeuticEvidence.length > 0 
+                    ? therapeuticEvidence[0].description 
+                    : "No specific rationale available",
+                drugs: Array.from(drugs),
+                monitoring: "Standard monitoring recommended",
+                evidence: evidenceLevel,
+                trials: clinicalTrials.length > 0 ? clinicalTrials : ["No clinical trials identified"]
+            };
+        }
+
+        function getLocalTherapyApproach(variantData) {
+            const gene = variantData.gene.toUpperCase();
+            const therapies = {
+                'BRCA1': ['PARP inhibitors', 'Platinum-based chemotherapy'],
+                'BRCA2': ['PARP inhibitors', 'Platinum-based chemotherapy'],
+                'EGFR': ['Osimertinib', 'Gefitinib', 'Erlotinib'],
+                'ALK': ['Crizotinib', 'Alectinib', 'Ceritinib'],
+                'KRAS': ['Sotorasib', 'Adagrasib'],
+                'BRAF': ['Vemurafenib', 'Dabrafenib', 'Trametinib'],
+                'HER2': ['Trastuzumab', 'Pertuzumab', 'Ado-trastuzumab emtansine'],
+                'PDGFRA': ['Imatinib', 'Sunitinib', 'Regorafenib']
+            };
+            
+            const defaultTherapies = ['Standard chemotherapy', 'Immunotherapy if indicated'];
+            
+            return {
+                variant: variantData.mutation_id,
+                gene: variantData.gene,
+                intervention: therapies[gene] ? therapies[gene].join(', ') : defaultTherapies.join(', '),
+                rationale: therapies[gene] 
+                    ? `Targeted therapy based on ${gene} mutation` 
+                    : "Standard therapy recommended",
+                drugs: therapies[gene] || defaultTherapies,
+                monitoring: therapies[gene] 
+                    ? "Monitor for targeted therapy response and side effects" 
+                    : "Standard monitoring recommended",
+                evidence: "Theoretical",
+                trials: ["Consider clinical trial enrollment for novel therapies"]
+            };
+        }
+
+        function updateVariantResultsUI(variant, impact, therapy) {
+            document.getElementById('impact-result').innerHTML = createImpactVisualization(impact);
+            document.getElementById('therapy-result').innerHTML = `
+                <h5>${therapy.intervention}</h5>
+                <p><strong>Rationale:</strong> ${therapy.rationale}</p>
+            `;
+            document.getElementById('drug-list').innerHTML = formatDrugList(therapy.drugs);
+            document.getElementById('confidence-indicator').style.width = `${impact.confidence * 100}%`;
+            document.getElementById('molecular-impact').textContent = impact.molecularImpact;
+            document.getElementById('clinical-impact').textContent = impact.clinicalImpact;
+            document.getElementById('monitoring-guidance').textContent = therapy.monitoring;
+            document.getElementById('variant-result-container').style.display = 'block';
+        }
+
+        function createImpactVisualization(impact) {
+            const severity = getVariantSeverity(impact);
+            const confidencePercent = Math.round(impact.confidence * 100);
+            
+            return `
+                <div class="impact-visualization mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="badge bg-${severity}">${impact.effect}</span>
+                        <small>Confidence: ${confidencePercent}%</small>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-${severity}" 
+                             role="progressbar" 
+                             style="width: ${confidencePercent}%" 
+                             aria-valuenow="${confidencePercent}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100"></div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card bg-light mb-2">
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title">Molecular Impact</h6>
+                                        <p class="card-text small">${impact.molecularImpact}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-light mb-2">
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title">Clinical Impact</h6>
+                                        <p class="card-text small">${impact.clinicalImpact}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getVariantSeverity(impact) {
+            if (impact.effect.toLowerCase().includes('pathogenic')) {
+                return 'danger';
+            } else if (impact.effect.toLowerCase().includes('benign')) {
+                return 'success';
+            } else if (impact.effect.toLowerCase().includes('uncertain')) {
+                return 'warning';
+            }
+            return 'secondary';
+        }
+
+        function formatDrugList(drugs) {
+            if (!drugs || drugs.length === 0) {
+                return '<li class="list-group-item">No specific drugs recommended</li>';
+            }
+            
+            return drugs.map(drug => {
+                const drugClass = drug.toLowerCase().includes('chemotherapy') ? 'text-danger' : 
+                                 drug.toLowerCase().includes('inhibitor') ? 'text-primary' : 
+                                 'text-success';
+                return `<li class="list-group-item ${drugClass}">${drug}</li>`;
+            }).join('');
+        }
+
+        function saveToVariantHistory(variant, impact, therapy) {
+            const historyItem = {
+                timestamp: new Date().toISOString(),
+                variant,
+                impact,
+                therapy
+            };
+            
+            let history = JSON.parse(localStorage.getItem('variantHistory') || '[]');
+            history.unshift(historyItem);
+            
+            if (history.length > 50) {
+                history = history.slice(0, 50);
+            }
+            
+            localStorage.setItem('variantHistory', JSON.stringify(history));
+            loadVariantHistory();
+        }
+
+        function loadVariantHistory() {
+            const history = JSON.parse(localStorage.getItem('variantHistory') || '[]');
+            
+            document.getElementById('variant-history').innerHTML = history.map(item => `
+                <div class="history-item" onclick="loadHistoryItem('${item.timestamp}')">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="gene-badge">${item.variant.gene}</span>
+                            <span class="variant-id">${item.variant.mutation_id}</span>
+                        </div>
+                        <small class="timestamp">${new Date(item.timestamp).toLocaleString()}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadHistoryItem(timestamp) {
+            const history = JSON.parse(localStorage.getItem('variantHistory') || '[]');
+            const item = history.find(i => i.timestamp === timestamp);
+            
+            if (item) {
+                document.getElementById('variant-input').value = item.variant.mutation_id;
+                document.getElementById('gene-input').value = item.variant.gene;
+                document.getElementById('aa-change-input').value = item.variant.amino_acid_change;
+                document.getElementById('sift-input').value = item.variant.sift_score;
+                document.getElementById('polyphen-input').value = item.variant.polyphen_score;
+                document.getElementById('af-input').value = item.variant.allele_frequency;
+                document.getElementById('conservation-input').value = item.variant.conservation_score;
+                updateVariantResultsUI(item.variant, item.impact, item.therapy);
+            }
+        }
+
+        window.loadHistoryItem = loadHistoryItem;
+
+        function exportImpactAnalysis() {
+            if (!state.genomicData.lastAnalysis) {
+                showToast('No analysis to export', 'warning');
+                return;
+            }
+            
+            const data = {
+                metadata: {
+                    platform: "QuorumED Genomic Analysis",
+                    version: "1.0",
+                    date: new Date().toISOString()
+                },
+                variant: state.genomicData.lastAnalysis.variant,
+                impact: state.genomicData.lastAnalysis.impact
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `variant_impact_${state.genomicData.lastAnalysis.variant.gene}_${state.genomicData.lastAnalysis.variant.mutation_id}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportTherapyReport() {
+            if (!state.genomicData.lastAnalysis) {
+                showToast('No therapy recommendations to export', 'warning');
+                return;
+            }
+            
+            const therapy = state.genomicData.lastAnalysis.therapy;
+            let report = `Therapeutic Recommendations Report\n`;
+            report += `================================\n\n`;
+            report += `Variant: ${therapy.variant}\n`;
+            report += `Gene: ${therapy.gene}\n\n`;
+            report += `Recommended Therapy: ${therapy.intervention}\n\n`;
+            report += `Rationale:\n${therapy.rationale}\n\n`;
+            report += `Specific Drugs:\n${therapy.drugs.join('\n')}\n\n`;
+            report += `Monitoring Guidance:\n${therapy.monitoring}\n\n`;
+            report += `Evidence Level: ${therapy.evidence}\n`;
+            report += `Clinical Trials: ${therapy.trials.join(', ')}\n`;
+            
+            const blob = new Blob([report], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `therapy_recommendations_${therapy.gene}_${therapy.variant}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                state.auth.token = 'demo-token-' + Date.now();
+                state.auth.user = {
+                    name: "Demo User",
+                    email: email
+                };
+                state.auth.isAuthenticated = true;
+                
+                localStorage.setItem('authToken', state.auth.token);
+                const loginModal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+                loginModal.hide();
+                updateUserUI();
+                showToast('Login successful');
+                
+            } catch (error) {
+                console.error('Login failed:', error);
+                showToast('Login failed. Please check your credentials.', 'danger');
+            }
+        }
+
+        function handleLogout() {
+            state.auth.token = null;
+            state.auth.user = null;
+            state.auth.isAuthenticated = false;
+            localStorage.removeItem('authToken');
+            showToast('Logged out successfully');
+            const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+            loginModal.show();
+        }
+
+        function createNewProject() {
+            const name = document.getElementById('project-name').value;
+            const description = document.getElementById('project-description').value;
+            const template = document.getElementById('project-template').value;
+            
+            if (!name) {
+                showToast('Project name is required', 'warning');
+                return;
+            }
+            
+            const newProject = {
+                id: 'proj-' + Date.now(),
+                name,
+                description,
+                template,
+                createdAt: new Date().toISOString(),
+                status: 'draft',
+                versionControl: document.getElementById('enable-versioning').checked
+            };
+            
+            state.projects.push(newProject);
+            updateProjectList();
+            const newProjectModal = bootstrap.Modal.getInstance(document.getElementById('newProjectModal'));
+            newProjectModal.hide();
+            showToast('Project created successfully');
+        }
+
+        function updateProjectList() {
+            const projectList = document.getElementById('project-list');
+            projectList.innerHTML = '';
+            
+            state.projects.forEach(project => {
+                const projectItem = document.createElement('a');
+                projectItem.href = '#';
+                projectItem.className = 'list-group-item list-group-item-action';
+                projectItem.innerHTML = `
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${project.name}</h6>
+                        <small>${formatDate(project.createdAt)}</small>
+                    </div>
+                    <p class="mb-1">${project.description || 'No description'}</p>
+                    <small class="text-muted">${project.template} template</small>
+                `;
+                
+                projectItem.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    loadProject(project.id);
+                });
+                
+                projectList.appendChild(projectItem);
+            });
+        }
+
+        function loadProject(projectId) {
+            const project = state.projects.find(p => p.id === projectId);
+            if (!project) return;
+            
+            state.currentProject = project;
+            document.getElementById('project-status').textContent = project.status === 'completed' ? 'Completed' : 'Ready';
+            document.getElementById('project-status').className = project.status === 'completed' ? 'badge bg-success' : 'badge bg-secondary';
+            showToast(`Project "${project.name}" loaded`);
+        }
+
+        async function startTrainingHandler() {
+            const trainingParams = {
+                epochs: parseInt(document.getElementById('epochs').value),
+                batchSize: parseInt(document.getElementById('batch-size').value),
+                learningRate: parseFloat(document.getElementById('learning-rate-value').textContent),
+                validationSplit: parseFloat(document.getElementById('validation-split').value),
+                engine: document.getElementById('training-engine').value,
+                modelType: document.getElementById('model-architecture').value,
+                enableTransferLearning: document.getElementById('transfer-learning').checked,
+                enableEarlyStopping: document.getElementById('early-stopping').checked,
+                enableGPU: document.getElementById('enable-gpu').checked
+            };
+            
+            await startMindsDBTraining(trainingParams);
+        }
+
+        async function startMindsDBTraining(params) {
+            if (!state.currentProject) {
+                showToast('Please create or select a project first', 'warning');
+                return;
+            }
+
+            const modelName = `quorum_${state.currentProject.id}_${Date.now()}`;
+            const targetColumn = document.getElementById('target-column').value;
+            const dataSource = document.getElementById('training-data-source').value;
+            
+            if (!targetColumn || !dataSource) {
+                showToast('Target column and data source are required', 'warning');
+                return;
+            }
+            
+            document.getElementById('project-status').textContent = 'Training';
+            document.getElementById('project-status').className = 'badge bg-warning';
+            document.getElementById('start-training-btn').disabled = true;
+            document.getElementById('stop-training-btn').style.display = 'inline-block';
+            document.getElementById('training-logs').innerHTML = '';
+            
+            try {
+                let query = `CREATE MODEL ${modelName}
+                            FROM ${dataSource}
+                            PREDICT ${targetColumn}`;
+                
+                let usingParams = {
+                    engine: params.engine || 'lightwood',
+                    epochs: params.epochs,
+                    batch_size: params.batchSize,
+                    learning_rate: params.learningRate,
+                    validation_split: params.validationSplit,
+                    early_stopping: params.enableEarlyStopping,
+                    gpu: params.enableGPU
+                };
+                
+                if (params.modelType === 'llm') {
+                    usingParams.model_name = 'gpt-4';
+                    usingParams.fine_tuning = true;
+                }
+                
+                query += ` USING ${JSON.stringify(usingParams)}`;
+                
+                const response = await axios.post(state.models.mindsdbConfig.baseUrl, {
+                    query: query
+                }, {
+                    headers: {
+                        'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                state.currentProject.mindsdbModel = modelName;
+                state.currentProject.trainingStatus = 'submitted';
+                state.currentTrainingJob = {
+                    id: 'train-' + Date.now(),
+                    modelName: modelName,
+                    status: 'training',
+                    startTime: new Date().toISOString(),
+                    params: params
+                };
+                
+                addTrainingLog('Training job submitted to MindsDB');
+                addTrainingLog(`Model name: ${modelName}`);
+                addTrainingLog(`Data source: ${dataSource}`);
+                addTrainingLog(`Target column: ${targetColumn}`);
+                addTrainingLog('Using parameters: ' + JSON.stringify(usingParams, null, 2));
+                
+                pollTrainingStatus(modelName);
+                
+            } catch (error) {
+                console.error('Training submission failed:', error);
+                document.getElementById('project-status').textContent = 'Failed';
+                document.getElementById('project-status').className = 'badge bg-danger';
+                document.getElementById('start-training-btn').disabled = false;
+                document.getElementById('stop-training-btn').style.display = 'none';
+                addTrainingLog(`Error: ${error.response?.data?.message || error.message}`);
+            }
+        }
+
+        async function stopTrainingHandler() {
+            if (!state.currentTrainingJob) {
+                showToast('No active training job to stop', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await axios.post(state.models.mindsdbConfig.baseUrl, {
+                    query: `DROP MODEL ${state.currentTrainingJob.modelName}`
+                }, {
+                    headers: {
+                        'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                state.currentTrainingJob.status = 'stopped';
+                state.currentProject.trainingStatus = 'stopped';
+                document.getElementById('project-status').textContent = 'Stopped';
+                document.getElementById('project-status').className = 'badge bg-secondary';
+                document.getElementById('start-training-btn').disabled = false;
+                document.getElementById('stop-training-btn').style.display = 'none';
+                addTrainingLog('Training stopped by user');
+                
+            } catch (error) {
+                console.error('Failed to stop training:', error);
+                addTrainingLog(`Error stopping training: ${error.message}`);
+            }
+        }
+
+        async function pollTrainingStatus(modelName) {
+            const timeout = 1800;
+            const startTime = Date.now();
+            
+            const interval = setInterval(async () => {
+                if (Date.now() - startTime > timeout * 1000) {
+                    clearInterval(interval);
+                    document.getElementById('project-status').textContent = 'Timeout';
+                    document.getElementById('project-status').className = 'badge bg-danger';
+                    document.getElementById('start-training-btn').disabled = false;
+                    document.getElementById('stop-training-btn').style.display = 'none';
+                    addTrainingLog('Training timed out');
+                    state.currentTrainingJob.status = 'timeout';
+                    state.currentProject.trainingStatus = 'timeout';
+                    return;
+                }
+                
+                try {
+                    const response = await axios.post(state.models.mindsdbConfig.baseUrl, {
+                        query: `SELECT status FROM models WHERE name = '${modelName}'`
+                    }, {
+                        headers: {
+                            'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const status = response.data.data?.[0]?.status;
+                    
+                    if (status === 'complete') {
+                        clearInterval(interval);
+                        document.getElementById('project-status').textContent = 'Completed';
+                        document.getElementById('project-status').className = 'badge bg-success';
+                        document.getElementById('start-training-btn').disabled = false;
+                        document.getElementById('stop-training-btn').style.display = 'none';
+                        addTrainingLog('Training completed successfully!');
+                        state.currentTrainingJob.status = 'completed';
+                        state.currentTrainingJob.endTime = new Date().toISOString();
+                        state.currentProject.trainingStatus = 'completed';
+                        updateModelDeploymentDropdown();
+                        
+                        try {
+                            const accuracyRes = await axios.post(state.models.mindsdbConfig.baseUrl, {
+                                query: `SELECT accuracy FROM models WHERE name = '${modelName}'`
+                            }, {
+                                headers: {
+                                    'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                            const accuracy = accuracyRes.data.data?.[0]?.accuracy;
+                            if (accuracy) {
+                                addTrainingLog(`Model accuracy: ${accuracy}`);
+                            }
+                        } catch (accuracyError) {
+                            console.error('Error getting model accuracy:', accuracyError);
+                        }
+                    } else if (status === 'error') {
+                        clearInterval(interval);
+                        document.getElementById('project-status').textContent = 'Failed';
+                        document.getElementById('project-status').className = 'badge bg-danger';
+                        document.getElementById('start-training-btn').disabled = false;
+                        document.getElementById('stop-training-btn').style.display = 'none';
+                        addTrainingLog('Training failed - check your parameters and data');
+                        state.currentTrainingJob.status = 'failed';
+                        state.currentTrainingJob.endTime = new Date().toISOString();
+                        state.currentProject.trainingStatus = 'failed';
+                    } else {
+                        addTrainingLog(`Training in progress... Status: ${status || 'pending'}`);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error checking training status:', error);
+                    clearInterval(interval);
+                    document.getElementById('project-status').textContent = 'Error';
+                    document.getElementById('project-status').className = 'badge bg-danger';
+                    document.getElementById('start-training-btn').disabled = false;
+                    document.getElementById('stop-training-btn').style.display = 'none';
+                    addTrainingLog(`Error checking status: ${error.message}`);
+                    state.currentTrainingJob.status = 'error';
+                    state.currentTrainingJob.endTime = new Date().toISOString();
+                    state.currentProject.trainingStatus = 'error';
+                }
+            }, 5000);
+        }
+
+        function addTrainingLog(message) {
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            document.getElementById('training-logs').appendChild(logEntry);
+            document.getElementById('training-logs').scrollTop = document.getElementById('training-logs').scrollHeight;
+        }
+
+        function clearTrainingLogs() {
+            document.getElementById('training-logs').innerHTML = '';
+        }
+
+        function exportTrainingLogs() {
+            const logs = document.getElementById('training-logs').textContent;
+            const blob = new Blob([logs], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `training-logs-${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function previewTrainingData() {
+            const dataSource = document.getElementById('training-data-source').value;
+            if (!dataSource) {
+                showToast('Please enter a data source first', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await axios.post(state.models.mindsdbConfig.baseUrl, {
+                    query: `SELECT * FROM ${dataSource} LIMIT 5`
+                }, {
+                    headers: {
+                        'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const previewContainer = document.querySelector('.data-preview');
+                const headersRow = document.getElementById('preview-headers');
+                const dataRows = document.getElementById('preview-rows');
+                
+                previewContainer.style.display = 'block';
+                headersRow.innerHTML = '';
+                dataRows.innerHTML = '';
+                
+                if (response.data.data && response.data.data.length > 0) {
+                    const firstRow = response.data.data[0];
+                    Object.keys(firstRow).forEach(key => {
+                        const th = document.createElement('th');
+                        th.textContent = key;
+                        headersRow.appendChild(th);
+                    });
+                    
+                    response.data.data.forEach(row => {
+                        const tr = document.createElement('tr');
+                        Object.values(row).forEach(value => {
+                            const td = document.createElement('td');
+                            td.textContent = value;
+                            tr.appendChild(td);
+                        });
+                        dataRows.appendChild(tr);
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Error previewing data:', error);
+                showToast('Failed to preview data: ' + (error.response?.data?.message || error.message), 'danger');
+            }
+        }
+
+        async function deployMindsDBModel() {
+            const modelId = document.getElementById('model-to-deploy').value;
+            const deploymentName = document.getElementById('deployment-name').value;
+            const version = document.getElementById('deployment-version').value;
+            
+            if (!deploymentName) {
+                showToast('Deployment name is required', 'warning');
+                return;
+            }
+            
+            if (!modelId) {
+                showToast('Please select a model to deploy', 'warning');
+                return;
+            }
+
+            try {
+                const newDeployment = {
+                    id: 'dep-' + Date.now(),
+                    modelId,
+                    name: deploymentName,
+                    version: version || '1.0.0',
+                    status: 'active',
+                    createdAt: new Date().toISOString(),
+                    endpoint: `${state.models.mindsdbConfig.baseUrl}?model=${modelId}`,
+                    monitoring: document.getElementById('enable-monitoring').checked
+                };
+                
+                state.deployments.push(newDeployment);
+                updateDeploymentsList();
+                
+                showToast('Model deployed successfully');
+                document.getElementById('api-endpoint').value = newDeployment.endpoint;
+                document.getElementById('example-request').textContent = document.getElementById('example-request').textContent.replace('[MODEL_ID]', modelId);
+                
+                const apiKey = 'sk_' + generateRandomString(32);
+                document.getElementById('api-key').value = apiKey;
+                
+                state.currentDeployment = newDeployment;
+                
+            } catch (error) {
+                console.error('Deployment failed:', error);
+                showToast('Deployment failed: ' + (error.response?.data?.message || error.message), 'danger');
+            }
+        }
+
+        function generateRandomString(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        function updateDeploymentsList() {
+            const deployedModelsList = document.getElementById('deployed-models-list');
+            deployedModelsList.innerHTML = '';
+            
+            state.deployments.forEach(deployment => {
+                const deploymentItem = document.createElement('a');
+                deploymentItem.href = '#';
+                deploymentItem.className = 'list-group-item list-group-item-action';
+                deploymentItem.innerHTML = `
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${deployment.name}</h6>
+                        <span class="badge bg-success">
+                            ${deployment.status}
+                        </span>
+                    </div>
+                    <p class="mb-1">Model: ${deployment.modelId}</p>
+                    <small class="text-muted">Version: ${deployment.version} | ${formatDate(deployment.createdAt)}</small>
+                `;
+                
+                deploymentItem.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    loadDeployment(deployment.id);
+                });
+                
+                deployedModelsList.appendChild(deploymentItem);
+            });
+            
+            updateModelDeploymentDropdown();
+        }
+
+        function loadDeployment(deploymentId) {
+            const deployment = state.deployments.find(d => d.id === deploymentId);
+            if (!deployment) return;
+            
+            state.currentDeployment = deployment;
+            document.getElementById('deployment-name').value = deployment.name;
+            document.getElementById('deployment-version').value = deployment.version;
+            document.getElementById('api-endpoint').value = deployment.endpoint;
+            document.getElementById('enable-monitoring').checked = deployment.monitoring;
+            
+            const modelSelect = document.getElementById('model-to-deploy');
+            modelSelect.value = deployment.modelId;
+            
+            document.getElementById('example-request').textContent = document.getElementById('example-request').textContent.replace(/models\/.*?\//, `models/${deployment.modelId}/`);
+        }
+
+        function updateModelDeploymentDropdown() {
+            const modelToDeploy = document.getElementById('model-to-deploy');
+            modelToDeploy.innerHTML = '';
+            
+            state.projects.forEach(project => {
+                if (project.trainingStatus === 'completed' && project.mindsdbModel) {
+                    const option = document.createElement('option');
+                    option.value = project.mindsdbModel;
+                    option.textContent = `${project.name} (${project.mindsdbModel})`;
+                    modelToDeploy.appendChild(option);
+                }
+            });
+            
+            if (state.currentDeployment) {
+                modelToDeploy.value = state.currentDeployment.modelId;
+            }
+        }
+
+        function copyApiEndpointToClipboard() {
+            navigator.clipboard.writeText(document.getElementById('api-endpoint').value);
+            showToast('API endpoint copied to clipboard');
+        }
+
+        function copyExampleRequestToClipboard() {
+            navigator.clipboard.writeText(document.getElementById('example-request').textContent);
+            showToast('Example request copied to clipboard');
+        }
+
+        function toggleApiKeyVisibility() {
+            const apiKeyInput = document.getElementById('api-key');
+            apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+            document.getElementById('show-api-key').innerHTML = apiKeyInput.type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+        }
+
+        function regenerateApiKey() {
+            const newApiKey = 'sk_' + generateRandomString(32);
+            document.getElementById('api-key').value = newApiKey;
+            showToast('New API key generated');
+        }
+
+        function showTestEndpointModal() {
+            if (!state.currentDeployment) {
+                showToast('Please deploy a model first', 'warning');
+                return;
+            }
+            
+            document.getElementById('test-input-data').value = '{\n    "input": "Your test data here"\n}';
+            document.getElementById('test-response').textContent = 'Response will appear here...';
+            new bootstrap.Modal(document.getElementById('testEndpointModal')).show();
+        }
+
+        async function sendTestRequest() {
+            if (!state.currentDeployment) {
+                showToast('No deployment selected', 'warning');
+                return;
+            }
+            
+            const inputData = document.getElementById('test-input-data').value;
+            const apiKey = document.getElementById('api-key').value;
+            
+            try {
+                const parsedInput = JSON.parse(inputData);
+                document.getElementById('test-response').textContent = 'Sending request...';
+                
+                // Simulate API call
+                setTimeout(() => {
+                    document.getElementById('test-response').textContent = JSON.stringify({
+                        success: true,
+                        prediction: "Sample prediction result",
+                        confidence: 0.95,
+                        model: state.currentDeployment.modelId,
+                        timestamp: new Date().toISOString()
+                    }, null, 2);
+                }, 1000);
+                
+            } catch (error) {
+                document.getElementById('test-response').textContent = `Error: Invalid JSON input\n\n${error.message}`;
+            }
+        }
+
+        function refreshDeployments() {
+            showToast('Deployments refreshed');
+        }
+
+        function refreshActiveModels() {
+            showToast('Active models refreshed');
+        }
+
+        function clearModelLogs() {
+            document.getElementById('model-logs').innerHTML = '';
+        }
+
+        function exportModelLogs() {
+            const logs = document.getElementById('model-logs').textContent;
+            const blob = new Blob([logs], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `model-logs-${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function addIntegration() {
+            showToast('Integration feature coming soon!', 'info');
+        }
+
+        function refreshIntegrations() {
+            showToast('Integrations refreshed');
+        }
+
+        function saveMindsDBConfig() {
+            const apiKey = document.getElementById('mindsdb-api-key').value;
+            const baseUrl = document.getElementById('mindsdb-base-url').value;
+            const model = document.getElementById('mindsdb-model-name').value;
+            const project = document.getElementById('mindsdb-project').value;
+            const verifyConnection = document.getElementById('verify-connection').checked;
+            
+            if (!apiKey) {
+                showToast('API key is required', 'warning');
+                return;
+            }
+            
+            state.models.mindsdbConfig = {
+                apiKey,
+                baseUrl: baseUrl || 'https://cloud.mindsdb.com/api/sql',
+                model,
+                project
+            };
+            
+            localStorage.setItem('mindsdb-api-key', apiKey);
+            localStorage.setItem('mindsdb-base-url', state.models.mindsdbConfig.baseUrl);
+            localStorage.setItem('mindsdb-model', model);
+            localStorage.setItem('mindsdb-project', project);
+            
+            if (verifyConnection) {
+                verifyMindsDBConnection();
+            } else {
+                showToast('MindsDB configuration saved');
+            }
+        }
+
+        function saveMindsDBConfigModal() {
+            const apiKey = document.getElementById('mindsdb-api-key-modal').value;
+            const baseUrl = document.getElementById('mindsdb-base-url-modal').value;
+            const model = document.getElementById('mindsdb-model-name-modal').value;
+            const project = document.getElementById('mindsdb-project-modal').value;
+            const verifyConnection = document.getElementById('verify-connection-modal').checked;
+            
+            if (!apiKey) {
+                showToast('API key is required', 'warning');
+                return;
+            }
+            
+            state.models.mindsdbConfig = {
+                apiKey,
+                baseUrl: baseUrl || 'https://cloud.mindsdb.com/api/sql',
+                model,
+                project
+            };
+            
+            localStorage.setItem('mindsdb-api-key', apiKey);
+            localStorage.setItem('mindsdb-base-url', state.models.mindsdbConfig.baseUrl);
+            localStorage.setItem('mindsdb-model', model);
+            localStorage.setItem('mindsdb-project', project);
+            
+            // Update main form values
+            document.getElementById('mindsdb-api-key').value = apiKey;
+            document.getElementById('mindsdb-base-url').value = baseUrl;
+            document.getElementById('mindsdb-model-name').value = model;
+            document.getElementById('mindsdb-project').value = project;
+            
+            if (verifyConnection) {
+                verifyMindsDBConnection();
+            } else {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('mindsdb-config-modal'));
+                modal.hide();
+                showToast('MindsDB configuration saved');
+            }
+        }
+
+        async function verifyMindsDBConnection() {
+            try {
+                const response = await axios.post(state.models.mindsdbConfig.baseUrl, {
+                    query: 'SHOW DATABASES'
+                }, {
+                    headers: {
+                        'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.data) {
+                    showToast('Connection verified successfully', 'success');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('mindsdb-config-modal'));
+                    modal.hide();
+                } else {
+                    showToast('Connection failed: Invalid response', 'danger');
+                }
+            } catch (error) {
+                console.error('Connection verification failed:', error);
+                showToast('Connection failed: ' + (error.response?.data?.message || error.message), 'danger');
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString();
+        }
+
+        function showToast(message, type = 'success') {
+            const toastContainer = document.getElementById('toast-container');
+            if (!toastContainer) return;
+            
+            const toast = document.createElement('div');
+            toast.className = `toast show align-items-center text-white bg-${type} border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 150);
+            }, 3000);
+        }
+
+        function initializeCharts() {
+            // Initialize empty charts
+            state.charts.requests = initializeChart('requestsChart', 'Requests per minute', 'line');
+            state.charts.latency = initializeChart('latencyChart', 'Response latency (ms)', 'bar');
+            state.charts.errors = initializeChart('errorsChart', 'Error rate', 'doughnut');
+            state.charts.resources = initializeChart('resourcesChart', 'Resource usage', 'radar');
+        }
+
+        function initializeChart(canvasId, label, type) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            return new Chart(ctx, {
+                type: type,
+                data: {
+                    labels: Array.from({length: 12}, (_, i) => i + 1),
+                    datasets: [{
+                        label: label,
+                        data: Array.from({length: 12}, () => 0),
+                        backgroundColor: getChartColors(type),
+                        borderColor: type === 'line' ? 'rgba(75, 192, 192, 1)' : undefined,
+                        borderWidth: type === 'line' ? 2 : 1
+                    }]
+                },
+                options: getChartOptions(type)
+            });
+        }
+
+        function getChartColors(type) {
+            switch(type) {
+                case 'line':
+                    return 'rgba(75, 192, 192, 0.2)';
+                case 'bar':
+                    return 'rgba(54, 162, 235, 0.2)';
+                case 'doughnut':
+                    return [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)'
+                    ];
+                case 'radar':
+                    return 'rgba(153, 102, 255, 0.2)';
+                default:
+                    return 'rgba(201, 203, 207, 0.2)';
+            }
+        }
+
+        function getChartOptions(type) {
+            const commonOptions = {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: type === 'line' ? 'Requests per minute' : 
+                              type === 'bar' ? 'Response latency (ms)' :
+                              type === 'doughnut' ? 'Error rate' : 'Resource usage'
+                    }
+                }
+            };
+
+            if (type === 'line' || type === 'bar') {
+                commonOptions.scales = {
+                    y: {
+                        beginAtZero: true
+                    }
+                };
+            }
+
+            return commonOptions;
+        }
+
+        function updateCharts(timeRange) {
+            // Simulate updating charts with new data based on time range
+            const now = Date.now();
+            const data = {
+                requests: generateRandomData(12, 50, 200),
+                latency: generateRandomData(12, 10, 500),
+                errors: generateRandomData(5, 1, 20),
+                resources: generateRandomData(6, 10, 90)
+            };
+            
+            // Update request count and average latency
+            const totalRequests = data.requests.reduce((a, b) => a + b, 0);
+            const avgLatency = Math.round(data.latency.reduce((a, b) => a + b, 0) / data.latency.length);
+            
+            document.getElementById('request-count').textContent = totalRequests;
+            document.getElementById('avg-latency').textContent = avgLatency;
+            
+            // Update charts
+            state.charts.requests.data.datasets[0].data = data.requests;
+            state.charts.latency.data.datasets[0].data = data.latency;
+            state.charts.errors.data.datasets[0].data = data.errors;
+            state.charts.resources.data.datasets[0].data = data.resources;
+            
+            state.charts.requests.update();
+            state.charts.latency.update();
+            state.charts.errors.update();
+            state.charts.resources.update();
+        }
+
+        function generateRandomData(count, min, max) {
+            return Array.from({length: count}, () => 
+                Math.floor(Math.random() * (max - min + 1)) + min
+            );
+        }
+
+        function loadSampleData() {
+            if (localStorage.getItem('sampleDataLoaded')) return;
+            
+            // Load sample projects
+            state.projects.push({
+                id: 'proj-sample1',
+                name: 'Oncology Variant Analysis',
+                description: 'Predict therapeutic response for cancer variants',
+                template: 'genomic',
+                createdAt: new Date('2023-01-15').toISOString(),
+                status: 'completed',
+                mindsdbModel: 'quorum_oncology_predictor',
+                trainingStatus: 'completed'
+            });
+            
+            state.projects.push({
+                id: 'proj-sample2',
+                name: 'Rare Disease Classifier',
+                description: 'Classify variants in rare genetic diseases',
+                template: 'genomic',
+                createdAt: new Date('2023-02-20').toISOString(),
+                status: 'draft'
+            });
+            
+            // Load sample deployments
+            state.deployments.push({
+                id: 'dep-sample1',
+                modelId: 'quorum_oncology_predictor',
+                name: 'Production Oncology API',
+                version: '1.2.0',
+                status: 'active',
+                createdAt: new Date('2023-03-10').toISOString(),
+                endpoint: 'https://cloud.mindsdb.com/api/sql?model=quorum_oncology_predictor',
+                monitoring: true
+            });
+            
+            // Load sample variant history
+            const sampleHistory = [
+                {
+                    timestamp: new Date('2023-05-01T14:30:00').toISOString(),
+                    variant: {
+                        mutation_id: 'chr17:41276045:G>A',
+                        gene: 'BRCA1',
+                        amino_acid_change: 'p.Arg1443Ter',
+                        sift_score: 0.01,
+                        polyphen_score: 0.99,
+                        allele_frequency: 0.0001,
+                        conservation_score: 0.95
+                    },
+                    impact: {
+                        variant: 'chr17:41276045:G>A',
+                        gene: 'BRCA1',
+                        effect: 'Pathogenic',
+                        molecularImpact: 'Nonsense mutation leading to premature stop codon',
+                        clinicalImpact: 'Associated with hereditary breast and ovarian cancer',
+                        confidence: 0.95,
+                        pathogenicity: 0.95,
+                        functionalImpact: 'High'
+                    },
+                    therapy: {
+                        variant: 'chr17:41276045:G>A',
+                        gene: 'BRCA1',
+                        intervention: 'PARP inhibitors, Platinum-based chemotherapy',
+                        rationale: 'BRCA1 mutations confer sensitivity to PARP inhibitors due to synthetic lethality',
+                        drugs: ['Olaparib', 'Rucaparib', 'Cisplatin'],
+                        monitoring: 'Monitor for myelosuppression and gastrointestinal toxicity',
+                        evidence: 'FDA-approved',
+                        trials: ['NCT04239014', 'NCT03586661']
+                    }
+                }
+            ];
+            
+            localStorage.setItem('variantHistory', JSON.stringify(sampleHistory));
+            localStorage.setItem('sampleDataLoaded', 'true');
+            
+            updateProjectList();
+            updateDeploymentsList();
+            loadVariantHistory();
+        }
+    </script>
+</body>
+</html>
