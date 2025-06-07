@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health-AI + TechSkills</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        :root {
+            --primary: #2563eb;
+            --secondary: #10b981;
+            --accent: #8b5cf6;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #94a3b8;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2f6f, #3b0764);
+            color: var(--light);
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+        
+        header {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+        
+        .logo i {
+            color: var(--secondary);
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+            background: rgba(15, 23, 42, 0.7);
+            padding: 0.5rem;
+            border-radius: 50px;
+        }
+        
+        .tab {
+            padding: 0.5rem 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .tab.active {
+            background: var(--primary);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4);
+        }
+        
+        .tab i {
+            font-size: 1.1rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .page {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .hero {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, var(--secondary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .hero p {
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto 1.5rem;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+        
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.8rem;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+        }
+        
+        .btn-secondary {
+            background: var(--secondary);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .feature-card {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+        
+        .feature-card i {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+        
+        .feature-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 0.8rem;
+        }
+        
+        .feature-card p {
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+        
+        .courses-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .course-card {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 16px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .course-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .course-image {
+            height: 160px;
+            background: linear-gradient(45deg, #4338ca, #7c3aed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+        
+        .course-content {
+            padding: 1.5rem;
+        }
+        
+        .course-content h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.8rem;
+        }
+        
+        .course-content p {
+            color: #cbd5e1;
+            margin-bottom: 1.2rem;
+            font-size: 0.95rem;
+        }
+        
+        .progress-container {
+            margin: 1.5rem 0;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background: var(--secondary);
+            border-radius: 4px;
+            width: 65%;
+        }
+        
+        .badges-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin-top: 1.5rem;
+        }
+        
+        .badge {
+            background: rgba(139, 92, 246, 0.2);
+            border: 1px solid var(--accent);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .chat-container {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 800px;
+            margin: 2rem auto;
+        }
+        
+        .chat-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .chat-header i {
+            font-size: 1.8rem;
+            color: var(--secondary);
+        }
+        
+        .chat-messages {
+            height: 300px;
+            overflow-y: auto;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .message {
+            padding: 0.8rem 1.2rem;
+            border-radius: 18px;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+        
+        .message.user {
+            background: var(--primary);
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.bot {
+            background: rgba(30, 41, 59, 0.9);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 0.8rem 1.2rem;
+            border-radius: 50px;
+            border: none;
+            background: rgba(15, 23, 42, 0.7);
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .chat-input button {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .hubs-map {
+            height: 400px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 16px;
+            margin: 2rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .hubs-map i {
+            font-size: 3rem;
+            color: var(--warning);
+        }
+        
+        .monetization {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .monetization-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        .monetization-card {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .monetization-card i {
+            font-size: 2rem;
+            color: var(--success);
+            margin-bottom: 1rem;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(15, 23, 42, 0.8);
+            margin-top: 3rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Loading animation */
+        .loading {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Config panel styles */
+        .config-panel {
+            display: none;
+            background: rgba(15, 23, 42, 0.9);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .config-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .form-group input, 
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(30, 41, 59, 0.7);
+            color: white;
+        }
+        
+        .form-actions {
+            grid-column: span 2;
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .nav-tabs {
+                overflow-x: auto;
+                padding: 0.5rem;
+            }
+            
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .tab span {
+                display: none;
+            }
+            
+            .tab i {
+                font-size: 1.4rem;
+            }
+            
+            .config-form {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-actions {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <i class="fas fa-brain"></i>
+            <span>Health-AI + TechSkills</span>
+        </div>
+        <div class="nav-tabs">
+            <div class="tab active" data-page="dashboard">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </div>
+            <div class="tab" data-page="courses">
+                <i class="fas fa-book"></i>
+                <span>Courses</span>
+            </div>
+            <div class="tab" data-page="chat">
+                <i class="fas fa-comments"></i>
+                <span>AI Mentor</span>
+            </div>
+            <div class="tab" data-page="hubs">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Training Hubs</span>
+            </div>
+            <div class="tab" data-page="progress">
+                <i class="fas fa-chart-line"></i>
+                <span>Progress</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Dashboard Page -->
+        <div class="page active" id="dashboard">
+            <div class="hero">
+                <h1>TechSkills Micro-Campus</h1>
+                <p>Empowering rural and informal economies with accessible tech training. Learn job-relevant skills, connect with local learning hubs, and get AI-powered mentorship - all designed to work offline and in low-bandwidth areas.</p>
+                <button class="btn btn-secondary">
+                    <i class="fas fa-play"></i> Start Learning
+                </button>
+            </div>
+
+            <div class="features">
+                <div class="feature-card">
+                    <i class="fas fa-wifi"></i>
+                    <h3>Offline First</h3>
+                    <p>Access courses and learning materials without internet. Our app works in low-bandwidth areas and syncs when you're back online.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-language"></i>
+                    <h3>Local Language Support</h3>
+                    <p>Learn in your native language with our AI tutor that understands Swahili, Hausa, Yoruba, and more African languages.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h3>Job-Relevant Skills</h3>
+                    <p>Practical courses designed for local economies: solar installation, mobile repair, digital literacy, and healthcare tech.</p>
+                </div>
+            </div>
+
+            <h2 style="text-align: center; margin: 2rem 0 1rem;">Popular Courses</h2>
+            <div class="courses-grid">
+                <div class="course-card">
+                    <div class="course-image">
+                        <i class="fas fa-solar-panel"></i>
+                    </div>
+                    <div class="course-content">
+                        <h3>Basic Solar Installation</h3>
+                        <p>Learn to install and maintain solar systems for homes and small businesses.</p>
+                        <button class="btn">Enroll Now</button>
+                    </div>
+                </div>
+                <div class="course-card">
+                    <div class="course-image">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <div class="course-content">
+                        <h3>Smartphone Repair</h3>
+                        <p>Master repairing screens, batteries and software issues on popular phone models.</p>
+                        <button class="btn">Enroll Now</button>
+                    </div>
+                </div>
+                <div class="course-card">
+                    <div class="course-image">
+                        <i class="fas fa-laptop-medical"></i>
+                    </div>
+                    <div class="course-content">
+                        <h3>Digital Health Assistant</h3>
+                        <p>Use technology to support community health workers and clinics.</p>
+                        <button class="btn">Enroll Now</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Courses Page -->
+        <div class="page" id="courses">
+            <div class="hero">
+                <h2>Skills for the Future</h2>
+                <p>Browse our job-relevant courses designed for informal and rural economies. All courses available offline with certificate upon completion.</p>
+            </div>
+
+            <div class="courses-grid">
+                <div class="course-card">
+                    <div class="course-image" style="background: linear-gradient(45deg, #0d9488, #14b8a6);">
+                        <i class="fas fa-tint"></i>
+                    </div>
+                    <div class="course-content">
+                        <h3>Water Purification Tech</h3>
+                        <p>Install and maintain water purification systems for communities.</p>
+                        <div class="progress-container">
+                            <div class="progress-label">
+                                <span>Your Progress</span>
+                                <span>65%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress"></div>
+                            </div>
+                        </div>
+                        <button class="btn">Continue</button>
+                    </div>
+                </div>
+                <div class="course-card">
+                    <div class="course-image" style="background: linear-gradient(45deg, #b45309, #f59e0b);">
+                        <i class="fas fa-seedling"></i>
+                    </div>
+                    <div class="course-content">
+                        <h3>Agri-Tech for Small Farms</h3>
+                        <p>Use technology to improve crop yields and farming efficiency.</p>
+                        <button class="btn">Enroll Now</button>
+                    </div>
+                </div>
+                <div class="course-card">
+                    <div class="course-image" style="background: linear-gradient(45deg, #6d28d9, #8b5cf6);">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="course-content">
+                        <h3>AI for Small Businesses</h3>
+                        <p>Leverage AI tools to grow your business and reach new customers.</p>
+                        <button class="btn">Enroll Now</button>
+                    </div>
+                </div>
+                <div class="course-card">
+                    <div class="course-image" style="background: linear-gradient(45deg, #0ea5e9, #38bdf8);">
+                        <i class="fas fa-tablet-alt"></i>
+                    </div>
+                    <div class="course-content">
+                        <h3>Digital Literacy Fundamentals</h3>
+                        <p>Essential skills for using smartphones, apps, and online services.</p>
+                        <div class="progress-container">
+                            <div class="progress-label">
+                                <span>Your Progress</span>
+                                <span>40%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress" style="width: 40%;"></div>
+                            </div>
+                        </div>
+                        <button class="btn">Continue</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Mentor Chat Page -->
+        <div class="page" id="chat">
+            <div class="hero">
+                <h2>AI Learning Mentor</h2>
+                <p>Get personalized help with your courses in your local language. Ask anything about the material or real-world applications.</p>
+            </div>
+
+            <div class="chat-container">
+                <div class="chat-header">
+                    <i class="fas fa-robot"></i>
+                    <h2>Ask TechSkills AI Mentor</h2>
+                    <button id="toggle-config" class="btn" style="margin-left: auto; padding: 0.5rem 1rem;">
+                        <i class="fas fa-cog"></i> Settings
+                    </button>
+                </div>
+                
+                <div class="config-panel" id="config-panel">
+                    <div class="config-form">
+                        <div class="form-group">
+                            <label for="api-key">API Key</label>
+                            <input type="password" id="api-key" placeholder="Enter your API key">
+                        </div>
+                        <div class="form-group">
+                            <label for="base-url">Base URL</label>
+                            <input type="text" id="base-url" placeholder="https://api.mindsdb.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="model">Model</label>
+                            <select id="model">
+                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                <option value="gpt-4">GPT-4</option>
+                                <option value="local">Local Model</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="temperature">Temperature</label>
+                            <input type="number" id="temperature" min="0" max="2" step="0.1" value="0.7">
+                        </div>
+                        <div class="form-group">
+                            <label for="max-tokens">Max Tokens</label>
+                            <input type="number" id="max-tokens" min="100" max="4000" value="1000">
+                        </div>
+                        <div class="form-group">
+                            <label for="user-age">Your Age</label>
+                            <input type="number" id="user-age" placeholder="Optional">
+                        </div>
+                        <div class="form-group">
+                            <label for="user-gender">Gender</label>
+                            <select id="user-gender">
+                                <option value="">Prefer not to say</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label for="medical-history">Medical History (comma separated)</label>
+                            <textarea id="medical-history" rows="2" placeholder="e.g. diabetes, hypertension"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <span id="save-status"></span>
+                            <button type="button" onclick="saveConfig()" class="btn">
+                                <i class="fas fa-save"></i> Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message bot">
+                        Jambo! I'm your TechSkills AI mentor. How can I help you today? You can ask me about courses, practical applications, or career advice.
+                    </div>
+                    <div class="message user">
+                        Nisaidie kuelewa jinsi ya kuweka mfumo wa nishati ya jua kwa nyumba ndogo.
+                    </div>
+                    <div class="message bot">
+                        Hakikisha unachagua paneli za jua zenye uwezo wa kutosha kwa mahitaji yako ya kaya. Kwa nyumba ndogo, mfumo wa 3kW utatosha kwa matumizi ya kawaida.
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="chat-input" placeholder="Ask about courses, skills, or career advice...">
+                    <button id="send-message"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Hubs Page -->
+        <div class="page" id="hubs">
+            <div class="hero">
+                <h2>Find Nearby Training Centers</h2>
+                <p>Connect with physical learning hubs in your community. Get access to equipment, mentors, and high-speed internet.</p>
+            </div>
+
+            <div class="hubs-map">
+                <i class="fas fa-map-marked-alt"></i>
+                <h3>TechSkills Learning Hubs</h3>
+                <p>Enable location services to find the nearest training centers in your area. These hubs provide equipment, mentors, and community support.</p>
+                <button class="btn">
+                    <i class="fas fa-location-dot"></i> Enable Location
+                </button>
+            </div>
+
+            <div class="courses-grid">
+                <div class="course-card">
+                    <div class="course-content">
+                        <h3><i class="fas fa-school"></i> Kibera Youth Tech Center</h3>
+                        <p>Nairobi, Kenya</p>
+                        <p><i class="fas fa-phone"></i> +254711223344</p>
+                        <p><i class="fas fa-clock"></i> Mon-Fri: 9am-4pm</p>
+                        <p><i class="fas fa-wifi"></i> Free WiFi | Tablets | Mentors</p>
+                        <button class="btn" style="margin-top: 15px;">
+                            <i class="fas fa-directions"></i> Get Directions
+                        </button>
+                    </div>
+                </div>
+                <div class="course-card">
+                    <div class="course-content">
+                        <h3><i class="fas fa-church"></i> St. Mary's Community Hub</h3>
+                        <p>Kampala, Uganda</p>
+                        <p><i class="fas fa-phone"></i> +256788554433</p>
+                        <p><i class="fas fa-clock"></i> Tue-Sat: 10am-6pm</p>
+                        <p><i class="fas fa-wifi"></i> Free WiFi | Laptops | Workshops</p>
+                        <button class="btn" style="margin-top: 15px;">
+                            <i class="fas fa-directions"></i> Get Directions
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Page -->
+        <div class="page" id="progress">
+            <div class="hero">
+                <h2>Your Learning Journey</h2>
+                <p>Track your progress, earned badges, and referral rewards. Share achievements with potential employers.</p>
+            </div>
+
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>Overall Progress</span>
+                    <span>42%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress" style="width: 42%;"></div>
+                </div>
+            </div>
+
+            <h3 style="margin: 1.5rem 0 1rem;">Your Courses</h3>
+            <div class="courses-grid">
+                <div class="course-card">
+                    <div class="course-content">
+                        <h3>Solar Installation</h3>
+                        <div class="progress-container">
+                            <div class="progress-label">
+                                <span>Progress</span>
+                                <span>65%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress" style="width: 65%;"></div>
+                            </div>
+                        </div>
+                        <button class="btn">Continue Learning</button>
+                    </div>
+                </div>
+                <div class="course-card">
+                    <div class="course-content">
+                        <h3>Digital Literacy</h3>
+                        <div class="progress-container">
+                            <div class="progress-label">
+                                <span>Progress</span>
+                                <span>40%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress" style="width: 40%;"></div>
+                            </div>
+                        </div>
+                        <button class="btn">Continue Learning</button>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin: 2rem 0 1rem;">Earned Badges</h3>
+            <div class="badges-container">
+                <div class="badge">
+                    <i class="fas fa-award"></i> Solar Basics
+                </div>
+                <div class="badge">
+                    <i class="fas fa-award"></i> Phone Repair Starter
+                </div>
+                <div class="badge">
+                    <i class="fas fa-award"></i> Digital Navigator
+                </div>
+                <div class="badge">
+                    <i class="fas fa-award"></i> Community Mentor
+                </div>
+            </div>
+
+            <div class="monetization">
+                <h3>Referral Program</h3>
+                <p>Invite friends to learn with you and earn learning tokens!</p>
+                
+                <div class="monetization-options">
+                    <div class="monetization-card">
+                        <i class="fas fa-user-plus"></i>
+                        <h4>Refer Friends</h4>
+                        <p>Get 50 tokens for each friend who signs up</p>
+                        <button class="btn" style="margin-top: 15px;">
+                            <i class="fas fa-share-alt"></i> Invite
+                        </button>
+                    </div>
+                    <div class="monetization-card">
+                        <i class="fas fa-mobile-alt"></i>
+                        <h4>Airtime Payment</h4>
+                        <p>Use airtime to unlock premium courses</p>
+                        <button class="btn" style="margin-top: 15px;">
+                            <i class="fas fa-sim-card"></i> Add Tokens
+                        </button>
+                    </div>
+                    <div class="monetization-card">
+                        <i class="fas fa-briefcase"></i>
+                        <h4>Sponsored Learning</h4>
+                        <p>Get sponsored by local businesses</p>
+                        <button class="btn" style="margin-top: 15px;">
+                            <i class="fas fa-handshake"></i> Apply
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>TechSkills Micro-Campus &copy; 2023 | Empowering rural and informal economies with accessible tech education</p>
+        <p>Designed to work offline and in low-bandwidth areas</p>
+    </footer>
+
+    <script>
+        // Tab navigation
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab').forEach(t => {
+                    t.classList.remove('active');
+                });
+                
+                // Add active class to clicked tab
+                tab.classList.add('active');
+                
+                // Hide all pages
+                document.querySelectorAll('.page').forEach(page => {
+                    page.classList.remove('active');
+                });
+                
+                // Show selected page
+                const pageId = tab.getAttribute('data-page');
+                document.getElementById(pageId).classList.add('active');
+            });
+        });
+
+        // Configuration Manager (using in-memory storage)
+        class MindsDBConfig {
+            constructor() {
+                this.config = this.getDefaults();
+            }
+            
+            load() {
+                return { ...this.config };
+            }
+            
+            save(newConfig) {
+                this.config = {
+                    ...this.getDefaults(),
+                    ...newConfig,
+                    lastUpdated: Date.now()
+                };
+                return this.config;
+            }
+            
+            getDefaults() {
+                return {
+                    apiKey: '',
+                    baseUrl: 'https://llm.mdb.ai',
+                    model: 'gpt-3.5-turbo',
+                    temperature: 0.7,
+                    maxTokens: 1000,
+                    healthContext: {
+                        age: null,
+                        gender: null,
+                        medicalHistory: []
+                    }
+                };
+            }
+            
+            validate(config) {
+                const errors = [];
+                
+                if (config.model !== 'local') {
+                    if (!config.apiKey || config.apiKey.length < 10) {
+                        errors.push('Valid API key required (minimum 10 characters)');
+                    }
+                    if (!config.baseUrl || !config.baseUrl.startsWith('http')) {
+                        errors.push('Valid base URL required (must start with http/https)');
+                    }
+                }
+                
+                if (config.temperature < 0 || config.temperature > 2) {
+                    errors.push('Temperature must be between 0 and 2');
+                }
+                
+                if (config.maxTokens < 1 || config.maxTokens > 4000) {
+                    errors.push('Max tokens must be between 1 and 4000');
+                }
+                
+                return { isValid: errors.length === 0, errors };
+            }
+        }
+
+        // MindsDB API Client
+        class MindsDBApi {
+            constructor() {
+                this.configManager = new MindsDBConfig();
+                this.conversationHistory = [];
+                this.localModel = null;
+                this.isLocalModelLoading = false;
+            }
+            
+            async initializeLocalModel() {
+                if (this.isLocalModelLoading) {
+                    throw new Error('Local model is already loading');
+                }
+                
+                try {
+                    this.isLocalModelLoading = true;
+                    console.log('Initializing local model...');
+                    
+                    // Check if transformers.js is available
+                    if (typeof pipeline === 'undefined') {
+                        throw new Error('Transformers.js library not loaded. Please include the script tag.');
+                    }
+                    
+                    // Initialize the local model
+                    this.localModel = await pipeline(
+                        'text-generation', 
+                        'Xenova/LaMini-Flan-T5-248M',
+                        { progress_callback: this.onLocalModelProgress }
+                    );
+                    
+                    console.log('Local model initialized successfully');
+                    return true;
+                } catch (error) {
+                    console.error('Error initializing local model:', error);
+                    throw new Error(`Failed to initialize local model: ${error.message}`);
+                } finally {
+                    this.isLocalModelLoading = false;
+                }
+            }
+            
+            onLocalModelProgress = (progress) => {
+                console.log('Local model loading progress:', progress);
+                // Update UI with loading progress
+                const statusElement = document.getElementById('chat-messages');
+                if (statusElement && progress.status === 'downloading') {
+                    const progressPercent = Math.round((progress.loaded / progress.total) * 100);
+                    // You could add a progress indicator here
+                }
+            }
+            
+            async sendMessage(message) {
+                const config = this.configManager.load();
+                
+                try {
+                    // Log configuration for debugging (without sensitive data)
+                    console.log('API Configuration:', {
+                        baseUrl: config.baseUrl,
+                        model: config.model,
+                        hasApiKey: !!config.apiKey,
+                        apiKeyLength: config.apiKey?.length || 0,
+                        temperature: config.temperature,
+                        maxTokens: config.maxTokens
+                    });
+                    
+                    const messages = [
+                        {
+                            role: 'system',
+                            content: this.getSystemPrompt(config.healthContext)
+                        },
+                        ...this.conversationHistory,
+                        {
+                            role: 'user',
+                            content: message
+                        }
+                    ];
+                    
+                    let responseText;
+                    let modelUsed = config.model;
+                    
+                    if (config.model === 'local') {
+                        responseText = await this.handleLocalModel(messages, config);
+                    } else {
+                        responseText = await this.handleApiModel(messages, config);
+                    }
+                    
+                    // Update conversation history
+                    this.conversationHistory.push(
+                        { role: 'user', content: message },
+                        { role: 'assistant', content: responseText }
+                    );
+                    
+                    // Limit conversation history to prevent memory issues
+                    if (this.conversationHistory.length > 20) {
+                        this.conversationHistory = this.conversationHistory.slice(-20);
+                    }
+                    
+                    return {
+                        text: responseText,
+                        model: modelUsed,
+                        id: Date.now().toString()
+                    };
+                    
+                } catch (error) {
+                    console.error('Detailed error information:', error);
+                    throw error;
+                }
+            }
+            
+            async handleLocalModel(messages, config) {
+                if (!this.localModel && !this.isLocalModelLoading) {
+                    await this.initializeLocalModel();
+                }
+                
+                if (this.isLocalModelLoading) {
+                    throw new Error('Local model is still loading. Please wait...');
+                }
+                
+                if (!this.localModel) {
+                    throw new Error('Local model failed to initialize');
+                }
+                
+                // Format messages for local model
+                const prompt = messages.map(m => `${m.role}: ${m.content}`).join('\n') + '\nassistant:';
+                
+                console.log('Local model prompt:', prompt);
+                
+                // Generate response with local model
+                const response = await this.localModel(prompt, {
+                    max_new_tokens: config.maxTokens,
+                    temperature: config.temperature,
+                    do_sample: config.temperature > 0,
+                    top_p: 0.9,
+                    repetition_penalty: 1.1
+                });
+                
+                let responseText = response[0].generated_text;
+                
+                // Clean up the response (remove the prompt part)
+                const assistantIndex = responseText.lastIndexOf('assistant:');
+                if (assistantIndex !== -1) {
+                    responseText = responseText.substring(assistantIndex + 10).trim();
+                }
+                
+                return responseText || "I'm sorry, I couldn't generate a proper response. Please try again.";
+            }
+            
+            async handleApiModel(messages, config) {
+                const requestUrl = `${config.baseUrl}/v1/chat/completions`;
+                const requestBody = {
+                    model: config.model,
+                    messages: messages,
+                    temperature: config.temperature,
+                    max_tokens: config.maxTokens,
+                    stream: false
+                };
+                
+                console.log('Making API request to:', requestUrl);
+                console.log('Request body:', JSON.stringify(requestBody, null, 2));
+                
+                const response = await fetch(requestUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${config.apiKey}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                if (!response.ok) {
+                    await this.handleApiError(response);
+                }
+                
+                const data = await response.json();
+                console.log('Successful response:', data);
+                
+                if (!data.choices?.[0]?.message?.content) {
+                    console.error('Invalid response structure:', data);
+                    throw new Error('Invalid response from API - no content found');
+                }
+                
+                return data.choices[0].message.content;
+            }
+            
+            async handleApiError(response) {
+                let errorDetails = {};
+                let errorText = '';
+                
+                try {
+                    errorDetails = await response.json();
+                    console.log('Error response body:', errorDetails);
+                    errorText = errorDetails.error?.message || errorDetails.message || '';
+                } catch (parseError) {
+                    console.log('Could not parse error response as JSON');
+                    try {
+                        errorText = await response.text();
+                    } catch {
+                        errorText = 'Unknown error';
+                    }
+                }
+                
+                // More specific error messages based on status code
+                let errorMessage;
+                switch (response.status) {
+                    case 400:
+                        errorMessage = `Invalid request: ${errorText || 'Please check your request parameters'}`;
+                        break;
+                    case 401:
+                        errorMessage = `Authentication failed: ${errorText || 'Please check your API key and ensure it\'s valid and has the correct permissions'}`;
+                        break;
+                    case 403:
+                        errorMessage = `Access forbidden: ${errorText || 'Your API key may not have the required permissions for this model'}`;
+                        break;
+                    case 404:
+                        errorMessage = `Not found: ${errorText || 'Please check your base URL and model name'}`;
+                        break;
+                    case 429:
+                        errorMessage = `Rate limit exceeded: ${errorText || 'Please wait before making another request'}`;
+                        break;
+                    case 500:
+                        errorMessage = `Server error: ${errorText || 'Please try again later'}`;
+                        break;
+                    case 502:
+                    case 503:
+                    case 504:
+                        errorMessage = `Service unavailable: ${errorText || 'The API service is temporarily unavailable'}`;
+                        break;
+                    default:
+                        errorMessage = errorText || `API request failed with status ${response.status}`;
+                }
+                
+                throw new Error(errorMessage);
+            }
+            
+            getSystemPrompt(healthContext) {
+                let prompt = 'You are a helpful AI assistant for TechSkills Micro-Campus, helping learners in rural and informal economies gain tech skills. ';
+                prompt += 'You specialize in practical, job-relevant skills like solar installation, mobile repair, digital literacy, and healthcare tech. ';
+                prompt += 'Provide clear, simple explanations in the user\'s preferred language when possible. ';
+                prompt += 'Keep responses concise and actionable. ';
+                
+                if (healthContext.age || healthContext.gender || healthContext.medicalHistory?.length > 0) {
+                    prompt += ' Additional context: ';
+                    if (healthContext.age) prompt += `User is ${healthContext.age} years old. `;
+                    if (healthContext.gender) prompt += `User identifies as ${healthContext.gender}. `;
+                    if (healthContext.medicalHistory?.length > 0) {
+                        prompt += `Medical history: ${healthContext.medicalHistory.join(', ')}. `;
+                    }
+                }
+                
+                return prompt;
+            }
+
+            updateConfig(newConfig) {
+                return this.configManager.save(newConfig);
+            }
+
+            getConfig() {
+                return this.configManager.load();
+            }
+
+            validateConfig(config) {
+                return this.configManager.validate(config);
+            }
+            
+            clearHistory() {
+                this.conversationHistory = [];
+            }
+        }
+
+        // Chat UI Manager
+        class ChatUI {
+            constructor() {
+                this.api = new MindsDBApi();
+                this.setupEventListeners();
+                this.loadConfig();
+            }
+            
+            setupEventListeners() {
+                // Send message on button click
+                document.getElementById('send-message')?.addEventListener('click', () => this.handleSendMessage());
+                
+                // Send message on Enter key
+                document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.handleSendMessage();
+                    }
+                });
+                
+                // Toggle config panel
+                document.getElementById('toggle-config')?.addEventListener('click', () => {
+                    const panel = document.getElementById('config-panel');
+                    if (panel) {
+                        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                    }
+                });
+                
+                // Handle model selection change
+                document.getElementById('model')?.addEventListener('change', (e) => {
+                    const isLocal = e.target.value === 'local';
+                    const apiKeyField = document.getElementById('api-key');
+                    const baseUrlField = document.getElementById('base-url');
+                    
+                    if (apiKeyField) apiKeyField.disabled = isLocal;
+                    if (baseUrlField) baseUrlField.disabled = isLocal;
+                    
+                    // Show/hide local model warning
+                    this.showLocalModelWarning(isLocal);
+                });
+                
+                // Clear chat history button
+                document.getElementById('clear-chat')?.addEventListener('click', () => {
+                    this.clearChat();
+                });
+            }
+            
+            showLocalModelWarning(show) {
+                let warning = document.getElementById('local-model-warning');
+                if (show && !warning) {
+                    warning = document.createElement('div');
+                    warning.id = 'local-model-warning';
+                    warning.style.cssText = 'color: #ff9800; font-size: 12px; margin-top: 5px; padding: 5px; background: #fff3e0; border-radius: 3px;';
+                    warning.textContent = 'Note: Local model requires ~100MB download and may be slower. Requires transformers.js library.';
+                    document.getElementById('model').parentNode.appendChild(warning);
+                } else if (!show && warning) {
+                    warning.remove();
+                }
+            }
+            
+            loadConfig() {
+                const config = this.api.getConfig();
+                
+                // Safely set form values
+                this.setFieldValue('api-key', config.apiKey);
+                this.setFieldValue('base-url', config.baseUrl);
+                this.setFieldValue('model', config.model);
+                this.setFieldValue('temperature', config.temperature);
+                this.setFieldValue('max-tokens', config.maxTokens);
+                this.setFieldValue('user-age', config.healthContext.age || '');
+                this.setFieldValue('user-gender', config.healthContext.gender || '');
+                this.setFieldValue('medical-history', config.healthContext.medicalHistory?.join(', ') || '');
+                
+                // Enable/disable fields based on model selection
+                const isLocal = config.model === 'local';
+                const apiKeyField = document.getElementById('api-key');
+                const baseUrlField = document.getElementById('base-url');
+                
+                if (apiKeyField) apiKeyField.disabled = isLocal;
+                if (baseUrlField) baseUrlField.disabled = isLocal;
+                
+                this.showLocalModelWarning(isLocal);
+                
+                // Enable/disable chat based on configuration
+                this.updateChatState(config);
+            }
+            
+            setFieldValue(id, value) {
+                const field = document.getElementById(id);
+                if (field) {
+                    field.value = value;
+                }
+            }
+
+            updateChatState(config) {
+                const chatInput = document.getElementById('chat-input');
+                const sendButton = document.getElementById('send-message');
+                
+                if (!chatInput || !sendButton) return;
+                
+                const validation = this.api.validateConfig(config);
+                
+                if (validation.isValid) {
+                    chatInput.disabled = false;
+                    sendButton.disabled = false;
+                    chatInput.placeholder = 'Type your message here...';
+                } else {
+                    chatInput.disabled = true;
+                    sendButton.disabled = true;
+                    chatInput.placeholder = `Configuration needed: ${validation.errors[0]}`;
+                }
+            }
+            
+            async handleSendMessage() {
+                const input = document.getElementById('chat-input');
+                const sendButton = document.getElementById('send-message');
+                
+                if (!input || !sendButton) return;
+                
+                const message = input.value.trim();
+                if (!message) return;
+                
+                // Disable input during processing
+                input.disabled = true;
+                sendButton.disabled = true;
+                
+                const originalButtonContent = sendButton.innerHTML;
+                sendButton.innerHTML = '<div class="loading" style="width: 16px; height: 16px; border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>';
+                
+                // Add user message to UI
+                this.addMessage(message, true);
+                input.value = '';
+                
+                try {
+                    // Get AI response
+                    const response = await this.api.sendMessage(message);
+                    
+                    // Add AI response to UI
+                    this.addMessage(response.text, false, response.model);
+                    
+                } catch (error) {
+                    console.error('Chat error:', error);
+                    this.addMessage(`Error: ${error.message}`, false, null, true);
+                } finally {
+                    // Re-enable input
+                    const config = this.api.getConfig();
+                    this.updateChatState(config);
+                    sendButton.innerHTML = originalButtonContent;
+                }
+            }
+            
+            addMessage(text, isUser, model = null, isError = false) {
+                const messagesDiv = document.getElementById('chat-messages');
+                if (!messagesDiv) return;
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isUser ? 'user' : 'bot'}${isError ? ' error-message' : ''}`;
+                
+                // Handle long messages
+                const textNode = document.createElement('div');
+                textNode.textContent = text;
+                textNode.style.wordWrap = 'break-word';
+                messageDiv.appendChild(textNode);
+                
+                if (!isUser && model && !isError) {
+                    const metaDiv = document.createElement('div');
+                    metaDiv.className = 'message-meta';
+                    metaDiv.textContent = `via ${model}`;
+                    metaDiv.style.cssText = 'font-size: 11px; color: #666; margin-top: 5px; opacity: 0.7;';
+                    messageDiv.appendChild(metaDiv);
+                }
+                
+                messagesDiv.appendChild(messageDiv);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+            
+            clearChat() {
+                const messagesDiv = document.getElementById('chat-messages');
+                if (messagesDiv) {
+                    messagesDiv.innerHTML = '';
+                }
+                this.api.clearHistory();
+            }
+        }
+
+        // Save configuration function
+        window.saveConfig = function() {
+            if (!window.chatUI) return;
+            
+            const newConfig = {
+                apiKey: document.getElementById('api-key')?.value.trim() || '',
+                baseUrl: document.getElementById('base-url')?.value.trim().replace(/\/$/, '') || '',
+                model: document.getElementById('model')?.value.trim() || 'gpt-3.5-turbo',
+                temperature: parseFloat(document.getElementById('temperature')?.value || '0.7'),
+                maxTokens: parseInt(document.getElementById('max-tokens')?.value || '1000'),
+                healthContext: {
+                    age: document.getElementById('user-age')?.value.trim() || null,
+                    gender: document.getElementById('user-gender')?.value.trim() || null,
+                    medicalHistory: (document.getElementById('medical-history')?.value || '')
+                        .split(',')
+                        .map(item => item.trim())
+                        .filter(item => item)
+                }
+            };
+            
+            window.chatUI.api.updateConfig(newConfig);
+            const validation = window.chatUI.api.validateConfig(newConfig);
+            const statusElement = document.getElementById('save-status');
+            
+            if (statusElement) {
+                if (validation.isValid) {
+                    statusElement.textContent = '✓ Configuration saved successfully';
+                    statusElement.style.color = '#00C853';
+                    window.chatUI.updateChatState(newConfig);
+                } else {
+                    statusElement.textContent = `⚠ ${validation.errors.join(', ')}`;
+                    statusElement.style.color = '#FF5252';
+                }
+                
+                // Clear status after 3 seconds
+                setTimeout(() => {
+                    statusElement.textContent = '';
+                }, 3000);
+            }
+            
+            // Hide config panel after save
+            setTimeout(() => {
+                const panel = document.getElementById('config-panel');
+                if (panel) {
+                    panel.style.display = 'none';
+                }
+            }, 2000);
+        };
+
+        // Test API connection function
+        window.testConnection = function() {
+            if (!window.chatUI) return;
+            
+            const statusElement = document.getElementById('save-status');
+            if (statusElement) {
+                statusElement.textContent = 'Testing connection...';
+                statusElement.style.color = '#2196F3';
+            }
+            
+            window.chatUI.api.sendMessage('Hello, this is a test message.')
+                .then(response => {
+                    if (statusElement) {
+                        statusElement.textContent = '✓ Connection successful!';
+                        statusElement.style.color = '#00C853';
+                    }
+                })
+                .catch(error => {
+                    if (statusElement) {
+                        statusElement.textContent = `✗ Connection failed: ${error.message}`;
+                        statusElement.style.color = '#FF5252';
+                    }
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        if (statusElement) {
+                            statusElement.textContent = '';
+                        }
+                    }, 5000);
+                });
+        };
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                window.chatUI = new ChatUI();
+                console.log('ChatUI initialized successfully');
+                
+                // Handle enroll buttons
+                document.querySelectorAll('.btn').forEach(button => {
+                    if (button.textContent.includes('Enroll') || button.textContent.includes('Continue')) {
+                        button.addEventListener('click', () => {
+                            alert('Course enrollment successful! You can now start learning.');
+                        });
+                    }
+                });
+                
+                // Add CSS for loading animation
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                    .error-message {
+                        background-color: #ffebee !important;
+                        border-left: 4px solid #f44336 !important;
+                    }
+                `;
+                document.head.appendChild(style);
+                
+            } catch (error) {
+                console.error('Failed to initialize ChatUI:', error);
+            }
+        });
+
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+        });
+    </script>
+</body>
+</html>
