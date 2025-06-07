@@ -1,927 +1,1194 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta name="theme-color" content="#1a1a1a"/>
-  <title>juA.kali Innovation Platform</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated BioMedical Services</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --biocode-primary: #4CAF50;
+        }
 
-  <!-- External Dependencies -->
-  <script defer src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.1/dist/ort.min.js"></script>
-  <script type="module" src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
 
-  <!-- Payment Processors -->
-  <script src="https://js.paystack.co/v1/inline.js"></script>
-  <script src="https://js.stripe.com/v3/"></script>
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
 
-  <!-- React for Payment Modal -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+        .app-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
 
-  <style>
-    :root {
-      --primary-color: #4285f4;
-      --dark-bg: #1a1a1a;
-      --light-text: #ffffff;
-      --accent-green: #00C853;
-      --accent-blue: #2962FF;
-      --transition-speed: 0.3s;
-      --chat-border: 1px solid #00C853;
-    }
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
 
-    body {
-      margin: 0;
-      font-family: 'Roboto', sans-serif;
-      background-color: var(--dark-bg);
-      color: var(--light-text);
-      overflow-x: hidden;
-    }
+        /* HemoAI Styles */
+        .upload-section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
 
-    .logo {
-      position: fixed;
-      top: 20px;
-      left: 30px;
-      font-size: 1.5rem;
-      font-weight: 700;
-      z-index: 1000;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-    }
+        .preview-container {
+            width: 100%;
+            height: 300px;
+            margin-bottom: 1.5rem;
+            border: 2px dashed #ddd;
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
 
-    .nav-menu {
-      position: fixed;
-      top: 20px;
-      right: 30px;
-      display: flex;
-      gap: 20px;
-      z-index: 1000;
-    }
+        .image-preview {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
 
-    .nav-menu button {
-      background: none;
-      border: none;
-      color: var(--light-text);
-      cursor: pointer;
-      padding: 10px 20px;
-      border-radius: 25px;
-      transition: all var(--transition-speed) ease;
-    }
+        .upload-placeholder {
+            text-align: center;
+            cursor: pointer;
+            color: #777;
+            padding: 1rem;
+        }
 
-    .nav-menu button:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-      transform: translateY(-2px);
-    }
+        .report-content p {
+            margin-bottom: 0.5rem;
+            padding: 0.3rem 0;
+        }
 
-    .widget {
-      height: 100vh;
-      width: 100vw;
-      position: relative;
-      scroll-snap-align: start;
-    }
+        .report-title {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
 
-    .widget-image {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      position: relative;
-    }
+        .recommendation-title {
+            font-weight: 600;
+            color: var(--accent-color);
+            margin-top: 1rem !important;
+        }
 
-    .overlay-button {
-      position: absolute;
-      bottom: 6%;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 15px 40px;
-      background-color: var(--accent-blue);
-      color: white;
-      border: none;
-      border-radius: 30px;
-      cursor: pointer;
-      font-size: 1.1rem;
-      transition: all var(--transition-speed) ease;
-    }
+        .chat-messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: #f9f9f9;
+        }
 
-    .overlay-button:hover {
-      background-color: #1e50cc;
-      transform: translateX(-50%) scale(1.05);
-    }
+        .message {
+            margin-bottom: 1rem;
+            padding: 0.8rem;
+            border-radius: 6px;
+            max-width: 80%;
+        }
 
-    footer {
-      position: fixed;
-      bottom: 0;
-      width: 100%;
-      padding: 20px;
-      text-align: center;
-      background-color: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(10px);
-    }
+        .message.user {
+            background-color: var(--light-color);
+            margin-left: auto;
+            border: 1px solid #ddd;
+        }
 
-    .chat-box {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 320px;
-      height: 450px;
-      background-color: rgba(255, 255, 255, 0.95);
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      border-radius: 12px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      opacity: 0;
-      transform: translateY(20px);
-      animation: fadeIn 0.5s forwards;
-    }
+        .message.assistant {
+            background-color: var(--secondary-color);
+            color: white;
+            margin-right: auto;
+        }
 
-    @keyframes fadeIn {
-      to { opacity: 1; transform: translateY(0); }
-    }
+        /* BioCode Styles */
+        .biocode-card {
+            border-left: 4px solid var(--biocode-primary);
+        }
 
-    .chat-box .messages {
-      flex: 1;
-      padding: 15px;
-      overflow-y: auto;
-      background-color: #f5f5f5;
-      color: #333;
-    }
+        .biocode-btn {
+            background-color: var(--biocode-primary);
+            border-color: var(--biocode-primary);
+        }
 
-    .chat-box .message {
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 8px;
-      max-width: 80%;
-      word-wrap: break-word;
-      animation: messageSlide 0.3s ease-out;
-    }
+        .biocode-btn:hover {
+            background-color: #3e8e41;
+            border-color: #3e8e41;
+        }
 
-    @keyframes messageSlide {
-      from { transform: translateY(20px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
+        #mutation-rate {
+            width: 100%;
+        }
 
-    .chat-box .message.user {
-      background: var(--accent-blue);
-      color: white;
-      margin-left: auto;
-    }
+        #risk-chart {
+            margin-top: 20px;
+        }
 
-    .chat-box .message.reply {
-      background: var(--accent-green);
-      color: white;
-      margin-right: auto;
-    }
+        .hidden {
+            display: none;
+        }
 
-    .chat-box input {
-      width: calc(100% - 20px);
-      margin: 10px;
-      padding: 12px;
-      border: var(--chat-border);
-      border-radius: 8px;
-      font-size: 14px;
-      background: white;
-    }
+        /* Tab styling */
+        .nav-tabs .nav-link {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
 
-    .chat-box button {
-      margin: 0 10px 10px;
-      padding: 12px;
-      background: var(--accent-green);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background var(--transition-speed);
-    }
+        .nav-tabs .nav-link.active {
+            color: var(--secondary-color);
+            font-weight: 600;
+            border-bottom: 3px solid var(--secondary-color);
+        }
 
-    .chat-box button:hover {
-      background: #009245;
-    }
+        /* Document Capture Styles */
+        .camera-preview {
+            background-color: #000;
+            border-radius: 8px;
+        }
 
-    .api-key-input {
-      position: fixed;
-      top: 120px;
-      right: 30px;
-      z-index: 1000;
-      background: rgba(0, 0, 0, 0.9);
-      padding: 15px;
-      border-radius: 12px;
-      color: white;
-      backdrop-filter: blur(5px);
-      display: none;
-      flex-direction: column;
-      gap: 10px;
-      width: 300px;
-    }
+        .document-preview {
+            min-height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            background-color: #f8f9fa;
+        }
 
-    .api-key-input input {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid var(--accent-green);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 6px;
-      width: 100%;
-      box-sizing: border-box;
-    }
+        .capture-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
 
-    .api-key-input input::placeholder {
-      color: rgba(255, 255, 255, 0.7);
-    }
-
-    #save-status {
-      font-size: 0.9rem;
-      text-align: center;
-    }
-
-    .model-status {
-      position: fixed;
-      bottom: 80px;
-      left: 30px;
-      padding: 8px 15px;
-      background: rgba(0, 0, 0, 0.7);
-      border-radius: 20px;
-      font-size: 0.9rem;
-    }
-
-    .model-selector {
-      position: fixed;
-      top: 80px;
-      right: 30px;
-      z-index: 1000;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 8px 15px;
-      border-radius: 20px;
-    }
-
-    /* Payment Modal Styles */
-    .payment-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(0, 0, 0, 0.8);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 2000;
-      backdrop-filter: blur(5px);
-    }
-
-    .payment-modal {
-      background-color: #2a2a2a;
-      padding: 30px;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-      color: white;
-      text-align: center;
-      position: relative;
-    }
-
-    .payment-modal h2 {
-      margin-top: 0;
-      color: #4285f4;
-    }
-
-    .payment-modal p {
-      margin-bottom: 25px;
-      color: #ccc;
-    }
-
-    .payment-email {
-      margin-bottom: 20px;
-      text-align: left;
-    }
-
-    .payment-email label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 500;
-    }
-
-    .payment-email input {
-      width: 100%;
-      padding: 12px;
-      border-radius: 6px;
-      border: 1px solid #444;
-      background-color: #1a1a1a;
-      color: white;
-      font-size: 16px;
-    }
-
-    .payment-methods {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 25px;
-      justify-content: center;
-    }
-
-    .payment-methods button {
-      padding: 10px 20px;
-      border-radius: 6px;
-      background-color: #333;
-      color: white;
-      border: none;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-
-    .payment-methods button.active {
-      background-color: #4285f4;
-    }
-
-    .pay-button {
-      background-color: #00C853;
-      color: white;
-      border: none;
-      padding: 12px 30px;
-      border-radius: 6px;
-      font-size: 16px;
-      cursor: pointer;
-      width: 100%;
-      margin-bottom: 15px;
-      transition: background-color 0.3s;
-    }
-
-    .pay-button:hover {
-      background-color: #009245;
-    }
-
-    .pay-button:disabled {
-      background-color: #555;
-      cursor: not-allowed;
-    }
-
-    .close-button {
-      background: none;
-      border: 1px solid #666;
-      color: #ccc;
-      padding: 8px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-
-    .close-button:hover {
-      background-color: #333;
-    }
-
-    .payment-success {
-      padding: 20px;
-    }
-
-    .payment-success h2 {
-      color: #00C853;
-    }
-
-    .loader {
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      border-top: 4px solid #4285f4;
-      width: 30px;
-      height: 30px;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    @media (max-width: 768px) {
-      .chat-box {
-        width: 90%;
-        right: 5%;
-        height: 60vh;
-      }
-
-      .nav-menu {
-        flex-direction: column;
-        right: 10px;
-        top: 60px;
-      }
-
-      .model-selector {
-        top: 140px;
-        right: 10px;
-      }
-
-      .api-key-input {
-        top: 180px;
-        right: 10px;
-        width: 80%;
-      }
-
-      .payment-modal {
-        padding: 20px;
-        width: 95%;
-      }
-      
-      .payment-methods {
-        flex-direction: column;
-      }
-    }
-  </style>
-<script defer src="/runtime.js"></script><script defer src="/vendor.react-dom.js"></script><script defer src="/vendor.core-js-pure.js"></script><script defer src="/vendor.buffer.js"></script><script defer src="/vendor.core-js.js"></script><script defer src="/57.js"></script><script defer src="/secondary.js"></script></head>
+        @media (max-width: 768px) {
+            .capture-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
 <body>
-  <div class="logo">juA.kali iNC</div>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>Integrated BioMedical Services</h1>
+            <p>Advanced medical analysis tools powered by AI and blockchain</p>
+        </header>
 
-  <nav class="nav-menu">
-    <button id="consultation-tab">Consultation</button>
-    <button id="discoveries-tab">Discoveries</button>
-    <button id="about-us-tab">About Us</button>
-    <button id="contact-tab">Contact</button>
-  </nav>
+        <div class="main-content">
+            <ul class="nav nav-tabs" id="servicesTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="hemo-tab" data-bs-toggle="tab" data-bs-target="#hemo" type="button" role="tab">HemoAI</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="biocode-tab" data-bs-toggle="tab" data-bs-target="#biocode" type="button" role="tab">BioCode</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="genetics-tab" data-bs-toggle="tab" data-bs-target="#genetics" type="button" role="tab">Genetics</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="monitoring-tab" data-bs-toggle="tab" data-bs-target="#monitoring" type="button" role="tab">Monitoring</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button" role="tab">Documents</button>
+                </li>
+            </ul>
 
-  <div class="model-selector">
-    <select id="model-select">
-      <option value="local">Local Model (GPT-2)</option>
-      <option value="mindsdb">Cloud Model (MindsDB)</option>
-    </select>
-  </div>
+            <div class="tab-content" id="servicesTabContent">
+                <!-- HemoAI Tab -->
+                <div class="tab-pane fade show active" id="hemo" role="tabpanel">
+                    <div class="upload-section">
+                        <div class="preview-container" id="previewContainer">
+                            <div class="upload-placeholder" onclick="document.getElementById('fileInput').click()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                                <span>Click to upload blood sample image</span>
+                                <input type="file" id="fileInput" onchange="handleFileChange(event)" accept="image/*" style="display: none;">
+                            </div>
+                        </div>
 
-  <div class="api-key-input" id="api-key-container">
-    <input type="password" id="api-key" placeholder="MindsDB API Key">
-    <input type="text" id="base-url" placeholder="Base URL (e.g. https://llm.mdb.ai/)">
-    <input type="text" id="assistant-id" placeholder="Assistant ID (Minds Name)">
-    <button type="button" onclick="saveApiKey()">Save</button>
-    <div id="save-status"></div>
-  </div>
+                        <div class="input-group mb-3">
+                            <label for="phone" class="form-label">WhatsApp Number:</label>
+                            <input type="tel" class="form-control" id="phone" placeholder="+1234567890" oninput="updatePhoneNumber(this.value)">
+                        </div>
 
-  <main>
-    <section class="widget" id="widget1">
-      <img src="img/kastone1.png" alt="Innovation showcase" class="widget-image">
-      <button class="overlay-button" id="explore-btn">Explore Innovations</button>
-    </section>
-    <section class="widget" id="widget2">
-      <img src="img/kastone2.png" alt="Technology preview" class="widget-image">
-    </section>
-    <section class="widget" id="widget3">
-      <img src="img/kastone3.png" alt="Research developments" class="widget-image">
-    </section>
-  </main>
+                        <div class="input-group mb-3">
+                            <label for="userId" class="form-label">Patient ID (optional):</label>
+                            <input type="text" class="form-control" id="userId" placeholder="Unique identifier" oninput="updateUserId(this.value)">
+                        </div>
 
-  <footer>
-    <p>&copy; 2025 juA.kali iNC. All rights reserved.</p>
-  </footer>
+                        <button id="analyzeButton" onclick="handleUpload()" disabled class="btn btn-primary analyze-button w-100">
+                            Analyze Sample
+                        </button>
+                    </div>
 
-  <div class="chat-box">
-    <div class="messages" id="chat-messages"></div>
-    <input type="text" id="chat-input" placeholder="Ask our AI assistant...">
-    <button id="send-message">Send</button>
-  </div>
+                    <div id="reportSection" class="report-section hidden mt-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h2 class="card-title">Analysis Report</h2>
+                                <div class="report-content" id="reportContent"></div>
+                            </div>
+                        </div>
 
-  <div class="model-status" id="model-status">Initializing AI...</div>
-  
-  <!-- Payment Modal Container -->
-  <div id="payment-root"></div>
-
-  <!-- Payment Modal Script -->
-  <script type="text/babel">
-    const PaymentModal = () => {
-      const [showModal, setShowModal] = React.useState(false);
-      const [paymentMethod, setPaymentMethod] = React.useState('paystack');
-      const [email, setEmail] = React.useState('');
-      const [loading, setLoading] = React.useState(false);
-      const [paymentSuccess, setPaymentSuccess] = React.useState(false);
-      const [destination, setDestination] = React.useState('');
-
-      React.useEffect(() => {
-        window.showPaymentModal = (dest) => {
-          setDestination(dest);
-          setShowModal(true);
-        };
-      }, []);
-
-      const handlePayment = async () => {
-        if (!email) return;
-        
-        setLoading(true);
-        try {
-          if (paymentMethod === 'paystack') {
-            await new Promise((resolve, reject) => {
-              const handler = PaystackPop.setup({
-                key: 'pk_test_your_paystack_key', // Replace with your Paystack key
-                email: email,
-                amount: 1000, // Fixed $10 amount (1000 kobo)
-                currency: 'USD',
-                ref: 'PAY_' + Math.floor(Math.random() * 1000000000 + 1),
-                onClose: () => reject(new Error('Payment closed')),
-                callback: (response) => {
-                  if (response.status === 'success') resolve();
-                  else reject(new Error('Payment failed'));
-                }
-              });
-              handler.openIframe();
-            });
-          } else {
-            const stripe = Stripe('pk_test_your_stripe_key'); // Replace with your Stripe key
-            const { error } = await stripe.redirectToCheckout({
-              lineItems: [{price: 'your_price_id', quantity: 1}], // Replace with your $10 price ID
-              mode: 'payment',
-              successUrl: window.location.href,
-              cancelUrl: window.location.href
-            });
-            if (error) throw error;
-          }
-          setPaymentSuccess(true);
-          setTimeout(() => window.location.href = destination, 2000);
-        } catch (error) {
-          alert(`Payment failed: ${error.message}`);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      if (!showModal) return null;
-
-      return (
-        <div className="payment-modal-overlay">
-          <div className="payment-modal">
-            {paymentSuccess ? (
-              <div className="payment-success">
-                <h2>Payment Successful!</h2>
-                <p>You will be redirected shortly...</p>
-                <div className="loader"></div>
-              </div>
-            ) : (
-              <>
-                <h2>Premium Access - $10</h2>
-                <p>Unlock full access to our premium content</p>
-                
-                <div className="payment-email">
-                  <label>Email:</label>
-                  <input 
-                    type="email" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    required
-                  />
+                        <div class="card mt-4">
+                            <div class="card-body">
+                                <h3 class="card-title">Ask About Your Results</h3>
+                                <div class="chat-messages" id="chatMessages"></div>
+                                <div class="chat-input d-flex mt-3">
+                                    <input type="text" class="form-control" id="chatInput" placeholder="Ask about your results..." onkeypress="handleChatKeyPress(event)">
+                                    <button class="btn btn-primary ms-2" onclick="handleSendMessage()">Send</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div className="payment-methods">
-                  <button 
-                    className={paymentMethod === 'paystack' ? 'active' : ''}
-                    onClick={() => setPaymentMethod('paystack')}
-                  >
-                    Paystack
-                  </button>
-                  <button 
-                    className={paymentMethod === 'stripe' ? 'active' : ''}
-                    onClick={() => setPaymentMethod('stripe')}
-                  >
-                    Stripe
-                  </button>
+
+                <!-- BioCode Tab -->
+                <div class="tab-pane fade" id="biocode" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card biocode-card">
+                                <div class="card-body">
+                                    <h3 class="card-title">Mutation Simulation</h3>
+                                    <div class="mb-3">
+                                        <label for="dna-sequence" class="form-label">DNA Sequence (single line):</label>
+                                        <input type="text" class="form-control" id="dna-sequence" value="ATGCTAGCTAGGCTA" maxlength="50">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="mutation-rate" class="form-label">Mutation Rate (%): <span id="mutation-rate-value">1%</span></label>
+                                        <input type="range" class="form-range" id="mutation-rate" min="0" max="100" value="1">
+                                    </div>
+                                    
+                                    <button class="btn biocode-btn w-100" onclick="simulateMutations()">Simulate Mutations</button>
+                                    
+                                    <h4 class="mt-3">Mutated Sequence:</h4>
+                                    <pre id="mutated-sequence" class="p-3 bg-light rounded"></pre>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card biocode-card">
+                                <div class="card-body">
+                                    <h3 class="card-title">BioCode Design</h3>
+                                    <div class="mb-3">
+                                        <label for="binary-data" class="form-label">Binary Data (max 8 bits):</label>
+                                        <input type="text" class="form-control" id="binary-data" value="1010" pattern="[01]{1,8}" title="Up to 8 binary digits (0 or 1)">
+                                    </div>
+                                    
+                                    <button class="btn biocode-btn w-100" onclick="encodeBinary()">Encode to DNA</button>
+                                    
+                                    <h4 class="mt-3">Encoded Data:</h4>
+                                    <pre id="encoded-data" class="p-3 bg-light rounded"></pre>
+                                    
+                                    <h4>DNA Sequence:</h4>
+                                    <pre id="dna-codons" class="p-3 bg-light rounded"></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <button 
-                  className="pay-button"
-                  onClick={handlePayment}
-                  disabled={loading || !email}
-                >
-                  {loading ? 'Processing...' : 'Pay $10'}
-                </button>
-                
-                <button 
-                  className="close-button"
-                  onClick={() => setShowModal(false)}
-                >
-                  Close
-                </button>
-              </>
-            )}
-          </div>
+
+                <!-- Genetics Tab -->
+                <div class="tab-pane fade" id="genetics" role="tabpanel">
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">1. Select Genetic Disease</h5>
+                                    <select id="disease-selector" class="form-select">
+                                        <option value="">Select a disease</option>
+                                        <option value="Cystic Fibrosis">Cystic Fibrosis</option>
+                                        <option value="Sickle Cell Anemia">Sickle Cell Anemia</option>
+                                        <option value="Huntington's Disease">Huntington's Disease</option>
+                                        <option value="Tay-Sachs Disease">Tay-Sachs Disease</option>
+                                        <option value="Hemophilia">Hemophilia</option>
+                                        <option value="Duchenne Muscular Dystrophy">Duchenne Muscular Dystrophy</option>
+                                        <option value="Phenylketonuria (PKU)">Phenylketonuria (PKU)</option>
+                                        <option value="Thalassemia">Thalassemia</option>
+                                        <option value="Familial Hypercholesterolemia">Familial Hypercholesterolemia</option>
+                                        <option value="BRCA-related Cancer">BRCA-related Cancer</option>
+                                        <option value="Keloid Disorder">Keloid Disorder</option>
+                                    </select>
+                                    
+                                    <div class="mt-3" id="gene-selection-container" style="display: none;">
+                                        <label class="form-label">Associated Gene:</label>
+                                        <select id="gene-selector" class="form-select">
+                                            <option value="">Select a gene</option>
+                                        </select>
+                                        <div id="gene-sequence" class="mt-3" style="word-break: break-all;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card mt-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">2. Simulate SNP</h5>
+                                    <form id="snp-form">
+                                        <div class="mb-3">
+                                            <label class="form-label">Position in Sequence</label>
+                                            <input type="number" id="snp-position" class="form-control" min="0" value="0">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">New Base (A/T/C/G)</label>
+                                            <select id="snp-mutation" class="form-select">
+                                                <option value="A">A</option>
+                                                <option value="T">T</option>
+                                                <option value="C">C</option>
+                                                <option value="G">G</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Generate SNP</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">3. Functional Impact Prediction</h5>
+                                    <div id="functional-prediction">
+                                        <p class="text-muted">Please generate a SNP first</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card mt-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">4. CRISPR Design</h5>
+                                    <div id="crispr-design">
+                                        <p class="text-muted">CRISPR guide RNA will appear here after SNP generation</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card mt-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">5. IP-NFT Management</h5>
+                                    <div id="ipnft-status">
+                                        <p class="text-muted">Register your SNP discovery as an IP-NFT on blockchain</p>
+                                        <button id="register-ipnft" class="btn btn-success" disabled>Register IP-NFT</button>
+                                        <div id="ipnft-result" class="mt-2"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monitoring Tab -->
+                <div class="tab-pane fade" id="monitoring" role="tabpanel">
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Heart Rate Monitor</h5>
+                                    <video id="video" width="100%" autoplay muted></video>
+                                    <canvas id="canvas" style="display: none;"></canvas>
+                                    <div id="heart-rate" class="mt-2">Heart Rate: -- BPM</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Patient Health Data</h5>
+                                    <canvas id="health-chart"></canvas>
+                                    <div id="health-metrics" class="mt-3">
+                                        <p><strong>Last Reading:</strong> <span id="last-reading">No data</span></p>
+                                        <p><strong>Average BPM:</strong> <span id="avg-bpm">--</span></p>
+                                        <p><strong>Status:</strong> <span id="health-status" class="badge bg-secondary">Unknown</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Documents Tab -->
+                <div class="tab-pane fade" id="documents" role="tabpanel">
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h2 class="card-title">Medical Document Capture</h2>
+                                    
+                                    <div class="form-group">
+                                        <label for="docType">Document Type</label>
+                                        <select class="form-control document-type-selector" id="docType">
+                                            <option value="birth">Birth Record</option>
+                                            <option value="death">Death Record</option>
+                                            <option value="medical">Medical Certificate</option>
+                                            <option value="prescription">Prescription</option>
+                                            <option value="lab">Lab Report</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="camera-container mt-3" id="cameraContainer">
+                                        <video class="camera-preview w-100" id="cameraPreview" autoplay></video>
+                                    </div>
+                                    
+                                    <div class="capture-buttons mt-3">
+                                        <button class="btn btn-primary" id="startCameraBtn" onclick="initCamera()">
+                                            <i class="fas fa-camera me-2"></i>Start Camera
+                                        </button>
+                                        <button class="btn btn-success" id="captureBtn" onclick="captureDocument()" disabled>
+                                            <i class="fas fa-camera-retro me-2"></i>Capture Document
+                                        </button>
+                                        <button class="btn btn-info" id="uploadBtn" onclick="uploadToBlockchain()" disabled>
+                                            <i class="fas fa-link me-2"></i>Store in Blockchain
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="document-preview mt-3" id="documentPreview"></div>
+                                    <div id="blockchainStatus" class="mt-3"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      );
-    };
 
-    // Render the payment modal as soon as React is loaded
-    function initPaymentModal() {
-      if (window.React && window.ReactDOM) {
-        ReactDOM.render(<PaymentModal />, document.getElementById('payment-root'));
-      } else {
-        setTimeout(initPaymentModal, 100);
-      }
-    }
-    initPaymentModal();
-  </script>
+        <footer class="app-footer mt-4">
+            <div class="container">
+                <p class="text-center text-muted">
+                    Integrated BioMedical Services - Combining AI, genetics, and blockchain for advanced healthcare
+                </p>
+            </div>
+        </footer>
+    </div>
 
-  <!-- Main Application Script -->
-  <script>
-    // Debug initialization
-    console.log("Main script initializing...");
-    
-    // Initialize everything when DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log("DOM fully loaded, initializing application");
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PDF-lib for document processing -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 
-      // Setup payment button handlers
-      function handlePaymentButtonClick(destination) {
-        return function(e) {
-          e.preventDefault();
-          if (typeof showPaymentModal === 'function') {
-            showPaymentModal(destination);
-          } else {
-            console.error("Payment modal function not available");
-            window.location.href = destination;
-          }
+    <script>
+        // ========== HemoAI Functionality ==========
+        const hemoState = {
+            file: null,
+            preview: null,
+            phoneNumber: '',
+            userId: '',
+            isAnalyzing: false,
+            report: null,
+            chatMessage: '',
+            conversation: []
+        };
+
+        // DOM elements
+        const hemoElements = {
+            previewContainer: document.getElementById('previewContainer'),
+            analyzeButton: document.getElementById('analyzeButton'),
+            reportSection: document.getElementById('reportSection'),
+            reportContent: document.getElementById('reportContent'),
+            chatMessages: document.getElementById('chatMessages'),
+            chatInput: document.getElementById('chatInput')
+        };
+
+        // Event handlers
+        function handleFileChange(event) {
+            const file = event.target.files[0];
+            if (file) {
+                hemoState.file = file;
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    hemoState.preview = reader.result;
+                    renderPreview();
+                };
+                reader.readAsDataURL(file);
+                updateAnalyzeButton();
+            }
         }
-      }
 
-      document.getElementById('explore-btn').addEventListener('click', 
-        handlePaymentButtonClick('secondary.html'));
+        function updatePhoneNumber(value) {
+            hemoState.phoneNumber = value;
+            updateAnalyzeButton();
+        }
 
-      document.getElementById('discoveries-tab').addEventListener('click', 
-        handlePaymentButtonClick('QuorumDEEP.html'));
+        function updateUserId(value) {
+            hemoState.userId = value;
+        }
 
-      let currentModel = localStorage.getItem('model-choice') || 'local';
-      let mindsdbApiKey = localStorage.getItem('mindsdb-api-key') || '';
-      let mindsdbBaseUrl = localStorage.getItem('mindsdb-base-url') || '';
-      let mindsdbAssistantId = localStorage.getItem('mindsdb-assistant-id') || '';
-      let generator;
+        function updateAnalyzeButton() {
+            hemoElements.analyzeButton.disabled = !(hemoState.file && hemoState.phoneNumber);
+        }
 
-      // Initialize input fields
-      document.getElementById('api-key').value = mindsdbApiKey;
-      document.getElementById('base-url').value = mindsdbBaseUrl;
-      document.getElementById('assistant-id').value = mindsdbAssistantId;
+        function renderPreview() {
+            if (hemoState.preview) {
+                hemoElements.previewContainer.innerHTML = `
+                    <img src="${hemoState.preview}" alt="Preview" class="image-preview">
+                    <button onclick="clearImage()" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                        ×
+                    </button>
+                `;
+            } else {
+                hemoElements.previewContainer.innerHTML = `
+                    <div class="upload-placeholder" onclick="document.getElementById('fileInput').click()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>Click to upload blood sample image</span>
+                    </div>
+                    <input type="file" id="fileInput" onchange="handleFileChange(event)" accept="image/*" style="display: none;">
+                `;
+            }
+        }
 
-      // Model selection handler
-      document.getElementById('model-select').value = currentModel;
-      document.getElementById('model-select').addEventListener('change', async (e) => {
-          currentModel = e.target.value;
-          localStorage.setItem('model-choice', currentModel);
-          document.getElementById('api-key-container').style.display = 
-              currentModel === 'mindsdb' ? 'flex' : 'none';
-          await initializeModel();
-      });
+        function clearImage() {
+            hemoState.file = null;
+            hemoState.preview = null;
+            renderPreview();
+            updateAnalyzeButton();
+        }
 
-      // Initialize model based on selection
-      async function initializeModel() {
-          const status = document.getElementById('model-status');
-          
-          try {
-              if (currentModel === 'local') {
-                  status.textContent = '🚀 Loading Local Model...';
-                  const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
-                  generator = await pipeline('text-generation', 'Xenova/gpt2');
-                  status.textContent = '✅ Local Model Ready';
-              } else if (currentModel === 'mindsdb') {
-                  status.textContent = mindsdbApiKey && mindsdbBaseUrl && mindsdbAssistantId 
-                      ? `☁️ Connected to ${new URL(mindsdbBaseUrl).hostname}` 
-                      : '⚠️ Configure MindsDB Settings';
-              }
-          } catch (error) {
-              status.textContent = '❌ Initialization Failed';
-              console.error('Model initialization error:', error);
-          }
-      }
-
-      // API key saving with validation
-      function saveApiKey() {
-          const key = document.getElementById('api-key').value.trim();
-          const baseUrl = document.getElementById('base-url').value.trim();
-          const assistantId = document.getElementById('assistant-id').value.trim();
-          const statusElement = document.getElementById('save-status');
-
-          try {
-              // Validate URL format if provided
-              if (baseUrl && !isValidUrl(baseUrl)) {
-                  throw new Error('Invalid URL format');
-              }
-
-              // Store values individually
-              if (key) localStorage.setItem('mindsdb-api-key', key);
-              if (baseUrl) localStorage.setItem('mindsdb-base-url', baseUrl);
-              if (assistantId) localStorage.setItem('mindsdb-assistant-id', assistantId);
-
-              // Update current values
-              mindsdbApiKey = key || mindsdbApiKey;
-              mindsdbBaseUrl = baseUrl || mindsdbBaseUrl;
-              mindsdbAssistantId = assistantId || mindsdbAssistantId;
-
-              // Update status
-              statusElement.textContent = 'Settings saved successfully!';
-              statusElement.style.color = '#00C853';
-
-              // Hide container if all fields are filled
-              if (key && baseUrl && assistantId) {
-                  setTimeout(() => {
-                      document.getElementById('api-key-container').style.display = 'none';
-                      initializeModel();
-                  }, 1500);
-              }
-          } catch (error) {
-              statusElement.textContent = error.message;
-              statusElement.style.color = '#ff4444';
-          }
-      }
-
-      function isValidUrl(string) {
-          try {
-              new URL(string);
-              return true;
-          } catch (_) {
-              return false;
-          }
-      }
-
-      // Chat functionality
-      function addMessage(text, isUser = true) {
-          const msgDiv = document.createElement('div');
-          msgDiv.className = `message ${isUser ? 'user' : 'reply'}`;
-          msgDiv.textContent = text;
-          document.getElementById('chat-messages').appendChild(msgDiv);
-          document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
-      }
-
-      async function handleMindsDBThread(message) {
-        try {
-            // Validate configuration first
-            if (!mindsdbApiKey || !mindsdbBaseUrl || !mindsdbAssistantId) {
-                throw new Error('MindsDB configuration incomplete');
+        async function handleUpload() {
+            if (!hemoState.file || !hemoState.phoneNumber) {
+                alert('Please select an image and provide your phone number');
+                return;
             }
 
-            // Ensure base URL ends with slash
-            const apiBaseUrl = mindsdbBaseUrl.endsWith('/') ? mindsdbBaseUrl : mindsdbBaseUrl + '/';
+            hemoState.isAnalyzing = true;
+            hemoState.report = null;
+            hemoElements.analyzeButton.disabled = true;
+            hemoElements.analyzeButton.textContent = 'Analyzing...';
+
+            // Simulate API call
+            setTimeout(() => {
+                checkForReport(hemoState.userId || hemoState.phoneNumber);
+            }, 3000);
+        }
+
+        function checkForReport(userIdentifier) {
+            // Simulate getting report from backend
+            hemoState.report = `🔬 Blood Analysis Report for ${userIdentifier}\n\n• Healthy RBCs: 850\n• WBCs: 45\n• Platelets: 210\n• Abnormal Findings:\n  - Leukemia Cells: 0\n  - Malaria Parasites: 0\n  - Sickle Cells: 12\n\n💡 Clinical Recommendations:\nMild sickle cell presence detected. Recommend:\n1. Hydration therapy\n2. Pain management plan\n3. Follow-up in 2 weeks`;
             
-            // 1. Create Thread
-            const threadResponse = await fetch(`${apiBaseUrl}v1/threads`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${mindsdbApiKey}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!threadResponse.ok) {
-                const errorData = await tryParseJson(threadResponse);
-                throw new Error(`Thread creation failed: ${errorData?.detail || threadResponse.statusText}`);
-            }
-
-            const threadData = await threadResponse.json();
-            if (!threadData?.id) {
-                throw new Error('Invalid thread creation response');
-            }
-            const threadId = threadData.id;
-
-            // 2. Add Message to Thread
-            const messageResponse = await fetch(`${apiBaseUrl}v1/threads/${threadId}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${mindsdbApiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    role: 'user',
-                    content: message
-                })
-            });
-
-            if (!messageResponse.ok) {
-                const errorData = await tryParseJson(messageResponse);
-                throw new Error(`Message creation failed: ${errorData?.detail || messageResponse.statusText}`);
-            }
-
-            // 3. Create and Poll Run
-            const runResponse = await fetch(`${apiBaseUrl}v1/threads/${threadId}/runs`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${mindsdbApiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    assistant_id: mindsdbAssistantId
-                })
-            });
-
-            if (!runResponse.ok) {
-                const errorData = await tryParseJson(runResponse);
-                throw new Error(`Run creation failed: ${errorData?.detail || runResponse.statusText}`);
-            }
-
-            const runData = await runResponse.json();
-            const runId = runData.id;
-
-            // Poll run status with timeout (30 seconds)
-            const startTime = Date.now();
-            let runStatus = runData.status;
-            while (runStatus !== 'completed' && Date.now() - startTime < 30000) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                const statusResponse = await fetch(
-                    `${apiBaseUrl}v1/threads/${threadId}/runs/${runId}`,
-                    { headers: { 'Authorization': `Bearer ${mindsdbApiKey}` } }
-                );
-                
-                if (!statusResponse.ok) {
-                    const errorData = await tryParseJson(statusResponse);
-                    throw new Error(`Status check failed: ${errorData?.detail || statusResponse.statusText}`);
-                }
-                
-                const statusData = await statusResponse.json();
-                runStatus = statusData.status;
-                
-                if (runStatus === 'failed') {
-                    throw new Error(`Run failed: ${statusData.last_error?.message || 'Unknown error'}`);
-                }
-            }
-
-            if (runStatus !== 'completed') {
-                throw new Error('Run timed out after 30 seconds');
-            }
-
-            // 4. Retrieve Messages
-            const messagesResponse = await fetch(
-                `${apiBaseUrl}v1/threads/${threadId}/messages`,
-                { headers: { 'Authorization': `Bearer ${mindsdbApiKey}` } }
-            );
-
-            if (!messagesResponse.ok) {
-                const errorData = await tryParseJson(messagesResponse);
-                throw new Error(`Message retrieval failed: ${errorData?.detail || messagesResponse.statusText}`);
-            }
-
-            const messagesData = await messagesResponse.json();
-            const assistantMessage = messagesData.data?.find(m => m.role === 'assistant');
+            hemoState.conversation = [{ role: 'system', content: hemoState.report }];
+            renderReport();
             
-            if (!assistantMessage?.content?.[0]?.text?.value) {
-                throw new Error('Invalid assistant response format');
+            hemoState.isAnalyzing = false;
+            hemoElements.analyzeButton.disabled = false;
+            hemoElements.analyzeButton.textContent = 'Analyze Sample';
+        }
+
+        function renderReport() {
+            hemoElements.reportSection.classList.remove('hidden');
+            hemoElements.reportContent.innerHTML = hemoState.report
+                .split('\n')
+                .map(line => {
+                    if (line.includes('🔬')) {
+                        return `<p class="report-title">${line}</p>`;
+                    } else if (line.includes('💡')) {
+                        return `<p class="recommendation-title">${line}</p>`;
+                    }
+                    return `<p>${line}</p>`;
+                })
+                .join('');
+            
+            renderConversation();
+        }
+
+        function handleChatKeyPress(event) {
+            if (event.key === 'Enter') {
+                handleSendMessage();
+            }
+        }
+
+        function handleSendMessage() {
+            const message = hemoElements.chatInput.value.trim();
+            if (!message) return;
+
+            hemoState.chatMessage = message;
+            hemoElements.chatInput.value = '';
+            
+            // Add user message to conversation
+            hemoState.conversation.push({ role: 'user', content: message });
+            renderConversation();
+            
+            // Simulate AI response
+            setTimeout(() => {
+                const aiResponse = `Based on your report showing 12 sickle cells, I recommend:\n\n1. Increase fluid intake to 3L/day\n2. Take folic acid supplements\n3. Monitor for pain crises\n\nWould you like me to connect you with a hematologist?`;
+                hemoState.conversation.push({ role: 'assistant', content: aiResponse });
+                renderConversation();
+            }, 1000);
+        }
+
+        function renderConversation() {
+            hemoElements.chatMessages.innerHTML = hemoState.conversation
+                .map(msg => {
+                    const content = msg.content.split('\n').map(p => `<p>${p}</p>`).join('');
+                    return `<div class="message ${msg.role}">${content}</div>`;
+                })
+                .join('');
+            
+            // Scroll to bottom
+            hemoElements.chatMessages.scrollTop = hemoElements.chatMessages.scrollHeight;
+        }
+
+        // ========== BioCode Functionality ==========
+        // Mutation simulation
+        function simulateMutations() {
+            const sequence = document.getElementById('dna-sequence').value.toUpperCase();
+            const mutationRate = parseInt(document.getElementById('mutation-rate').value) / 100;
+            
+            if (!/^[ATCG]+$/.test(sequence)) {
+                alert("Please enter a valid DNA sequence (only A, T, C, G)");
+                return;
             }
 
-            // 5. Cleanup Thread
-            try {
-                await fetch(`${apiBaseUrl}v1/threads/${threadId}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${mindsdbApiKey}` }
+            const mutatedSequence = sequence
+                .split('')
+                .map(nucleotide => Math.random() < mutationRate ? randomBase(nucleotide) : nucleotide)
+                .join('');
+            
+            document.getElementById('mutated-sequence').textContent = mutatedSequence;
+        }
+
+        // Random base generator (excludes input base)
+        function randomBase(exclude) {
+            const bases = ['A', 'T', 'C', 'G'].filter(base => base !== exclude);
+            return bases[Math.floor(Math.random() * bases.length)];
+        }
+
+        // Binary to DNA encoding
+        function encodeBinary() {
+            const binaryData = document.getElementById('binary-data').value;
+            
+            if (!/^[01]+$/.test(binaryData) || binaryData.length > 8) {
+                alert("Please enter valid binary data (max 8 bits, 0 or 1 only)");
+                return;
+            }
+
+            // Simple encoding scheme
+            const codonMap = {
+                '00': 'AAA',
+                '01': 'AAT',
+                '10': 'AAC',
+                '11': 'AAG',
+                '0': 'AA',
+                '1': 'AT'
+            };
+
+            let encoded = '';
+            for (let i = 0; i < binaryData.length; i += 2) {
+                const bits = binaryData.slice(i, i+2);
+                encoded += codonMap[bits] || codonMap[bits[0]];
+            }
+
+            document.getElementById('encoded-data').textContent = binaryData;
+            document.getElementById('dna-codons').textContent = encoded;
+        }
+
+        // Update mutation rate display
+        document.getElementById('mutation-rate').addEventListener('input', function() {
+            document.getElementById('mutation-rate-value').textContent = this.value + '%';
+        });
+
+        // ========== Genetics Functionality ==========
+        const diseaseGenes = {
+            'Cystic Fibrosis': ['CFTR'],
+            'Sickle Cell Anemia': ['HBB'],
+            'Huntington\'s Disease': ['HTT'],
+            'Tay-Sachs Disease': ['HEXA'],
+            'Hemophilia': ['F8', 'F9'],
+            'Duchenne Muscular Dystrophy': ['DMD'],
+            'Phenylketonuria (PKU)': ['PAH'],
+            'Thalassemia': ['HBA1', 'HBA2', 'HBB'],
+            'Familial Hypercholesterolemia': ['LDLR', 'APOB', 'PCSK9'],
+            'BRCA-related Cancer': ['BRCA1', 'BRCA2'],
+            'Keloid Disorder': ['TGFB3', 'ASH1L', 'NEDD4', 'FOXL2', 'SMAD3']
+        };
+
+        const geneSequences = {
+            'CFTR': 'ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+            'HBB': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+            'HTT': 'ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+            'HEXA': 'ATGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+            'F8': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+            'F9': 'ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+            'DMD': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+            'PAH': 'ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+            'HBA1': 'ATGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+            'HBA2': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+             'LDLR': 'ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+            'APOB': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+            'PCSK9': 'ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+            'BRCA1': 'ATGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+            'BRCA2': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+            'TGFB3': 'ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+            'ASH1L': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+            'NEDD4': 'ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+            'FOXL2': 'ATGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+            'SMAD3': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG'
+        };
+
+        const geneFunctions = {
+            'CFTR': 'Encodes the cystic fibrosis transmembrane conductance regulator, a chloride channel',
+            'HBB': 'Encodes the beta subunit of hemoglobin, mutations cause sickle cell disease',
+            'HTT': 'Huntingtin protein, expanded CAG repeats cause Huntington\'s disease',
+            'HEXA': 'Hexosaminidase A enzyme, deficiency causes Tay-Sachs disease',
+            'F8': 'Coagulation factor VIII, deficiency causes Hemophilia A',
+            'F9': 'Coagulation factor IX, deficiency causes Hemophilia B',
+            'DMD': 'Dystrophin protein, mutations cause Duchenne muscular dystrophy',
+            'PAH': 'Phenylalanine hydroxylase, deficiency causes Phenylketonuria (PKU)',
+            'HBA1': 'Alpha-1 globin chain, mutations cause alpha-thalassemia',
+            'HBA2': 'Alpha-2 globin chain, mutations cause alpha-thalassemia',
+            'LDLR': 'Low-density lipoprotein receptor, mutations cause familial hypercholesterolemia',
+            'APOB': 'Apolipoprotein B, mutations cause familial hypercholesterolemia',
+            'PCSK9': 'Proprotein convertase subtilisin/kexin type 9, affects LDL receptor degradation',
+            'BRCA1': 'Breast cancer type 1 susceptibility protein',
+            'BRCA2': 'Breast cancer type 2 susceptibility protein',
+            'TGFB3': 'Encodes transforming growth factor beta 3, involved in tissue repair and fibrosis',
+            'ASH1L': 'Histone-lysine N-methyltransferase involved in chromatin regulation',
+            'NEDD4': 'E3 ubiquitin-protein ligase involved in protein degradation',
+            'FOXL2': 'Forkhead transcription factor important for ovarian development',
+            'SMAD3': 'Signal transducer and transcriptional modulator in TGF-beta pathway'
+        };
+
+        document.getElementById('disease-selector').addEventListener('change', function() {
+            const disease = this.value;
+            const geneSelector = document.getElementById('gene-selector');
+            const geneContainer = document.getElementById('gene-selection-container');
+            
+            if (disease) {
+                // Clear previous options
+                geneSelector.innerHTML = '<option value="">Select a gene</option>';
+                
+                // Add new options
+                diseaseGenes[disease].forEach(gene => {
+                    const option = document.createElement('option');
+                    option.value = gene;
+                    option.textContent = gene;
+                    geneSelector.appendChild(option);
                 });
-            } catch (cleanupError) {
-                console.warn('Thread cleanup failed:', cleanupError);
+                
+                // Show gene selection
+                geneContainer.style.display = 'block';
+            } else {
+                // Hide gene selection
+                geneContainer.style.display = 'none';
+                document.getElementById('gene-sequence').textContent = '';
             }
+        });
 
-            return assistantMessage.content[0].text.value;
-        } catch (error) {
-            console.error('MindsDB Error:', error);
-            throw new Error(`MindsDB processing failed: ${error.message}`);
+        document.getElementById('gene-selector').addEventListener('change', function() {
+            const gene = this.value;
+            if (gene) {
+                document.getElementById('gene-sequence').textContent = geneSequences[gene];
+                document.getElementById('snp-position').max = geneSequences[gene].length - 1;
+            } else {
+                document.getElementById('gene-sequence').textContent = '';
+            }
+        });
+
+        document.getElementById('snp-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const gene = document.getElementById('gene-selector').value;
+            const position = parseInt(document.getElementById('snp-position').value);
+            const mutation = document.getElementById('snp-mutation').value;
+            
+            if (!gene) {
+                alert('Please select a gene first');
+                return;
+            }
+            
+            const sequence = geneSequences[gene];
+            if (position >= sequence.length) {
+                alert('Position is out of range for this gene');
+                return;
+            }
+            
+            const originalBase = sequence[position];
+            const mutatedSequence = sequence.substring(0, position) + mutation + sequence.substring(position + 1);
+            
+            // Display functional impact
+            const impact = predictFunctionalImpact(gene, position, originalBase, mutation);
+            document.getElementById('functional-prediction').innerHTML = `
+                <p><strong>Original Sequence:</strong> ${sequence}</p>
+                <p><strong>Mutated Sequence:</strong> ${mutatedSequence}</p>
+                <p><strong>Mutation:</strong> ${originalBase}${position+1}${mutation}</p>
+                <p><strong>Gene Function:</strong> ${geneFunctions[gene]}</p>
+                <p><strong>Predicted Impact:</strong> ${impact}</p>
+            `;
+            
+            // Generate CRISPR design
+            const crispr = designCRISPR(gene, position, mutation);
+            document.getElementById('crispr-design').innerHTML = `
+                <p><strong>Guide RNA:</strong> ${crispr.guideRNA}</p>
+                <p><strong>Target Sequence:</strong> ${crispr.targetSequence}</p>
+                <p><strong>Repair Template:</strong> ${crispr.repairTemplate}</p>
+            `;
+            
+            // Enable IP-NFT registration
+            document.getElementById('register-ipnft').disabled = false;
+        });
+
+        function predictFunctionalImpact(gene, position, original, mutation) {
+            // Simplified prediction algorithm
+            const impacts = [
+                "Likely benign - no significant functional impact expected",
+                "Possibly damaging - may affect protein function moderately",
+                "Probably damaging - likely to affect protein function significantly",
+                "Pathogenic - known disease-causing mutation"
+            ];
+            
+            const severity = (gene.length + position + original.charCodeAt(0) + mutation.charCodeAt(0)) % 4;
+            return impacts[severity];
         }
-      }
 
-      // Helper function to safely parse JSON responses
-      async function tryParseJson(response) {
-          try {
-              return await response.json();
-          } catch {
-              return null;
-          }
-      }
+        function designCRISPR(gene, position, mutation) {
+            const sequence = geneSequences[gene];
+            const target = sequence.substring(Math.max(0, position-10), Math.min(sequence.length, position+10));
+            const pam = 'NGG';
+            
+            return {
+                guideRNA: target + pam,
+                targetSequence: sequence.substring(position-5, position+5),
+                repairTemplate: sequence.substring(position-5, position) + mutation + sequence.substring(position+1, position+5)
+            };
+        }
 
-      async function handleMessage() {
-          const input = document.getElementById('chat-input');
-          const text = input.value.trim();
-          if (!text) return;
+        document.getElementById('register-ipnft').addEventListener('click', function() {
+            const gene = document.getElementById('gene-selector').value;
+            const position = document.getElementById('snp-position').value;
+            const mutation = document.getElementById('snp-mutation').value;
+            
+            document.getElementById('ipnft-result').innerHTML = `
+                <div class="alert alert-info">
+                    <p>Registering IP-NFT for ${gene} mutation at position ${position} (${mutation})...</p>
+                    <p>Transaction hash: 0x${Math.random().toString(16).substr(2, 10)}...${Math.random().toString(16).substr(2, 4)}</p>
+                    <p>IP-NFT successfully minted!</p>
+                    <p>View on blockchain explorer: <a href="#" target="_blank">https://explorer.example.com/tx/0x123...abc</a></p>
+                </div>
+            `;
+            
+            this.disabled = true;
+        });
 
-          addMessage(text, true);
-          input.value = '';
-          
-          try {
-              if (currentModel === 'local' && generator) {
-                  const output = await generator(text, {
-                      max_new_tokens: 100,
-                      pad_token_id: generator.tokenizer.eos_token_id
-                  });
-                  const response = output[0].generated_text.replace(text, '').trim();
-                  addMessage(response, false);
-              } else if (currentModel === 'mindsdb') {
-                  if (!mindsdbApiKey || !mindsdbBaseUrl || !mindsdbAssistantId) {
-                      addMessage("⚠️ Please configure all MindsDB settings", false);
-                      document.getElementById('api-key-container').style.display = 'flex';
-                      return;
-                  }
-                  
-                  const response = await handleMindsDBThread(text);
-                  addMessage(response, false);
-              }
-          } catch (error) {
-              addMessage(`❌ Error: ${error.message}`, false);
-          }
-      }
+        // ========== Monitoring Functionality ==========
+        
+        // Heart rate monitoring code
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const heartRateDisplay = document.getElementById('heart-rate');
+        const ctx = canvas.getContext('2d');
 
-      document.getElementById('send-message').addEventListener('click', handleMessage);
-      document.getElementById('chat-input').addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') handleMessage();
-      });
+        let redChannelData = [];
+        let heartRateInterval;
+        const FRAME_RATE = 30;
+        const SAMPLE_WINDOW = 10 * FRAME_RATE;
 
-      // Initial setup
-      if (currentModel === 'mindsdb') {
-          document.getElementById('api-key-container').style.display = 
-              (mindsdbApiKey && mindsdbBaseUrl && mindsdbAssistantId) ? 'none' : 'flex';
-      }
+        async function startVideo() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                video.srcObject = stream;
+                video.play();
+                processFrames();
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+                alert('Please allow camera access for heart rate monitoring.');
+            }
+        }
 
-      initializeModel();
-    });
-  </script>
+        function processFrames() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            heartRateInterval = setInterval(() => {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(
+                    canvas.width / 2 - 10,
+                    canvas.height / 2 - 10,
+                    20,
+                    20
+                );
+                const redChannel = extractRedChannel(imageData.data);
+                const avgRed = redChannel.reduce((sum, val) => sum + val, 0) / redChannel.length;
+
+                redChannelData.push(avgRed);
+                if (redChannelData.length > SAMPLE_WINDOW) {
+                    redChannelData.shift();
+                }
+
+                if (redChannelData.length === SAMPLE_WINDOW) {
+                    const bpm = calculateHeartRate(redChannelData);
+                    heartRateDisplay.textContent = `Heart Rate: ${bpm} BPM`;
+                }
+            }, 1000 / FRAME_RATE);
+        }
+
+        function extractRedChannel(pixelData) {
+            const redChannel = [];
+            for (let i = 0; i < pixelData.length; i += 4) {
+                redChannel.push(pixelData[i]);
+            }
+            return redChannel;
+        }
+
+        function calculateHeartRate(data) {
+            // Simplified heart rate calculation
+            let maxIndex = 0;
+            let maxMagnitude = 0;
+            for (let i = 0; i < data.length; i++) {
+                if (data[i] > maxMagnitude) {
+                    maxMagnitude = data[i];
+                    maxIndex = i;
+                }
+            }
+            const frequency = maxIndex * (FRAME_RATE / data.length);
+            return Math.round(frequency * 60);
+        }
+
+        window.onload = startVideo;
+    
+			
+			
+			 // ========== Document Capture System ==========
+        let mediaStream = null;
+        let capturedDocument = null;
+        
+        // DOM elements
+        const docElements = {
+            cameraPreview: document.getElementById('cameraPreview'),
+            startCameraBtn: document.getElementById('startCameraBtn'),
+            captureBtn: document.getElementById('captureBtn'),
+            uploadBtn: document.getElementById('uploadBtn'),
+            documentPreview: document.getElementById('documentPreview'),
+            blockchainStatus: document.getElementById('blockchainStatus')
+        };
+
+        // Initialize camera
+        async function initCamera() {
+            try {
+                // Check for camera support
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Camera API not supported in this browser');
+                }
+                
+                // Request camera access
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                
+                // Display camera stream
+                docElements.cameraPreview.srcObject = mediaStream;
+                docElements.cameraPreview.style.display = 'block';
+                docElements.captureBtn.disabled = false;
+                docElements.startCameraBtn.disabled = true;
+                
+                // Handle camera errors
+                docElements.cameraPreview.onerror = () => {
+                    showError('Failed to load camera stream');
+                    stopCamera();
+                };
+                
+            } catch (error) {
+                showError(`Camera Error: ${error.message}`);
+                console.error('Camera initialization failed:', error);
+            }
+        }
+
+        // Capture document image
+        async function captureDocument() {
+            try {
+                if (!mediaStream) {
+                    throw new Error('Camera not initialized');
+                }
+                
+                const video = docElements.cameraPreview;
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Draw video frame to canvas
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Create document object
+                capturedDocument = {
+                    type: document.getElementById('docType').value,
+                    timestamp: new Date().toISOString(),
+                    imageData: canvas.toDataURL('image/jpeg', 0.9),
+                    metadata: {
+                        resolution: `${canvas.width}x${canvas.height}`,
+                        device: navigator.userAgent
+                    }
+                };
+                
+                // Display preview
+                docElements.documentPreview.innerHTML = `
+                    <img src="${capturedDocument.imageData}" alt="Captured Document" class="img-thumbnail">
+                    <p class="mt-2">Document ready for blockchain storage</p>
+                `;
+                
+                docElements.uploadBtn.disabled = false;
+                stopCamera();
+                
+            } catch (error) {
+                showError(`Capture Error: ${error.message}`);
+                console.error('Document capture failed:', error);
+            }
+        }
+
+        // Upload to blockchain via MindsDB
+        async function uploadToBlockchain() {
+            if (!capturedDocument) {
+                showError('No document captured');
+                return;
+            }
+            
+            try {
+                // Show loading state
+                docElements.uploadBtn.disabled = true;
+                docElements.blockchainStatus.innerHTML = `
+                    <div class="d-flex align-items-center text-primary">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span>Processing document...</span>
+                    </div>
+                `;
+                
+                // Convert to PDF
+                const { PDFDocument } = PDFLib;
+                const pdfDoc = await PDFDocument.create();
+                const page = pdfDoc.addPage([600, 800]);
+                
+                // Embed the image
+                const imageBytes = await fetch(capturedDocument.imageData)
+                    .then(res => res.arrayBuffer());
+                const image = await pdfDoc.embedJpg(imageBytes);
+                
+                // Draw image on PDF
+                const { width, height } = image.scale(0.5);
+                page.drawImage(image, {
+                    x: 50,
+                    y: 600 - height,
+                    width,
+                    height
+                });
+                
+                // Add metadata
+                page.drawText(`Document Type: ${capturedDocument.type}`, { x: 50, y: 750 });
+                page.drawText(`Capture Time: ${new Date(capturedDocument.timestamp).toLocaleString()}`, { x: 50, y: 730 });
+                
+                // Save PDF
+                const pdfBytes = await pdfDoc.save();
+                
+                // In a real implementation, you would send to MindsDB blockchain API
+                // This is a simulation for demonstration purposes
+                simulateBlockchainUpload(pdfBytes);
+                
+            } catch (error) {
+                showError(`Processing Error: ${error.message}`);
+                console.error('Document processing failed:', error);
+                docElements.uploadBtn.disabled = false;
+            }
+        }
+
+        // Simulate blockchain upload (replace with actual MindsDB API call)
+        function simulateBlockchainUpload(pdfBytes) {
+            setTimeout(() => {
+                // Generate fake transaction hash
+                const txHash = `0x${Array(64).fill(0).map(() => 
+                    Math.floor(Math.random() * 16).toString(16)).join('')}`;
+                
+                // Update UI with success
+                docElements.blockchainStatus.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Document successfully stored in blockchain!
+                        <div class="mt-2">
+                            <small>Transaction Hash:</small>
+                            <div class="text-truncate">${txHash}</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Reset capture state
+                capturedDocument = null;
+                docElements.documentPreview.innerHTML = '';
+                docElements.uploadBtn.disabled = true;
+                docElements.captureBtn.disabled = true;
+                docElements.startCameraBtn.disabled = false;
+                
+                // In a real app, you would also update the patient timeline
+                console.log('Document stored in blockchain:', {
+                    type: capturedDocument.type,
+                    timestamp: capturedDocument.timestamp,
+                    transaction: txHash
+                });
+                
+            }, 3000);
+        }
+
+        // Stop camera stream
+        function stopCamera() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            docElements.cameraPreview.srcObject = null;
+            docElements.cameraPreview.style.display = 'none';
+        }
+
+        // Show error message
+        function showError(message) {
+            docElements.blockchainStatus.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${message}
+                </div>
+            `;
+        }
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            stopCamera();
+        });
+      </script>
 </body>
 </html>
