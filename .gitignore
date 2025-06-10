@@ -1,0 +1,68 @@
+# Node modules
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# dotenv environment variables
+.env
+.env.*.local
+
+# Build outputs
+dist/
+build/
+public/bundle.js
+public/build/
+
+# Cache and temp files
+.cache/
+.next/
+out/
+temp/
+
+# Dependency directories
+jspm_packages/
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# MacOS files
+.DS_Store
+
+# Netlify
+.netlify/
+
+# Optional npm cache directory
+.npm/
+
+# Optional yarn cache
+.yarn/
+.pnp.*
+
+# Testing coverage
+coverage/
+
+# Parcel or Webpack stats files
+*.parcel-cache
+stats.json
+
+# React-specific
+.storybook/
+.storybook-static/
+.craco-cache/
+
+# Other potential React build or temp folders (optional)
+.cache-loader/

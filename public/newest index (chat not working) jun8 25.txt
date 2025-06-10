@@ -563,7 +563,7 @@
             apiKey: config.apiKey || '',
             baseUrl: config.baseUrl || 'https://llm.mdb.ai/',
             assistantId: config.assistantId || 'gpt-3.5-turbo',
-            modelChoice: config.modelChoice || 'mock', // Default to mock mode for safety
+            modelChoice: config.modelChoice || 'mock',
             lastUpdated: config.lastUpdated || 0,
             theme: config.theme || 'dark',
             maxTokens: config.maxTokens || 300,
@@ -596,7 +596,7 @@
           apiKey: '',
           baseUrl: 'https://llm.mdb.ai/',
           assistantId: 'gpt-3.5-turbo',
-          modelChoice: 'mock', // Default to mock mode
+          modelChoice: 'mock',
           lastUpdated: 0,
           theme: 'dark',
           maxTokens: 300,
@@ -653,7 +653,7 @@
         this.config = config;
         this.controller = null;
         this.retryAttempts = 3;
-        this.retryDelay = 1000; // ms
+        this.retryDelay = 1000;
       }
 
       async sendMessage(message, onProgress = null) {
@@ -691,13 +691,12 @@
       }
 
       async _sendMessageAttempt(message, onProgress) {
-        // Cancel any ongoing request
         if (this.controller) {
           this.controller.abort();
         }
         
         this.controller = new AbortController();
-        const timeoutId = setTimeout(() => this.controller.abort(), 45000); // 45s timeout
+        const timeoutId = setTimeout(() => this.controller.abort(), 45000);
 
         try {
           const url = `${this.config.baseUrl.replace(/\/$/, '')}/v1/chat/completions`;
@@ -724,6 +723,111 @@
             body: JSON.stringify(requestBody),
             signal: this.controller.signal
           });
+
+    // Function to create minimal chat interface HTML if missing
+    function createMinimalChatInterface() {
+      const chatContainer = document.getElementById('chat-container');
+      if (!chatContainer) return;
+
+      // Create required elements if they don't exist
+      if (!document.getElementById('chat-form')) {
+        const chatForm = document.createElement('form');
+        chatForm.id = 'chat-form';
+        chatForm.innerHTML = `
+          <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <textarea 
+              id="message-input" 
+              placeholder="Type your message here..." 
+              style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: vertical; min-height: 40px;"
+            ></textarea>
+            <button 
+              id="send-button" 
+              type="submit" 
+              style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer;"
+            >
+              <span class="button-text">Send</span>
+              <span class="button-spinner" style="display: none;">⏳</span>
+            </button>
+          </div>
+        `;
+        chatContainer.appendChild(chatForm);
+      }
+
+      // Add status and controls if missing
+      if (!document.getElementById('model-status')) {
+        const controlsDiv = document.createElement('div');
+        controlsDiv.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 10px; background: #f5f5f5; border-radius: 8px;">
+            <span id="model-status">🎭 Demo Mode</span>
+            <div>
+              <button id="settings-toggle" style="margin-right: 10px; padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">⚙️</button>
+              <button id="clear-chat" style="margin-right: 10px; padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">🗑️</button>
+              <button id="theme-toggle" style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">🌙</button>
+            </div>
+          </div>
+        `;
+        chatContainer.insertBefore(controlsDiv, chatContainer.firstChild);
+      }
+
+      // Add settings modal if missing
+      if (!document.getElementById('settings-modal')) {
+        const settingsModal = document.createElement('div');
+        settingsModal.id = 'settings-modal';
+        settingsModal.style.cssText = `
+          display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+          background: rgba(0,0,0,0.5); z-index: 1000;
+        `;
+        settingsModal.innerHTML = `
+          <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 500px;">
+            <h3>Settings</h3>
+            <form id="settings-form">
+              <div style="margin-bottom: 15px;">
+                <label>Model Choice:</label>
+                <select id="model-choice" name="model-choice" style="width: 100%; padding: 8px; margin-top: 5px;">
+                  <option value="mock">Demo Mode</option>
+                  <option value="mindsdb">Cloud API</option>
+                  <option value="local">Local Model</option>
+                </select>
+              </div>
+              <div style="margin-bottom: 15px;">
+                <label>API Key:</label>
+                <input type="password" id="api-key" name="api-key" placeholder="Enter API key for cloud mode" style="width: 100%; padding: 8px; margin-top: 5px;">
+              </div>
+              <div style="margin-bottom: 15px;">
+                <label>Base URL:</label>
+                <input type="url" id="base-url" name="base-url" value="https://llm.mdb.ai/" style="width: 100%; padding: 8px; margin-top: 5px;">
+              </div>
+              <div style="margin-bottom: 15px;">
+                <label>Model Name:</label>
+                <input type="text" id="assistant-id" name="assistant-id" value="gpt-3.5-turbo" style="width: 100%; padding: 8px; margin-top: 5px;">
+              </div>
+              <div style="margin-bottom: 15px;">
+                <label>Max Tokens:</label>
+                <input type="number" id="max-tokens" name="max-tokens" value="300" min="10" max="4000" style="width: 100%; padding: 8px; margin-top: 5px;">
+              </div>
+              <div style="margin-bottom: 15px;">
+                <label>Temperature:</label>
+                <input type="number" id="temperature" name="temperature" value="0.7" min="0" max="2" step="0.1" style="width: 100%; padding: 8px; margin-top: 5px;">
+              </div>
+              <div style="text-align: right;">
+                <button type="button" onclick="document.getElementById('settings-modal').style.display='none'" style="margin-right: 10px; padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 4px;">Cancel</button>
+                <button type="submit" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px;">Save</button>
+              </div>
+            </form>
+          </div>
+        `;
+        document.body.appendChild(settingsModal);
+      }
+
+      // Add progress bar if missing
+      if (!document.getElementById('progress-bar')) {
+        const progressBar = document.createElement('div');
+        progressBar.id = 'progress-bar';
+        progressBar.style.cssText = 'display: none; background: #f0f0f0; height: 4px; border-radius: 2px; margin: 10px 0; overflow: hidden;';
+        progressBar.innerHTML = '<div id="progress-fill" style="height: 100%; background: #007bff; width: 0%; transition: width 0.3s;"></div>';
+        chatContainer.insertBefore(progressBar, chatContainer.firstChild);
+      }
+    }
 
           clearTimeout(timeoutId);
 
@@ -815,7 +919,6 @@
       }
     }
 
-
     // Enhanced Local Model Handler with better initialization and fallback
     class LocalModelHandler {
       constructor() {
@@ -835,29 +938,24 @@
         
         const statusEl = document.getElementById('model-status');
         const progressBar = document.getElementById('progress-bar');
-        const progressFill = document.getElementById('progress-fill');
         
         try {
           this.updateStatus('🚀 Loading LaMini-T5 Model...', '#FFD700');
           progressBar.style.display = 'block';
 
-          // Check if transformers is available
           if (!this.isTransformersSupported()) {
             throw new Error('Transformers library not supported in this environment');
           }
 
-          // Import with timeout
           const transformers = await this.importWithTimeout();
           const { pipeline } = transformers;
 
-          // Initialize model with progress tracking
           this.generator = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-248M', {
             progress_callback: (progress) => this.handleProgress(progress),
-            device: 'webgpu', // Try WebGPU first, fallback to CPU
+            device: 'webgpu',
             dtype: 'fp16'
           });
 
-          // Test the model
           await this.performModelTest();
           
           progressBar.style.display = 'none';
@@ -876,7 +974,6 @@
       }
 
       isTransformersSupported() {
-        // Check for required browser features
         return (
           typeof Worker !== 'undefined' &&
           typeof WebAssembly !== 'undefined' &&
@@ -927,7 +1024,7 @@
 
       handleInitializationError(error) {
         if (this.loadAttempts < this.maxAttempts) {
-          const retryDelay = this.loadAttempts * 2000; // Exponential backoff
+          const retryDelay = this.loadAttempts * 2000;
           this.updateStatus(`🔄 Retry ${this.loadAttempts}/${this.maxAttempts}...`, '#FF9800');
           setTimeout(() => this.initialize(), retryDelay);
         } else {
@@ -966,303 +1063,374 @@
           return this.processResponse(result, prompt);
 
         } catch (error) {
-          console.error('Generation error:', error);
-          throw new Error(`Failed to generate response: ${error.message}`);
+          throw new Error(`Local model error: ${error.message}`);
         }
       }
 
       buildPrompt(input) {
-        // Enhanced prompt engineering
-        return `Question: ${input.trim()}\nProvide a helpful and informative answer:\nAnswer:`;
+        return `Question: ${input}\nAnswer:`;
       }
 
       processResponse(result, prompt) {
-        let response = result[0]?.generated_text || '';
+        if (!result || !result[0] || !result[0].generated_text) {
+          throw new Error('No response generated from local model');
+        }
+
+        let response = result[0].generated_text;
         
-        // Clean up the response
-        response = response.replace(prompt, '').trim();
-        response = response.replace(/^Answer:\s*/i, '').trim();
-        response = response.replace(/^\W+/, '').trim(); // Remove leading punctuation
-        
-        // Validate response quality
+        // Clean up the response by removing the prompt if it's included
+        if (response.startsWith(prompt)) {
+          response = response.substring(prompt.length).trim();
+        }
+
+        // Remove common artifacts
+        response = response
+          .replace(/^Answer:\s*/i, '')
+          .replace(/^\s*[-–—]\s*/, '')
+          .trim();
+
         if (!response || response.length < 3) {
-          return "I apologize, but I couldn't generate a proper response. Could you try rephrasing your question?";
+          throw new Error('Generated response too short or empty');
         }
 
-        // Remove repetitive patterns
-        response = this.removeRepetition(response);
-        
-        // Ensure proper sentence ending
-        if (!/[.!?]$/.test(response)) {
-          response += '.';
-        }
-
-        return response;
+        return {
+          content: response,
+          model: 'LaMini-Flan-T5-248M',
+          usage: { prompt_tokens: prompt.length, completion_tokens: response.length }
+        };
       }
 
-      removeRepetition(text) {
-        // Simple repetition removal
-        const sentences = text.split(/[.!?]+/).filter(s => s.trim());
-        const uniqueSentences = [...new Set(sentences.map(s => s.trim()))];
-        return uniqueSentences.join('. ').trim();
-      }
-
-      updateStatus(message, color = '#FFFFFF') {
+      updateStatus(message, color = '#666') {
         const statusEl = document.getElementById('model-status');
         if (statusEl) {
           statusEl.textContent = message;
           statusEl.style.color = color;
         }
       }
+
+      getStatus() {
+        return {
+          isAvailable: this.isAvailable,
+          isLoading: this.isLoading,
+          lastError: this.lastError?.message,
+          loadAttempts: this.loadAttempts
+        };
+      }
     }
-    // Enhanced Mock AI with more realistic responses
-    class MockAI {
+
+    // Mock Model Handler for demonstration purposes
+    class MockModelHandler {
       constructor() {
-        this.responseTemplates = [
-          "That's an interesting question about '{topic}'. Based on current research and industry trends, there are several key factors to consider: implementation challenges, technological requirements, and potential impact on existing systems.",
-          
-          "Great question! The topic of '{topic}' is quite fascinating and rapidly evolving. Let me break it down: first, we need to understand the fundamentals, then examine current applications, and finally consider future implications.",
-          
-          "I'd be happy to help explain '{topic}'. From my understanding, this involves multiple interconnected aspects including technical specifications, practical applications, and emerging best practices in the field.",
-          
-          "That's a thoughtful inquiry about '{topic}'. Here's what current research and expert analysis suggests: there are both opportunities and challenges, with several promising approaches being developed.",
-          
-          "Excellent question regarding '{topic}'. This is an active area of development with significant implications for innovation and technology adoption. Key considerations include scalability, security, and user experience."
+        this.responses = [
+          "That's an interesting question! Based on current technological trends, I'd say innovation in AI continues to accelerate, particularly in areas like natural language processing and computer vision.",
+          "Great point! From a research perspective, the juA.kali platform represents an exciting convergence of technology and practical application.",
+          "Excellent question! In my analysis, this topic involves several key factors that we should consider carefully.",
+          "That's a thoughtful inquiry. The intersection of technology and innovation often yields unexpected insights and opportunities.",
+          "Fascinating topic! Current developments suggest we're seeing rapid advancement in this area, with significant implications for the future."
         ];
+        this.isAvailable = true;
+      }
+
+      async initialize() {
+        // Mock initialization - already ready
+        return Promise.resolve();
       }
 
       async generateResponse(input) {
-        // Simulate realistic processing time
-        const processingTime = 800 + Math.random() * 2200;
-        await new Promise(resolve => setTimeout(resolve, processingTime));
+        // Simulate processing delay
+        await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1200));
         
-        // Extract key topic from input
-        const topic = this.extractTopic(input);
+        const randomResponse = this.responses[Math.floor(Math.random() * this.responses.length)];
+        const contextualResponse = this.addContext(input, randomResponse);
         
-        // Select random template and customize
-        const template = this.responseTemplates[Math.floor(Math.random() * this.responseTemplates.length)];
-        let response = template.replace('{topic}', topic);
-        
-        // Add contextual ending based on input type
-        if (input.includes('how') || input.includes('explain')) {
-          response += " Would you like me to elaborate on any specific aspect?";
-        } else if (input.includes('what') || input.includes('define')) {
-          response += " I can provide more detailed information if you're interested in specific use cases.";
-        } else if (input.includes('why') || input.includes('reason')) {
-          response += " These factors interact in complex ways that continue to shape the landscape.";
-        }
-        
-        return response;
+        return {
+          content: contextualResponse,
+          model: 'Demo Mode',
+          usage: { prompt_tokens: input.length, completion_tokens: contextualResponse.length }
+        };
       }
 
-      extractTopic(input) {
-        // Simple topic extraction
-        const words = input.toLowerCase().split(/\s+/);
-        const stopWords = ['what', 'is', 'how', 'can', 'the', 'a', 'an', 'to', 'do', 'does', 'will', 'would', 'could', 'should'];
-        const contentWords = words.filter(word => 
-          word.length > 2 && !stopWords.includes(word)
-        );
+      addContext(input, baseResponse) {
+        const keywords = input.toLowerCase().match(/\b(ai|technology|innovation|research|development|future|science|engineering|data|machine learning|programming|software|hardware|digital|cyber|automation|robotics|blockchain|cloud|iot|analytics|algorithm)\b/g);
         
-        return contentWords.slice(0, 3).join(' ') || 'this topic';
+        if (keywords && keywords.length > 0) {
+          const keyword = keywords[0];
+          const contextPrefixes = {
+            'ai': 'In the context of artificial intelligence, ',
+            'technology': 'From a technological standpoint, ',
+            'innovation': 'Regarding innovation, ',
+            'research': 'From a research perspective, ',
+            'development': 'In terms of development, ',
+            'future': 'Looking toward the future, ',
+            'science': 'Scientifically speaking, ',
+            'engineering': 'From an engineering perspective, ',
+            'data': 'When it comes to data, ',
+            'programming': 'In programming terms, ',
+            'software': 'Regarding software, ',
+            'digital': 'In the digital realm, '
+          };
+          
+          const prefix = contextPrefixes[keyword] || '';
+          return prefix + baseResponse.toLowerCase().charAt(0) + baseResponse.slice(1);
+        }
+        
+        return baseResponse;
+      }
+
+      getStatus() {
+        return {
+          isAvailable: true,
+          isLoading: false,
+          lastError: null
+        };
       }
     }
 
-    // Enhanced Chat Manager with better state management
-    class ChatManager {
+    // Enhanced Chat Interface with better UI/UX
+    class ChatInterface {
       constructor() {
         this.config = ConfigManager.load();
-        this.localModel = new LocalModelHandler();
         this.apiClient = null;
-        this.mockAI = new MockAI();
+        this.localModel = new LocalModelHandler();
+        this.mockModel = new MockModelHandler();
+        this.conversationHistory = [];
         this.isProcessing = false;
-        this.messageHistory = [];
-        this.conversationId = this.generateConversationId();
         
-        this.initializeEventListeners();
-        this.initializeTheme();
+        this.initializeInterface();
+        this.updateModelClient();
       }
 
-      generateConversationId() {
-        return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      initializeInterface() {
+        this.bindEventListeners();
+        this.applyTheme();
+        this.updateModelStatus();
+        this.setupAutoInitialization();
       }
 
-      initializeEventListeners() {
-        // Prevent memory leaks by using AbortController
-        this.abortController = new AbortController();
-        const signal = this.abortController.signal;
+      bindEventListeners() {
+        // Chat form submission
+        const chatForm = document.getElementById('chat-form');
+        if (chatForm) {
+          chatForm.addEventListener('submit', (e) => this.handleSubmit(e));
+        } else {
+          console.warn('Chat form not found - chat submission disabled');
+        }
 
-        // Add visibility change listener to handle tab switching
-        document.addEventListener('visibilitychange', () => {
-          if (document.hidden && this.isProcessing) {
-            console.log('Tab hidden during processing - maintaining state');
+        // Settings form
+        const settingsForm = document.getElementById('settings-form');
+        if (settingsForm) {
+          settingsForm.addEventListener('submit', (e) => this.handleSettingsSubmit(e));
+        } else {
+          console.warn('Settings form not found - settings disabled');
+        }
+
+        // Model choice change
+        const modelChoice = document.getElementById('model-choice');
+        if (modelChoice) {
+          modelChoice.addEventListener('change', () => this.handleModelChange());
+        }
+
+        // Theme toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+          themeToggle.addEventListener('click', () => this.toggleTheme());
+        }
+
+        // Clear chat
+        const clearChat = document.getElementById('clear-chat');
+        if (clearChat) {
+          clearChat.addEventListener('click', () => this.clearChat());
+        }
+
+        // Settings toggle
+        const settingsToggle = document.getElementById('settings-toggle');
+        const settingsModal = document.getElementById('settings-modal');
+        if (settingsToggle && settingsModal) {
+          settingsToggle.addEventListener('click', () => {
+            settingsModal.style.display = settingsModal.style.display === 'block' ? 'none' : 'block';
+          });
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+          const settingsModal = document.getElementById('settings-modal');
+          if (e.target === settingsModal) {
+            settingsModal.style.display = 'none';
           }
-        }, { signal });
+        });
 
-        // Add error handler for unhandled promise rejections
-        window.addEventListener('unhandledrejection', (event) => {
-          console.error('Unhandled promise rejection:', event.reason);
-          if (this.isProcessing) {
-            this.handleGlobalError(event.reason);
-          }
-        }, { signal });
+        // Input auto-resize
+        const messageInput = document.getElementById('message-input');
+        if (messageInput) {
+          messageInput.addEventListener('input', this.autoResizeTextarea);
+        }
       }
 
-      initializeTheme() {
-        const theme = this.config.theme || 'dark';
-        document.documentElement.setAttribute('data-theme', theme);
+      autoResizeTextarea(e) {
+        const textarea = e.target;
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
       }
 
-      addMessage(content, type = 'reply', metadata = {}) {
-        const messagesContainer = document.getElementById('chat-messages');
-        if (!messagesContainer) return;
+      setupAutoInitialization() {
+        // Auto-initialize local model if selected
+        if (this.config.modelChoice === 'local') {
+          setTimeout(() => {
+            this.localModel.initialize();
+          }, 1000);
+        }
+      }
 
-        const messageEl = document.createElement('div');
-        messageEl.className = `message ${type}`;
+      async handleSubmit(e) {
+        e.preventDefault();
         
-        // Add timestamp and metadata
-        const timestamp = new Date().toLocaleTimeString();
-        messageEl.setAttribute('data-timestamp', timestamp);
+        if (this.isProcessing) return;
         
-        if (type === 'user') {
-          messageEl.innerHTML = `
-            <div class="message-content">${this.escapeHtml(content)}</div>
-            <div class="message-meta">${timestamp}</div>
-          `;
-        } else if (type === 'reply') {
-          messageEl.innerHTML = `
-            <div class="message-content">${this.formatResponse(content)}</div>
-            <div class="message-meta">${timestamp} ${metadata.model ? `• ${metadata.model}` : ''}</div>
-          `;
-        } else if (type === 'error') {
-          messageEl.innerHTML = `
-            <div class="message-content error-content">${this.escapeHtml(content)}</div>
-            <div class="message-meta">${timestamp} • Error</div>
-          `;
+        const messageInput = document.getElementById('message-input');
+        const message = messageInput.value.trim();
+        
+        if (!message) return;
+        
+        try {
+          this.isProcessing = true;
+          this.updateSendButton(true);
+          
+          // Add user message to chat
+          this.addMessage(message, 'user');
+          messageInput.value = '';
+          messageInput.style.height = 'auto';
+          
+          // Generate response
+          const response = await this.generateResponse(message);
+          this.addMessage(response.content, 'assistant', response.model);
+          
+        } catch (error) {
+          console.error('Chat error:', error);
+          this.addMessage(`Error: ${error.message}`, 'error');
+        } finally {
+          this.isProcessing = false;
+          this.updateSendButton(false);
+        }
+      }
+
+      async generateResponse(message) {
+        switch (this.config.modelChoice) {
+          case 'mindsdb':
+            if (!this.apiClient) {
+              throw new Error('API client not configured. Please check your settings.');
+            }
+            return await this.apiClient.sendMessage(message);
+            
+          case 'local':
+            return await this.localModel.generateResponse(message);
+            
+          case 'mock':
+          default:
+            return await this.mockModel.generateResponse(message);
+        }
+      }
+
+      addMessage(content, role, model = null) {
+        const chatContainer = document.getElementById('chat-container');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role}`;
+        
+        const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        let modelInfo = '';
+        if (role === 'assistant' && model) {
+          modelInfo = `<span class="model-info">${model}</span>`;
         }
         
-        // Remove welcome message if it exists
-        const welcome = messagesContainer.querySelector('.welcome-message');
-        if (welcome) welcome.remove();
+        messageDiv.innerHTML = `
+          <div class="message-content">
+            ${this.formatMessage(content)}
+          </div>
+          <div class="message-meta">
+            ${modelInfo}
+            <span class="timestamp">${timestamp}</span>
+          </div>
+        `;
         
-        messagesContainer.appendChild(messageEl);
-        this.scrollToBottom();
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
         
-        // Store in history
-        this.messageHistory.push({
-          content,
-          type,
-          timestamp: Date.now(),
-          metadata
-        });
+        // Store in conversation history
+        this.conversationHistory.push({ role, content, timestamp, model });
       }
 
-      escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-      }
-
-      formatResponse(content) {
-        // Simple formatting for better readability
+      formatMessage(content) {
+        // Basic markdown-like formatting
         return content
           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
           .replace(/\*(.*?)\*/g, '<em>$1</em>')
           .replace(/`(.*?)`/g, '<code>$1</code>')
-          .replace(/\n\n/g, '</p><p>')
           .replace(/\n/g, '<br>');
       }
 
-      scrollToBottom() {
-        const messagesContainer = document.getElementById('chat-messages');
-        if (messagesContainer) {
-          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      updateSendButton(isLoading) {
+        const sendButton = document.getElementById('send-button');
+        const buttonText = sendButton.querySelector('.button-text');
+        const buttonSpinner = sendButton.querySelector('.button-spinner');
+        
+        if (isLoading) {
+          sendButton.disabled = true;
+          buttonText.textContent = 'Sending...';
+          buttonSpinner.style.display = 'inline-block';
+        } else {
+          sendButton.disabled = false;
+          buttonText.textContent = 'Send';
+          buttonSpinner.style.display = 'none';
         }
       }
 
-      async sendMessage(message) {
-        if (this.isProcessing || !message.trim()) return;
+      handleSettingsSubmit(e) {
+        e.preventDefault();
         
-        this.isProcessing = true;
-        const sendBtn = document.getElementById('send-message');
-        const chatInput = document.getElementById('chat-input');
+        const formData = new FormData(e.target);
+        const newConfig = {
+          apiKey: formData.get('api-key'),
+          baseUrl: formData.get('base-url'),
+          assistantId: formData.get('assistant-id'),
+          modelChoice: formData.get('model-choice'),
+          maxTokens: parseInt(formData.get('max-tokens')) || 300,
+          temperature: parseFloat(formData.get('temperature')) || 0.7
+        };
+
+        const validation = ConfigManager.validate(newConfig);
         
-        this.updateUI(true);
-        this.addMessage(message, 'user');
+        if (!validation.isValid) {
+          alert('Configuration errors:\n' + validation.errors.join('\n'));
+          return;
+        }
+
+        this.config = ConfigManager.save(newConfig);
+        this.updateModelClient();
+        this.updateModelStatus();
         
-        try {
-          const startTime = Date.now();
-          const result = await this.processMessage(message);
-          const processingTime = Date.now() - startTime;
-          
-          this.addMessage(result.content, 'reply', {
-            model: result.model,
-            processingTime: `${processingTime}ms`
-          });
-          
-        } catch (error) {
-          console.error('Send message error:', error);
-          this.addMessage(error.message, 'error');
-        } finally {
-          this.isProcessing = false;
-          this.updateUI(false);
-          if (chatInput) chatInput.focus();
+        // Close settings modal
+        document.getElementById('settings-modal').style.display = 'none';
+        
+        this.showNotification('Settings saved successfully!', 'success');
+      }
+
+      handleModelChange() {
+        const modelChoice = document.getElementById('model-choice').value;
+        this.config.modelChoice = modelChoice;
+        ConfigManager.save(this.config);
+        this.updateModelClient();
+        this.updateModelStatus();
+        
+        if (modelChoice === 'local' && !this.localModel.isAvailable) {
+          this.localModel.initialize();
         }
       }
 
-      async processMessage(message) {
-        const modelChoice = this.config.modelChoice;
-        
-        switch (modelChoice) {
-          case 'local':
-            try {
-              const localResponse = await this.localModel.generateResponse(message);
-              return { content: localResponse, model: 'LaMini-T5' };
-            } catch (error) {
-              // Fallback to mock mode if local fails
-              console.warn('Local model failed, falling back to mock:', error);
-              const mockResponse = await this.mockAI.generateResponse(message);
-              return { content: mockResponse, model: 'Demo (fallback)' };
-            }
-            
-          case 'mindsdb':
-            if (!this.apiClient) {
-              this.apiClient = new APIClient(this.config);
-            }
-            try {
-              const apiResult = await this.apiClient.sendMessage(message);
-              return { 
-                content: apiResult.content, 
-                model: apiResult.model || this.config.assistantId 
-              };
-            } catch (error) {
-              // Fallback to mock mode if API fails
-              console.warn('API failed, falling back to mock:', error);
-              const mockResponse = await this.mockAI.generateResponse(message);
-              return { content: mockResponse, model: 'Demo (fallback)' };
-            }
-            
-          case 'mock':
-            const mockResponse = await this.mockAI.generateResponse(message);
-            return { content: mockResponse, model: 'Demo' };
-            
-          default:
-            // Default to mock mode if unknown model
-            const defaultResponse = await this.mockAI.generateResponse(message);
-            return { content: defaultResponse, model: 'Demo' };
-        }
-      }
-
-      updateUI(processing) {
-        const sendBtn = document.getElementById('send-message');
-        const chatInput = document.getElementById('chat-input');
-        
-        if (sendBtn) {
-          sendBtn.disabled = processing;
-          sendBtn.textContent = processing ? '⏳' : 'Send';
-        }
-        
-        if (chatInput) {
-          chatInput.disabled = processing;
+      updateModelClient() {
+        if (this.config.modelChoice === 'mindsdb') {
+          this.apiClient = new APIClient(this.config);
+        } else {
+          this.apiClient = null;
         }
       }
 
@@ -1270,218 +1438,87 @@
         const statusEl = document.getElementById('model-status');
         if (!statusEl) return;
 
-        const choice = this.config.modelChoice;
-        
-        switch (choice) {
-          case 'local':
-            if (this.localModel.isAvailable) {
-              statusEl.textContent = '✅ LaMini-T5 Ready';
-              statusEl.style.color = '#00C853';
-            } else {
-              statusEl.textContent = '🖥️ Local LaMini-T5 Selected';
-              statusEl.style.color = '#FFFFFF';
-            }
-            break;
-            
+        switch (this.config.modelChoice) {
           case 'mindsdb':
-            const validation = ConfigManager.validate(this.config);
-            if (validation.isValid) {
-              statusEl.textContent = '☁️ Cloud GPT-3.5 Ready';
+            statusEl.textContent = '🌐 Cloud API Mode';
+            statusEl.style.color = '#2196F3';
+            break;
+          case 'local':
+            const localStatus = this.localModel.getStatus();
+            if (localStatus.isLoading) {
+              statusEl.textContent = '⏳ Loading Local Model...';
+              statusEl.style.color = '#FF9800';
+            } else if (localStatus.isAvailable) {
+              statusEl.textContent = '🔧 Local Model Ready';
               statusEl.style.color = '#00C853';
             } else {
-              statusEl.textContent = '⚠️ Cloud API Not Configured';
-              statusEl.style.color = '#FF9800';
+              statusEl.textContent = '❌ Local Model Failed';
+              statusEl.style.color = '#FF5252';
             }
             break;
-            
           case 'mock':
-            statusEl.textContent = '🎭 Demo Mode Active';
+          default:
+            statusEl.textContent = '🎭 Demo Mode';
             statusEl.style.color = '#9C27B0';
             break;
-            
-          default:
-            statusEl.textContent = '❓ Unknown Model';
-            statusEl.style.color = '#FF5252';
         }
       }
 
-      handleGlobalError(error) {
-        console.error('Global error during chat processing:', error);
-        this.addMessage(`System Error: ${error.message}`, 'error');
-        this.isProcessing = false;
-        this.updateUI(false);
-      }
-
-      clearHistory() {
-        const messagesContainer = document.getElementById('chat-messages');
-        if (messagesContainer) {
-          messagesContainer.innerHTML = `
-            <div class="welcome-message">
-              <h3>Welcome to juA.kali AI Assistant</h3>
-              <p>Ask me anything about technology, innovation, or general topics!</p>
-            </div>
-          `;
-        }
-        this.messageHistory = [];
-        this.conversationId = this.generateConversationId();
-      }
-
-      destroy() {
-        if (this.abortController) {
-          this.abortController.abort();
-        }
-        if (this.apiClient && this.apiClient.controller) {
-          this.apiClient.controller.abort();
-        }
-      }
-    }
-
-    // Global chat manager instance
-    let chatManager;
-
-    // Initialize the application
-    document.addEventListener('DOMContentLoaded', function() {
-      try {
-        initializeApplication();
-      } catch (error) {
-        console.error('Application initialization failed:', error);
-        showInitializationError(error);
-      }
-    });
-
-    function initializeApplication() {
-      chatManager = new ChatManager();
-      
-      // Set up UI from config
-      const config = chatManager.config;
-      updateConfigUI(config);
-      
-      // Set up event listeners
-      setupEventListeners();
-      
-      // Initialize model status
-      chatManager.updateModelStatus();
-      
-      // Auto-initialize local model if selected
-      if (config.modelChoice === 'local') {
-        chatManager.localModel.initialize().catch(console.warn);
-      }
-      
-      console.log('juA.kali AI Chat initialized successfully');
-    }
-
-    function updateConfigUI(config) {
-      const elements = {
-        'model-select': config.modelChoice,
-        'api-key': config.apiKey,
-        'base-url': config.baseUrl.replace(/\/$/, ''),
-        'assistant-id': config.assistantId
-      };
-      
-      Object.entries(elements).forEach(([id, value]) => {
-        const element = document.getElementById(id);
-        if (element) element.value = value;
-      });
-    }
-
-    function setupEventListeners() {
-      // Model selection change
-      document.getElementById('model-select')?.addEventListener('change', function() {
-        const modelChoice = this.value;
-        chatManager.config.modelChoice = modelChoice;
-        ConfigManager.save(chatManager.config);
-        chatManager.updateModelStatus();
+      toggleTheme() {
+        const currentTheme = this.config.theme;
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
         
-        // Auto-initialize local model if selected
-        if (modelChoice === 'local') {
-          chatManager.localModel.initialize().catch(console.warn);
-        }
-      });
+        this.config.theme = newTheme;
+        ConfigManager.save(this.config);
+        this.applyTheme();
+      }
 
-      // Send message button
-      document.getElementById('send-message')?.addEventListener('click', function() {
-        const input = document.getElementById('chat-input');
-        if (input?.value.trim()) {
-          chatManager.sendMessage(input.value.trim());
-          input.value = '';
-        }
-      });
-
-      // Chat input enter key
-      document.getElementById('chat-input')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          if (this.value.trim()) {
-            chatManager.sendMessage(this.value.trim());
-            this.value = '';
-          }
-        }
-      });
-    }
-
-    function toggleApiKeyInput() {
-      const container = document.getElementById('api-key-container');
-      container.style.display = container.style.display === 'none' ? 'flex' : 'none';
-    }
-
-    function saveApiKey() {
-      const apiKey = document.getElementById('api-key').value.trim();
-      const baseUrl = document.getElementById('base-url').value.trim();
-      const assistantId = document.getElementById('assistant-id').value.trim();
-      const statusEl = document.getElementById('save-status');
-      
-      const newConfig = {
-        apiKey,
-        baseUrl,
-        assistantId,
-        modelChoice: document.getElementById('model-select').value
-      };
-      
-      const validation = ConfigManager.validate(newConfig);
-      
-      if (validation.isValid) {
-        chatManager.config = ConfigManager.save(newConfig);
-        statusEl.textContent = '✓ Settings saved';
-        statusEl.style.color = '#00C853';
-        chatManager.updateModelStatus();
+      applyTheme() {
+        document.body.className = `theme-${this.config.theme}`;
         
-        // Hide after 3 seconds
+        // Update theme toggle button
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+          themeToggle.textContent = this.config.theme === 'dark' ? '☀️' : '🌙';
+        }
+      }
+
+      clearChat() {
+        const chatContainer = document.getElementById('chat-container');
+        chatContainer.innerHTML = '';
+        this.conversationHistory = [];
+        this.showNotification('Chat cleared', 'info');
+      }
+
+      showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
         setTimeout(() => {
-          statusEl.textContent = '';
-          document.getElementById('api-key-container').style.display = 'none';
+          notification.classList.add('show');
+        }, 100);
+        
+        setTimeout(() => {
+          notification.classList.remove('show');
+          setTimeout(() => {
+            document.body.removeChild(notification);
+          }, 300);
         }, 3000);
-      } else {
-        statusEl.textContent = `⚠ ${validation.errors.join(', ')}`;
-        statusEl.style.color = '#FF5252';
+      }
+
+      // Public method to get current configuration
+      getConfig() {
+        return { ...this.config };
+      }
+
+      // Public method to get conversation history
+      getConversationHistory() {
+        return [...this.conversationHistory];
       }
     }
-
-    function showInitializationError(error) {
-      const appContainer = document.getElementById('app-container');
-      if (appContainer) {
-        appContainer.innerHTML = `
-          <div class="error-container">
-            <h2>Application Initialization Failed</h2>
-            <p>${error.message}</p>
-            <p>Please try refreshing the page or check your browser compatibility.</p>
-            <button onclick="window.location.reload()">Refresh Page</button>
-          </div>
-        `;
-      }
-    }
-
-    // Clean up on page unload
-    window.addEventListener('beforeunload', function() {
-      if (chatManager) {
-        chatManager.destroy();
-      }
-    });
-
-    // Global functions for UI actions
-    window.toggleApiKeyInput = toggleApiKeyInput;
-    window.saveApiKey = saveApiKey;
-
-      
 
     // Initialize the application when DOM is loaded
     document.addEventListener('DOMContentLoaded', () => {
@@ -1574,6 +1611,3 @@
   </script>
 </body>
 </html>
-
-
-
