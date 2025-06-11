@@ -1,5 +1,5 @@
 [build]
-  publish = "dist"       # Must match webpack's output.path
+  publish = "public"       # Must match webpack's output.path
   command = "npm run build"
 
 [[redirects]]
