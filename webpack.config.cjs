@@ -3,6 +3,7 @@ const TerserPlugin = require('terser-webpack-plugin');
 const { WebpackManifestPlugin } = require('webpack-manifest-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
+const webpack = require('webpack'); // Added for polyfills
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
@@ -14,7 +15,7 @@ module.exports = {
     publicPath: '/',
     assetModuleFilename: 'assets/[hash][ext][query]'
   },
-  target: 'web',
+  target: ['web', 'es5'], // Added es5 target for broader compatibility
   mode: isDevelopment ? 'development' : 'production',
   cache: {
     type: 'filesystem',
@@ -28,6 +29,7 @@ module.exports = {
       new TerserPlugin({
         parallel: true,
         terserOptions: {
+          ecma: 2015, // Updated ECMA version
           compress: {
             drop_console: !isDevelopment,
           },
@@ -44,7 +46,8 @@ module.exports = {
         vendors: {
           test: /[\\/]node_modules[\\/]/,
           priority: -10,
-          reuseExistingChunk: true
+          reuseExistingChunk: true,
+          name: 'vendors' // Added explicit name
         },
         default: {
           minChunks: 2,
@@ -82,20 +85,30 @@ module.exports = {
           options: {
             presets: [
               ['@babel/preset-env', {
-                useBuiltIns: 'usage',
+                useBuiltIns: 'entry', // Changed from 'usage' to 'entry'
                 corejs: 3,
-                targets: '> 0.25%, not dead',
-                shippedProposals: true
+                targets: {
+                  browsers: '> 0.25%, not dead',
+                  esmodules: true
+                },
+                shippedProposals: true,
+                bugfixes: true // Added for better compatibility
               }],
               '@babel/preset-react'
             ],
             plugins: [
               isDevelopment && require.resolve('react-refresh/babel'),
-              '@babel/plugin-proposal-class-properties',
-              '@babel/plugin-proposal-private-methods',
+              ['@babel/plugin-proposal-class-properties', { loose: true }],
+              ['@babel/plugin-proposal-private-methods', { loose: true }],
+              ['@babel/plugin-proposal-private-property-in-object', { loose: true }],
               '@babel/plugin-proposal-optional-chaining',
               '@babel/plugin-proposal-nullish-coalescing-operator',
-              ['@babel/plugin-transform-runtime', { regenerator: true }]
+              ['@babel/plugin-transform-runtime', { 
+                regenerator: true,
+                corejs: 3, // Added corejs version
+                helpers: true,
+                useESModules: false
+              }]
             ].filter(Boolean)
           }
         }
@@ -112,9 +125,11 @@ module.exports = {
                 localIdentName: isDevelopment 
                   ? '[path][name]__[local]'
                   : '[hash:base64:8]'
-              }
+              },
+              importLoaders: 1
             }
-          }
+          },
+          'postcss-loader' // Added postcss-loader
         ]
       },
       {
@@ -124,11 +139,17 @@ module.exports = {
       },
       {
         test: /\.(png|jpe?g|gif|svg|webp)$/i,
-        type: 'asset/resource'
+        type: 'asset/resource',
+        generator: {
+          filename: 'images/[hash][ext][query]'
+        }
       },
       {
         test: /\.(woff2?|eot|ttf|otf)$/i,
-        type: 'asset/resource'
+        type: 'asset/resource',
+        generator: {
+          filename: 'fonts/[hash][ext][query]'
+        }
       }
     ]
   },
@@ -136,6 +157,14 @@ module.exports = {
     new CleanWebpackPlugin(),
     new WebpackManifestPlugin(),
     isDevelopment && new ReactRefreshWebpackPlugin(),
+    // Added polyfill plugins
+    new webpack.ProvidePlugin({
+      process: 'process/browser',
+      Buffer: ['buffer', 'Buffer']
+    }),
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
+    })
   ].filter(Boolean),
   devServer: {
     static: [
@@ -169,5 +198,9 @@ module.exports = {
   externals: {
     express: 'commonjs express',
   },
-  devtool: isDevelopment ? 'eval-cheap-module-source-map' : 'hidden-source-map'
+  devtool: isDevelopment ? 'eval-cheap-module-source-map' : 'hidden-source-map',
+  // Added to handle core-js ES modules
+  experiments: {
+    topLevelAwait: true,
+  }
 };
