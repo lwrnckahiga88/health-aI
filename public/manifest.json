@@ -7,7 +7,7 @@
   "theme_color": "#000000",
   "icons": [
     {
-      "src": "/kastone1.png",
+      "src": "public/kastone1.png",
       "sizes": "512x512",
       "type": "image/jpeg"
     }
