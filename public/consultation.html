@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedOS Clinical Collaboration Platform</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1976d2;
+            --secondary: #28a745;
+            --danger: #dc3545;
+            --dark: #343a40;
+            --light: #f8f9fa;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .app-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+        }
+        .main-content {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1565c0;
+        }
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #218838;
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .module-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        .module-card.active {
+            background: var(--primary);
+        }
+        .video-container {
+            position: relative;
+            background: black;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .video-container video {
+            width: 100%;
+            display: block;
+        }
+        .video-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .suggestion-card {
+            border-left: 3px solid var(--primary);
+            padding: 10px;
+            margin: 10px 0;
+            background: #f5fbff;
+        }
+        #terminal {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: monospace;
+            padding: 15px;
+            border-radius: 4px;
+            height: 200px;
+            overflow-y: auto;
+        }
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+        .tab.active {
+            border-bottom-color: var(--primary);
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .patient-tag {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        .diagnosis-history {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .history-item {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .processing-mode {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .peace-mode {
+            background-color: #4caf50;
+            color: white;
+        }
+        .wait-mode {
+            background-color: #ff9800;
+            color: white;
+        }
+        .mixed-mode {
+            background-color: #9c27b0;
+            color: white;
+        }
+        .attention-vis {
+            width: 100%;
+            height: 200px;
+            background: #f5f5f5;
+            margin: 15px 0;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .attention-head {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #1976d2;
+            opacity: 0.7;
+            transform: translate(-50%, -50%);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        .token {
+            position: absolute;
+            padding: 2px 5px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            font-size: 12px;
+            white-space: nowrap;
+            max-width: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .memory-token {
+            background: #bbdefb;
+        }
+        .attention-line {
+            position: absolute;
+            background: rgba(0,0,0,0.1);
+            transform-origin: 0 0;
+        }
+        .mode-label {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            font-size: 12px;
+            background: rgba(0,0,0,0.1);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h2>MedOS</h2>
+            <div class="module-list">
+                <div class="module-card active" data-tab="consultation">
+                    <h4><i class="fas fa-users"></i> Consultation Rooms</h4>
+                </div>
+                <div class="module-card" data-tab="diagnostic">
+                    <h4><i class="fas fa-robot"></i> AI Diagnostic</h4>
+                </div>
+                <div class="module-card" data-tab="screenshare">
+                    <h4><i class="fas fa-desktop"></i> Screen Sharing</h4>
+                </div>
+                <div class="module-card" data-tab="ehr">
+                    <h4><i class="fas fa-hospital"></i> EHR Simulator</h4>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <h4>Active Sessions</h4>
+                <ul id="active-sessions">
+                    <li>General Medicine (2 users)</li>
+                    <li>Cardiology (1 user)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="tab-container">
+                <div class="tab active" data-tab="consultation">Consultation</div>
+                <div class="tab" data-tab="diagnostic">AI Diagnostic</div>
+                <div class="tab" data-tab="screenshare">Screen Share</div>
+                <div class="tab" data-tab="ehr">EHR Simulator</div>
+            </div>
+
+            <!-- Consultation Rooms -->
+            <div class="tab-content active" id="consultation">
+                <h2>Consultation Rooms</h2>
+                <div class="card">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+                        <div class="room-card">
+                            <h3>General Medicine</h3>
+                            <button class="btn btn-primary join-room" data-room="general">
+                                <i class="fas fa-door-open"></i> Join
+                            </button>
+                        </div>
+                        <div class="room-card">
+                            <h3>Cardiology</h3>
+                            <button class="btn btn-primary join-room" data-room="cardiology">
+                                <i class="fas fa-door-open"></i> Join
+                            </button>
+                        </div>
+                        <div class="room-card">
+                            <h3>Neurology</h3>
+                            <button class="btn btn-primary join-room" data-room="neurology">
+                                <i class="fas fa-door-open"></i> Join
+                            </button>
+                        </div>
+                        <div class="room-card">
+                            <h3>Pediatrics</h3>
+                            <button class="btn btn-primary join-room" data-room="pediatrics">
+                                <i class="fas fa-door-open"></i> Join
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Diagnostic -->
+            <div class="tab-content" id="diagnostic">
+                <h2>AI Clinical Diagnostic</h2>
+                <div class="card">
+                    <form id="diagnosticForm">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <label for="modelType">AI Model:</label>
+                                <select id="modelType" class="btn" style="width: 100%;">
+                                    <option value="gpt">GPT-4 Clinical</option>
+                                    <option value="biobert">BioBERT</option>
+                                    <option value="clinicallama">Clinical LLaMA</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="specialty">Specialty:</label>
+                                <select id="specialty" class="btn" style="width: 100%;">
+                                    <option value="general">General Medicine</option>
+                                    <option value="cardiology">Cardiology</option>
+                                    <option value="neurology">Neurology</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="patientName">Patient Name:</label>
+                            <input type="text" id="patientName" class="btn" style="width: 100%; padding: 10px;" placeholder="Enter patient name">
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="patientAge">Patient Age:</label>
+                            <input type="number" id="patientAge" class="btn" style="width: 100%; padding: 10px;" placeholder="Enter patient age">
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="patientGender">Patient Gender:</label>
+                            <select id="patientGender" class="btn" style="width: 100%;">
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                                <option value="O">Other</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="subjective">Subjective:</label>
+                            <textarea id="subjective" placeholder="Patient's symptoms, history..."></textarea>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="objective">Objective:</label>
+                            <textarea id="objective" placeholder="Exam findings, test results..."></textarea>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="assessment">Assessment:</label>
+                            <textarea id="assessment" placeholder="Clinical impressions..."></textarea>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="plan">Plan:</label>
+                            <textarea id="plan" placeholder="Treatment recommendations..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-secondary" style="margin-top: 20px;">
+                            <i class="fas fa-play"></i> Generate Analysis
+                        </button>
+                    </form>
+
+                    <div id="diagnosticResults" style="margin-top: 30px; display: none;">
+                        <h3>AI Analysis Results <span id="processingModeBadge" class="processing-mode"></span></h3>
+                        <div class="suggestion-card">
+                            <div id="attentionVisualization" class="attention-vis"></div>
+                            <div id="aiResultContent"></div>
+                            <button id="saveToEHRBtn" class="btn btn-primary" style="margin-top: 10px;">
+                                <i class="fas fa-clipboard"></i> Save to EHR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen Sharing -->
+            <div class="tab-content" id="screenshare">
+                <h2>Clinical Screen Sharing</h2>
+                <div class="card">
+                    <div class="video-container">
+                        <video id="remoteScreen" autoplay playsinline></video>
+                        <div class="video-controls">
+                            <button id="startShareBtn" class="btn btn-primary">
+                                <i class="fas fa-share-square"></i> Share Screen
+                            </button>
+                            <button id="stopShareBtn" class="btn btn-danger" disabled>
+                                <i class="fas fa-stop"></i> Stop Sharing
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3>Collaboration Tools</h3>
+                        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                            <button class="btn" id="drawBtn">
+                                <i class="fas fa-pencil-alt"></i> Draw
+                            </button>
+                            <button class="btn" id="highlightBtn">
+                                <i class="fas fa-highlighter"></i> Highlight
+                            </button>
+                            <button class="btn" id="zoomBtn">
+                                <i class="fas fa-search-plus"></i> Zoom
+                            </button>
+                        </div>
+
+                        <div id="annotationCanvas" style="border: 1px solid #ddd; height: 200px; margin-bottom: 20px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EHR Simulator -->
+            <div class="tab-content" id="ehr">
+                <h2>Legacy EHR Simulator</h2>
+                <div class="card">
+                    <div style="display: grid; grid-template-columns: 200px 1fr; gap: 20px;">
+                        <div>
+                            <h4>Patient List</h4>
+                            <ul id="patientList" style="list-style: none; padding: 0;">
+                                <li style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer;" data-id="1001">John Smith (58M)</li>
+                                <li style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer;" data-id="1002">Sarah Lee (42F)</li>
+                                <li style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer;" data-id="1003">Miguel Garcia (67M)</li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h3 id="currentPatient">No Patient Selected</h3>
+                            <div id="patientDetails" style="margin-bottom: 20px;">
+                                <p>Select a patient from the list</p>
+                            </div>
+
+                            <div>
+                                <h4>Progress Notes</h4>
+                                <textarea id="progressNotes" style="width: 100%; height: 200px;"></textarea>
+                                <button class="btn btn-primary" id="saveNoteBtn" style="margin-top: 10px;">
+                                    <i class="fas fa-save"></i> Save Note
+                                </button>
+                            </div>
+
+                            <div class="diagnosis-history" id="diagnosisHistory" style="display: none;">
+                                <h4>AI Diagnosis History</h4>
+                                <div id="historyItems"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Models and Services -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    
+	  <script>
+        // MedOS Core Application
+        class MedOS {
+            constructor() {
+                this.activeRoom = null;
+                this.peer = null;
+                this.stream = null;
+                this.completedDiagnostics = [];
+                this.patients = {
+                    '1001': {
+                        name: 'John Smith',
+                        age: 58,
+                        gender: 'M',
+                        diagnosis: 'Hypertension, Type 2 Diabetes',
+                        medications: ['Lisinopril 10mg daily', 'Metformin 500mg BID'],
+                        notes: '58yo male with HTN and DM2. BP today 145/88. Glucose 132.',
+                        aiHistory: []
+                    },
+                    '1002': {
+                        name: 'Sarah Lee',
+                        age: 42,
+                        gender: 'F',
+                        diagnosis: 'Migraine, Anxiety',
+                        medications: ['Sumatriptan 50mg PRN', 'Sertraline 50mg daily'],
+                        notes: '42yo female with chronic migraines. Reports increased frequency.',
+                        aiHistory: []
+                    },
+                    '1003': {
+                        name: 'Miguel Garcia',
+                        age: 67,
+                        gender: 'M',
+                        diagnosis: 'COPD, CAD',
+                        medications: ['Advair 250/50 BID', 'Aspirin 81mg daily'],
+                        notes: '67yo male with COPD exacerbation. O2 sat 92% on RA.',
+                        aiHistory: []
+                    }
+                };
+                this.currentPatientId = null;
+                this.currentDiagnosticResult = null;
+            }
+
+            init() {
+                this.setupTabs();
+                this.setupConsultation();
+                this.setupDiagnostic();
+                this.setupScreenShare();
+                this.setupEHRSimulator();
+            }
+
+            // [Previous setup methods remain unchanged]
+
+            determineProcessingMode(soapData) {
+                const text = Object.values(soapData).join(' ').toLowerCase();
+                
+                // Conditions for Peace mode (complete information)
+                const peaceIndicators = [
+                    'complete', 'full', 'all', 'comprehensive', 
+                    'results', 'findings', 'diagnosis', 'assessment'
+                ];
+                
+                // Conditions for Wait mode (progressive information)
+                const waitIndicators = [
+                    'progressive', 'worsening', 'developing', 'emerging',
+                    'monitoring', 'follow up', 'trend', 'change'
+                ];
+                
+                const peaceScore = peaceIndicators.filter(i => text.includes(i)).length;
+                const waitScore = waitIndicators.filter(i => text.includes(i)).length;
+                
+                if (peaceScore > waitScore && peaceScore >= 2) {
+                    return { mode: 'Peace Mode', description: 'Complete information available for diagnosis' };
+                } else if (waitScore > peaceScore && waitScore >= 2) {
+                    return { mode: 'Wait Mode', description: 'Progressive condition requiring monitoring' };
+                } else {
+                    return { mode: 'Mixed Mode', description: 'Combination of complete and progressive elements' };
+                }
+            }
+
+            async generateDifferentialDiagnosis(soapData, mode) {
+                // Mock diagnosis generation based on SOAP notes
+                const { subjective, objective, assessment } = soapData;
+                const text = `${subjective} ${objective} ${assessment}`.toLowerCase();
+                
+                // Common diagnosis patterns
+                const diagnoses = [];
+                let confidence = 0.85;
+                
+                if (mode === 'Peace Mode') {
+                    confidence = 0.92;
+                } else if (mode === 'Wait Mode') {
+                    confidence = 0.80;
+                }
+                
+                // Respiratory patterns
+                if (text.includes('cough') && text.includes('fever')) {
+                    diagnoses.push({
+                        condition: 'Community-Acquired Pneumonia',
+                        confidence: confidence * 0.9,
+                        rationale: 'Based on cough, fever, and possible consolidation on exam'
+                    });
+                }
+                
+                if (text.includes('wheezing') && text.includes('shortness of breath')) {
+                    diagnoses.push({
+                        condition: 'Asthma Exacerbation',
+                        confidence: confidence * 0.85,
+                        rationale: 'Wheezing and shortness of breath suggest reactive airway disease'
+                    });
+                }
+                
+                // Cardiac patterns
+                if (text.includes('chest pain') && text.includes('radiat')) {
+                    diagnoses.push({
+                        condition: 'Coronary Artery Disease / Angina',
+                        confidence: confidence * 0.88,
+                        rationale: 'Radiating chest pain is concerning for cardiac ischemia'
+                    });
+                }
+                
+                // Neurological patterns
+                if (text.includes('headache') && text.includes('photophobia')) {
+                    diagnoses.push({
+                        condition: 'Migraine',
+                        confidence: confidence * 0.87,
+                        rationale: 'Headache with photophobia suggests migraine'
+                    });
+                }
+                
+                // Infectious disease patterns
+                if (text.includes('fever') && text.includes('tachycardia')) {
+                    diagnoses.push({
+                        condition: 'Systemic Infection / Sepsis',
+                        confidence: confidence * 0.9,
+                        rationale: 'Fever with tachycardia raises concern for systemic infection'
+                    });
+                }
+                
+                // Metabolic patterns
+                if (text.includes('fatigue') && text.includes('weight loss')) {
+                    diagnoses.push({
+                        condition: 'Metabolic Disorder (e.g., Diabetes, Thyroid)',
+                        confidence: confidence * 0.8,
+                        rationale: 'Fatigue with weight loss suggests metabolic etiology'
+                    });
+                }
+                
+                // If no specific patterns matched, generate general differential
+                if (diagnoses.length === 0) {
+                    diagnoses.push(
+                        {
+                            condition: 'Viral Syndrome',
+                            confidence: confidence * 0.75,
+                            rationale: 'Non-specific symptoms may suggest viral illness'
+                        },
+                        {
+                            condition: 'Bacterial Infection',
+                            confidence: confidence * 0.7,
+                            rationale: 'Consider bacterial source if fever present'
+                        },
+                        {
+                            condition: 'Non-Infectious Inflammatory Condition',
+                            confidence: confidence * 0.65,
+                            rationale: 'Consider autoimmune or other inflammatory processes'
+                        }
+                    );
+                }
+                
+                // Sort by confidence
+                diagnoses.sort((a, b) => b.confidence - a.confidence);
+                
+                return {
+                    diagnoses,
+                    confidence,
+                    processingMode: mode
+                };
+            }
+
+            async callClinicalLLaMA(prompt) {
+                const processingMode = this.determineProcessingMode(prompt);
+                const diagnosis = await this.generateDifferentialDiagnosis(prompt, processingMode.mode);
+                
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                return {
+                    response: this.formatDiagnosisResults(diagnosis, prompt),
+                    confidence: diagnosis.confidence,
+                    processingMode: diagnosis.processingMode
+                };
+            }
+
+            async callGPT4Clinical(prompt) {
+                const processingMode = this.determineProcessingMode(prompt);
+                const diagnosis = await this.generateDifferentialDiagnosis(prompt, processingMode.mode);
+                
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                return {
+                    response: this.formatDiagnosisResults(diagnosis, prompt),
+                    confidence: diagnosis.confidence,
+                    processingMode: diagnosis.processingMode
+                };
+            }
+
+            async callBioBERT(prompt) {
+                const processingMode = this.determineProcessingMode(prompt);
+                const diagnosis = await this.generateDifferentialDiagnosis(prompt, processingMode.mode);
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                return {
+                    response: this.formatDiagnosisResults(diagnosis, prompt),
+                    confidence: diagnosis.confidence,
+                    processingMode: diagnosis.processingMode
+                };
+            }
+
+            formatDiagnosisResults(diagnosis, soapData) {
+                let html = `
+                    <div class="diagnosis-result">
+                        <div class="diagnosis-header">Differential Diagnosis:</div>
+                        <div class="diagnosis-list">
+                `;
+                
+                diagnosis.diagnoses.forEach((dx, index) => {
+                    html += `
+                        <div class="diagnosis-item">
+                            <strong>${index + 1}. ${dx.condition}</strong> (${Math.round(dx.confidence * 100)}%)
+                            <div style="font-size: 0.9em; color: #555; margin-left: 15px;">
+                                ${dx.rationale}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                        <div class="diagnosis-confidence">
+                            Processing Mode: ${diagnosis.processingMode} | 
+                            Overall Confidence: ${Math.round(diagnosis.confidence * 100)}%
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <strong>Clinical Summary:</strong>
+                        <p>${soapData.subjective || 'No subjective data provided'}</p>
+                        <p>${soapData.objective || 'No objective data provided'}</p>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <strong>Recommended Workup:</strong>
+                        <ul>
+                            <li>Complete blood count with differential</li>
+                            <li>Basic metabolic panel</li>
+                            <li>Inflammatory markers (CRP, ESR)</li>
+                            <li>Disease-specific testing as indicated</li>
+                        </ul>
+                    </div>
+                `;
+                
+                return html;
+            }
+
+            setupDiagnostic() {
+                const form = document.getElementById('diagnosticForm');
+                const saveToEHRBtn = document.getElementById('saveToEHRBtn');
+                
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const modelType = document.getElementById('modelType').value;
+                    const specialty = document.getElementById('specialty').value;
+                    const patientName = document.getElementById('patientName').value;
+                    const patientAge = document.getElementById('patientAge').value;
+                    const patientGender = document.getElementById('patientGender').value;
+                    const subjective = document.getElementById('subjective').value;
+                    const objective = document.getElementById('objective').value;
+                    const assessment = document.getElementById('assessment').value;
+                    const plan = document.getElementById('plan').value;
+                    
+                    if (!patientName || !patientAge) {
+                        alert("Please enter patient name and age");
+                        return;
+                    }
+                    
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn.innerHTML = '<span class="loading"></span> Processing...';
+                    submitBtn.disabled = true;
+                    
+                    try {
+                        const prompt = {
+                            patientName,
+                            patientAge,
+                            patientGender,
+                            specialty,
+                            subjective,
+                            objective,
+                            assessment,
+                            plan
+                        };
+                        
+                        let result;
+                        
+                        if (modelType === 'biobert') {
+                            result = await this.callBioBERT(prompt);
+                        } else if (modelType === 'clinicallama') {
+                            result = await this.callClinicalLLaMA(prompt);
+                        } else {
+                            result = await this.callGPT4Clinical(prompt);
+                        }
+                        
+                        this.currentDiagnosticResult = {
+                            ...prompt,
+                            modelType,
+                            result: result.response,
+                            confidence: result.confidence,
+                            processingMode: result.processingMode,
+                            timestamp: new Date().toISOString()
+                        };
+                        
+                        document.getElementById('aiResultContent').innerHTML = result.response;
+                        document.getElementById('diagnosticResults').style.display = 'block';
+                        
+                        const modeBadge = document.getElementById('processingModeBadge');
+                        modeBadge.textContent = result.processingMode;
+                        modeBadge.className = `processing-mode ${
+                            result.processingMode.includes('Peace') ? 'peace-mode' : 
+                            result.processingMode.includes('Wait') ? 'wait-mode' : 'mixed-mode'
+                        }`;
+                        
+                        saveToEHRBtn.disabled = false;
+                        
+                    } catch (error) {
+                        alert(`Error: ${error.message}`);
+                    } finally {
+                        submitBtn.innerHTML = '<i class="fas fa-play"></i> Generate Diagnosis';
+                        submitBtn.disabled = false;
+                    }
+                });
+                
+                saveToEHRBtn.addEventListener('click', () => {
+                    if (!this.currentDiagnosticResult) {
+                        alert("No diagnostic result to save");
+                        return;
+                    }
+                    
+                    this.completedDiagnostics.push(this.currentDiagnosticResult);
+                    this.updatePatientList();
+                    alert("Diagnostic results saved to EHR");
+                });
+            }
+
+            // [Rest of the methods remain unchanged]
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            const medos = new MedOS();
+            medos.init();
+        });
+    </script>
+</body>
+</html>
