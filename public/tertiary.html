@@ -108,15 +108,6 @@
             margin: 10px 0;
             background: #f5fbff;
         }
-        #terminal {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            font-family: monospace;
-            padding: 15px;
-            border-radius: 4px;
-            height: 200px;
-            overflow-y: auto;
-        }
         .tab-container {
             display: flex;
             border-bottom: 1px solid #ddd;
@@ -177,6 +168,29 @@
             padding-bottom: 15px;
             border-bottom: 1px solid #f0f0f0;
         }
+        .diagnosis-result {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            border-left: 4px solid #4caf50;
+        }
+        .diagnosis-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2e7d32;
+        }
+        .diagnosis-list {
+            margin-left: 20px;
+        }
+        .diagnosis-item {
+            margin-bottom: 8px;
+        }
+        .diagnosis-confidence {
+            font-style: italic;
+            color: #666;
+            margin-top: 10px;
+        }
         .processing-mode {
             display: inline-block;
             padding: 3px 8px;
@@ -196,57 +210,17 @@
             background-color: #9c27b0;
             color: white;
         }
-        .attention-vis {
-            width: 100%;
-            height: 200px;
-            background: #f5f5f5;
-            margin: 15px 0;
-            border-radius: 4px;
-            overflow: hidden;
-            position: relative;
+        .clinical-summary {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
         }
-        .attention-head {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background: #1976d2;
-            opacity: 0.7;
-            transform: translate(-50%, -50%);
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: translate(-50%, -50%) scale(1); }
-            50% { transform: translate(-50%, -50%) scale(1.1); }
-            100% { transform: translate(-50%, -50%) scale(1); }
-        }
-        .token {
-            position: absolute;
-            padding: 2px 5px;
-            background: #e0e0e0;
-            border-radius: 3px;
-            font-size: 12px;
-            white-space: nowrap;
-            max-width: 80px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .memory-token {
-            background: #bbdefb;
-        }
-        .attention-line {
-            position: absolute;
-            background: rgba(0,0,0,0.1);
-            transform-origin: 0 0;
-        }
-        .mode-label {
-            position: absolute;
-            bottom: 5px;
-            right: 5px;
-            font-size: 12px;
-            background: rgba(0,0,0,0.1);
-            padding: 2px 5px;
-            border-radius: 3px;
+        .workup-recommendations {
+            background: #fff8e1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
         }
     </style>
 </head>
@@ -341,6 +315,8 @@
                                     <option value="general">General Medicine</option>
                                     <option value="cardiology">Cardiology</option>
                                     <option value="neurology">Neurology</option>
+                                    <option value="pulmonology">Pulmonology</option>
+                                    <option value="gastroenterology">Gastroenterology</option>
                                 </select>
                             </div>
                         </div>
@@ -366,33 +342,32 @@
 
                         <div style="margin-top: 20px;">
                             <label for="subjective">Subjective:</label>
-                            <textarea id="subjective" placeholder="Patient's symptoms, history..."></textarea>
+                            <textarea id="subjective" placeholder="Patient's symptoms, history, duration, severity..."></textarea>
                         </div>
 
                         <div style="margin-top: 20px;">
                             <label for="objective">Objective:</label>
-                            <textarea id="objective" placeholder="Exam findings, test results..."></textarea>
+                            <textarea id="objective" placeholder="Vital signs, physical exam findings, lab results, imaging..."></textarea>
                         </div>
 
                         <div style="margin-top: 20px;">
                             <label for="assessment">Assessment:</label>
-                            <textarea id="assessment" placeholder="Clinical impressions..."></textarea>
+                            <textarea id="assessment" placeholder="Clinical impressions, working diagnosis..."></textarea>
                         </div>
 
                         <div style="margin-top: 20px;">
                             <label for="plan">Plan:</label>
-                            <textarea id="plan" placeholder="Treatment recommendations..."></textarea>
+                            <textarea id="plan" placeholder="Treatment recommendations, follow-up plans..."></textarea>
                         </div>
 
                         <button type="submit" class="btn btn-secondary" style="margin-top: 20px;">
-                            <i class="fas fa-play"></i> Generate Analysis
+                            <i class="fas fa-play"></i> Generate Diagnosis
                         </button>
                     </form>
 
                     <div id="diagnosticResults" style="margin-top: 30px; display: none;">
-                        <h3>AI Analysis Results <span id="processingModeBadge" class="processing-mode"></span></h3>
+                        <h3>AI Diagnosis Results <span id="processingModeBadge" class="processing-mode"></span></h3>
                         <div class="suggestion-card">
-                            <div id="attentionVisualization" class="attention-vis"></div>
                             <div id="aiResultContent"></div>
                             <button id="saveToEHRBtn" class="btn btn-primary" style="margin-top: 10px;">
                                 <i class="fas fa-clipboard"></i> Save to EHR
@@ -476,12 +451,7 @@
         </div>
     </div>
 
-    <!-- AI Models and Services -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
-    
-	  <script>
+    <script>
         // MedOS Core Application
         class MedOS {
             constructor() {
@@ -530,122 +500,236 @@
                 this.setupEHRSimulator();
             }
 
-            // [Previous setup methods remain unchanged]
+            setupTabs() {
+                const tabs = document.querySelectorAll('.tab');
+                const tabContents = document.querySelectorAll('.tab-content');
+                const moduleCards = document.querySelectorAll('.module-card');
+
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        tabContents.forEach(content => content.classList.remove('active'));
+                        tabs.forEach(t => t.classList.remove('active'));
+                        
+                        const tabId = tab.dataset.tab;
+                        document.getElementById(tabId).classList.add('active');
+                        tab.classList.add('active');
+                    });
+                });
+
+                moduleCards.forEach(card => {
+                    card.addEventListener('click', () => {
+                        const tabId = card.dataset.tab;
+                        tabContents.forEach(content => content.classList.remove('active'));
+                        tabs.forEach(t => t.classList.remove('active'));
+                        
+                        document.getElementById(tabId).classList.add('active');
+                        document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+                    });
+                });
+            }
+
+            setupConsultation() {
+                const joinButtons = document.querySelectorAll('.join-room');
+                
+                joinButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const room = button.dataset.room;
+                        this.activeRoom = room;
+                        alert(`Joined ${room} consultation room`);
+                    });
+                });
+            }
 
             determineProcessingMode(soapData) {
-                const text = Object.values(soapData).join(' ').toLowerCase();
+                const text = `${soapData.subjective} ${soapData.objective} ${soapData.assessment}`.toLowerCase();
                 
-                // Conditions for Peace mode (complete information)
-                const peaceIndicators = [
-                    'complete', 'full', 'all', 'comprehensive', 
-                    'results', 'findings', 'diagnosis', 'assessment'
-                ];
+                const acuteKeywords = ['acute', 'sudden', 'severe', 'emergency', 'pain'];
+                const chronicKeywords = ['chronic', 'persistent', 'recurrent', 'months', 'years'];
+                const progressiveKeywords = ['worsening', 'progressing', 'increasing', 'developing'];
+                const completeKeywords = ['complete', 'full', 'results', 'findings', 'diagnosis'];
                 
-                // Conditions for Wait mode (progressive information)
-                const waitIndicators = [
-                    'progressive', 'worsening', 'developing', 'emerging',
-                    'monitoring', 'follow up', 'trend', 'change'
-                ];
+                let modeScore = {
+                    peace: 0,
+                    wait: 0
+                };
                 
-                const peaceScore = peaceIndicators.filter(i => text.includes(i)).length;
-                const waitScore = waitIndicators.filter(i => text.includes(i)).length;
+                // Score based on keywords
+                completeKeywords.forEach(kw => {
+                    if (text.includes(kw)) modeScore.peace += 1;
+                });
                 
-                if (peaceScore > waitScore && peaceScore >= 2) {
-                    return { mode: 'Peace Mode', description: 'Complete information available for diagnosis' };
-                } else if (waitScore > peaceScore && waitScore >= 2) {
-                    return { mode: 'Wait Mode', description: 'Progressive condition requiring monitoring' };
+                progressiveKeywords.forEach(kw => {
+                    if (text.includes(kw)) modeScore.wait += 1;
+                });
+                
+                // Score based on clinical context
+                if (text.includes('vitals') && text.includes('labs')) modeScore.peace += 2;
+                if (text.includes('trend') || text.includes('follow up')) modeScore.wait += 2;
+                
+                // Determine mode
+                if (modeScore.peace > modeScore.wait) {
+                    return { mode: 'Peace Mode', description: 'Complete clinical picture available' };
+                } else if (modeScore.wait > modeScore.peace) {
+                    return { mode: 'Wait Mode', description: 'Progressive condition monitoring' };
                 } else {
                     return { mode: 'Mixed Mode', description: 'Combination of complete and progressive elements' };
                 }
             }
 
-            async generateDifferentialDiagnosis(soapData, mode) {
-                // Mock diagnosis generation based on SOAP notes
-                const { subjective, objective, assessment } = soapData;
-                const text = `${subjective} ${objective} ${assessment}`.toLowerCase();
+            generateDifferentialDiagnosis(soapData, mode) {
+                const { subjective, objective, assessment, specialty } = soapData;
+                const clinicalText = `${subjective} ${objective} ${assessment}`.toLowerCase();
+                const age = parseInt(soapData.patientAge);
+                const gender = soapData.patientGender;
                 
-                // Common diagnosis patterns
-                const diagnoses = [];
-                let confidence = 0.85;
+                let diagnoses = [];
+                let confidence = mode === 'Peace Mode' ? 0.92 : mode === 'Wait Mode' ? 0.82 : 0.87;
                 
-                if (mode === 'Peace Mode') {
-                    confidence = 0.92;
-                } else if (mode === 'Wait Mode') {
-                    confidence = 0.80;
-                }
-                
-                // Respiratory patterns
-                if (text.includes('cough') && text.includes('fever')) {
-                    diagnoses.push({
-                        condition: 'Community-Acquired Pneumonia',
-                        confidence: confidence * 0.9,
-                        rationale: 'Based on cough, fever, and possible consolidation on exam'
-                    });
-                }
-                
-                if (text.includes('wheezing') && text.includes('shortness of breath')) {
-                    diagnoses.push({
-                        condition: 'Asthma Exacerbation',
-                        confidence: confidence * 0.85,
-                        rationale: 'Wheezing and shortness of breath suggest reactive airway disease'
-                    });
-                }
-                
-                // Cardiac patterns
-                if (text.includes('chest pain') && text.includes('radiat')) {
-                    diagnoses.push({
-                        condition: 'Coronary Artery Disease / Angina',
-                        confidence: confidence * 0.88,
-                        rationale: 'Radiating chest pain is concerning for cardiac ischemia'
-                    });
-                }
-                
-                // Neurological patterns
-                if (text.includes('headache') && text.includes('photophobia')) {
-                    diagnoses.push({
-                        condition: 'Migraine',
-                        confidence: confidence * 0.87,
-                        rationale: 'Headache with photophobia suggests migraine'
-                    });
-                }
-                
-                // Infectious disease patterns
-                if (text.includes('fever') && text.includes('tachycardia')) {
-                    diagnoses.push({
-                        condition: 'Systemic Infection / Sepsis',
-                        confidence: confidence * 0.9,
-                        rationale: 'Fever with tachycardia raises concern for systemic infection'
-                    });
-                }
-                
-                // Metabolic patterns
-                if (text.includes('fatigue') && text.includes('weight loss')) {
-                    diagnoses.push({
-                        condition: 'Metabolic Disorder (e.g., Diabetes, Thyroid)',
-                        confidence: confidence * 0.8,
-                        rationale: 'Fatigue with weight loss suggests metabolic etiology'
-                    });
-                }
-                
-                // If no specific patterns matched, generate general differential
-                if (diagnoses.length === 0) {
-                    diagnoses.push(
-                        {
-                            condition: 'Viral Syndrome',
-                            confidence: confidence * 0.75,
-                            rationale: 'Non-specific symptoms may suggest viral illness'
-                        },
-                        {
-                            condition: 'Bacterial Infection',
-                            confidence: confidence * 0.7,
-                            rationale: 'Consider bacterial source if fever present'
-                        },
-                        {
-                            condition: 'Non-Infectious Inflammatory Condition',
-                            confidence: confidence * 0.65,
-                            rationale: 'Consider autoimmune or other inflammatory processes'
+                // Specialty-specific diagnosis patterns
+                if (specialty === 'cardiology') {
+                    if (clinicalText.includes('chest pain')) {
+                        diagnoses.push({
+                            condition: 'Coronary Artery Disease',
+                            confidence: confidence * 0.95,
+                            rationale: 'Chest pain is concerning for cardiac ischemia, especially in a ' + age + ' year old ' + (gender === 'M' ? 'male' : 'female')
+                        });
+                        
+                        if (clinicalText.includes('radiat') && clinicalText.includes('pressure')) {
+                            diagnoses.push({
+                                condition: 'Acute Coronary Syndrome',
+                                confidence: confidence * 0.9,
+                                rationale: 'Radiating chest pressure suggests possible ACS'
+                            });
                         }
-                    );
+                    }
+                    
+                    if (clinicalText.includes('shortness of breath') && clinicalText.includes('edema')) {
+                        diagnoses.push({
+                            condition: 'Congestive Heart Failure',
+                            confidence: confidence * 0.88,
+                            rationale: 'SOB with edema suggests fluid overload'
+                        });
+                    }
+                }
+                else if (specialty === 'neurology') {
+                    if (clinicalText.includes('headache')) {
+                        diagnoses.push({
+                            condition: 'Migraine',
+                            confidence: confidence * 0.85,
+                            rationale: 'Primary headache disorder likely'
+                        });
+                        
+                        if (clinicalText.includes('worst headache') || clinicalText.includes('thunderclap')) {
+                            diagnoses.push({
+                                condition: 'Subarachnoid Hemorrhage',
+                                confidence: confidence * 0.7,
+                                rationale: 'Sudden severe headache raises concern for SAH'
+                            });
+                        }
+                    }
+                    
+                    if (clinicalText.includes('weakness') && clinicalText.includes('one side')) {
+                        diagnoses.push({
+                            condition: 'Cerebrovascular Accident',
+                            confidence: confidence * 0.93,
+                            rationale: 'Focal neurological deficits suggest stroke'
+                        });
+                    }
+                }
+                else if (specialty === 'pulmonology') {
+                    if (clinicalText.includes('cough') && clinicalText.includes('fever')) {
+                        diagnoses.push({
+                            condition: 'Pneumonia',
+                            confidence: confidence * 0.9,
+                            rationale: 'Cough + fever suggests pulmonary infection'
+                        });
+                    }
+                    
+                    if (clinicalText.includes('wheezing') || clinicalText.includes('shortness of breath')) {
+                        diagnoses.push({
+                            condition: 'Asthma/COPD Exacerbation',
+                            confidence: confidence * 0.87,
+                            rationale: 'Wheezing and dyspnea suggest reactive airway disease'
+                        });
+                    }
+                }
+                else { // General medicine
+                    // Infectious disease patterns
+                    if (clinicalText.includes('fever')) {
+                        let infectionType = 'Viral Syndrome';
+                        let infectionConfidence = 0.8;
+                        let infectionRationale = 'Fever without localizing symptoms suggests viral illness';
+                        
+                        if (clinicalText.includes('cough') && clinicalText.includes('sputum')) {
+                            infectionType = 'Bronchitis/Pneumonia';
+                            infectionConfidence = 0.85;
+                            infectionRationale = 'Fever with productive cough suggests respiratory infection';
+                        }
+                        else if (clinicalText.includes('dysuria') || clinicalText.includes('frequency')) {
+                            infectionType = 'UTI';
+                            infectionConfidence = 0.9;
+                            infectionRationale = 'Fever with urinary symptoms suggests UTI';
+                        }
+                        
+                        diagnoses.push({
+                            condition: infectionType,
+                            confidence: confidence * infectionConfidence,
+                            rationale: infectionRationale
+                        });
+                    }
+                    
+                    // Gastrointestinal patterns
+                    if (clinicalText.includes('abdominal pain')) {
+                        let giDiagnosis = 'Non-specific Abdominal Pain';
+                        let giConfidence = 0.75;
+                        let giRationale = 'Abdominal pain without specific localizing signs';
+                        
+                        if (clinicalText.includes('right upper quadrant')) {
+                            giDiagnosis = 'Cholecystitis';
+                            giConfidence = 0.88;
+                            giRationale = 'RUQ pain suggests gallbladder pathology';
+                        }
+                        else if (clinicalText.includes('rebound') || clinicalText.includes('guarding')) {
+                            giDiagnosis = 'Acute Abdomen (e.g., Appendicitis, Peritonitis)';
+                            giConfidence = 0.92;
+                            giRationale = 'Peritoneal signs indicate surgical abdomen';
+                        }
+                        
+                        diagnoses.push({
+                            condition: giDiagnosis,
+                            confidence: confidence * giConfidence,
+                            rationale: giRationale
+                        });
+                    }
+                    
+                    // Fallback diagnoses if nothing specific found
+                    if (diagnoses.length === 0) {
+                        diagnoses.push(
+                            {
+                                condition: 'Viral Syndrome',
+                                confidence: confidence * 0.8,
+                                rationale: 'Non-specific symptoms may suggest viral illness'
+                            },
+                            {
+                                condition: 'Anxiety/Stress Reaction',
+                                confidence: confidence * 0.65,
+                                rationale: 'Consider psychological factors when organic causes not identified'
+                            }
+                        );
+                    }
+                }
+                
+                // Adjust confidence based on mode
+                if (mode === 'Wait Mode') {
+                    diagnoses.forEach(dx => {
+                        dx.confidence *= 0.95; // Slightly reduce confidence for progressive conditions
+                        dx.rationale += ' (Progressive condition - serial assessments recommended)';
+                    });
+                }
+                else if (mode === 'Peace Mode') {
+                    diagnoses.forEach(dx => {
+                        dx.rationale += ' (Complete clinical picture available)';
+                    });
                 }
                 
                 // Sort by confidence
@@ -658,9 +742,63 @@
                 };
             }
 
+            formatDiagnosisResults(diagnosisResult, soapData) {
+                let html = `
+                    <div class="diagnosis-result">
+                        <div class="diagnosis-header">Differential Diagnosis (Ranked by Likelihood):</div>
+                        <div class="diagnosis-list">
+                `;
+                
+                diagnosisResult.diagnoses.forEach((dx, index) => {
+                    html += `
+                        <div class="diagnosis-item">
+                            <strong>${index + 1}. ${dx.condition}</strong> (${Math.round(dx.confidence * 100)}% confidence)
+                            <div style="font-size: 0.9em; color: #555; margin-left: 15px; margin-top: 5px;">
+                                ${dx.rationale}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                        <div class="diagnosis-confidence">
+                            Processing Mode: ${diagnosisResult.processingMode} | 
+                            Overall Analysis Confidence: ${Math.round(diagnosisResult.confidence * 100)}%
+                        </div>
+                    </div>
+                    
+                    <div class="clinical-summary">
+                        <strong>Clinical Summary:</strong>
+                        <p><u>Subjective:</u> ${soapData.subjective || 'Not provided'}</p>
+                        <p><u>Objective:</u> ${soapData.objective || 'Not provided'}</p>
+                        <p><u>Assessment:</u> ${soapData.assessment || 'Not provided'}</p>
+                    </div>
+                    
+                    <div class="workup-recommendations">
+                        <strong>Recommended Workup:</strong>
+                        <ul>
+                            <li>Complete blood count with differential</li>
+                            <li>Comprehensive metabolic panel</li>
+                            <li>Inflammatory markers (CRP, ESR)</li>
+                            ${diagnosisResult.diagnoses[0].condition.includes('Cardiac') ? '<li>Cardiac enzymes, EKG</li>' : ''}
+                            ${diagnosisResult.diagnoses[0].condition.includes('Pulmonary') ? '<li>Chest X-ray, oxygen saturation</li>' : ''}
+                            ${diagnosisResult.diagnoses[0].condition.includes('Neurologic') ? '<li>CT head, neurological exam</li>' : ''}
+                            <li>Additional testing as clinically indicated</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
+                        <i>Disclaimer: This AI-generated diagnosis is for clinical decision support only. Final diagnosis and treatment decisions should be made by a qualified healthcare provider.</i>
+                    </div>
+                `;
+                
+                return html;
+            }
+
             async callClinicalLLaMA(prompt) {
                 const processingMode = this.determineProcessingMode(prompt);
-                const diagnosis = await this.generateDifferentialDiagnosis(prompt, processingMode.mode);
+                const diagnosis = this.generateDifferentialDiagnosis(prompt, processingMode.mode);
                 
                 await new Promise(resolve => setTimeout(resolve, 1500));
                 
@@ -673,7 +811,7 @@
 
             async callGPT4Clinical(prompt) {
                 const processingMode = this.determineProcessingMode(prompt);
-                const diagnosis = await this.generateDifferentialDiagnosis(prompt, processingMode.mode);
+                const diagnosis = this.generateDifferentialDiagnosis(prompt, processingMode.mode);
                 
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
@@ -686,7 +824,7 @@
 
             async callBioBERT(prompt) {
                 const processingMode = this.determineProcessingMode(prompt);
-                const diagnosis = await this.generateDifferentialDiagnosis(prompt, processingMode.mode);
+                const diagnosis = this.generateDifferentialDiagnosis(prompt, processingMode.mode);
                 
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
@@ -695,52 +833,6 @@
                     confidence: diagnosis.confidence,
                     processingMode: diagnosis.processingMode
                 };
-            }
-
-            formatDiagnosisResults(diagnosis, soapData) {
-                let html = `
-                    <div class="diagnosis-result">
-                        <div class="diagnosis-header">Differential Diagnosis:</div>
-                        <div class="diagnosis-list">
-                `;
-                
-                diagnosis.diagnoses.forEach((dx, index) => {
-                    html += `
-                        <div class="diagnosis-item">
-                            <strong>${index + 1}. ${dx.condition}</strong> (${Math.round(dx.confidence * 100)}%)
-                            <div style="font-size: 0.9em; color: #555; margin-left: 15px;">
-                                ${dx.rationale}
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                html += `
-                        </div>
-                        <div class="diagnosis-confidence">
-                            Processing Mode: ${diagnosis.processingMode} | 
-                            Overall Confidence: ${Math.round(diagnosis.confidence * 100)}%
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 20px;">
-                        <strong>Clinical Summary:</strong>
-                        <p>${soapData.subjective || 'No subjective data provided'}</p>
-                        <p>${soapData.objective || 'No objective data provided'}</p>
-                    </div>
-                    
-                    <div style="margin-top: 15px;">
-                        <strong>Recommended Workup:</strong>
-                        <ul>
-                            <li>Complete blood count with differential</li>
-                            <li>Basic metabolic panel</li>
-                            <li>Inflammatory markers (CRP, ESR)</li>
-                            <li>Disease-specific testing as indicated</li>
-                        </ul>
-                    </div>
-                `;
-                
-                return html;
             }
 
             setupDiagnostic() {
@@ -832,7 +924,192 @@
                 });
             }
 
-            // [Rest of the methods remain unchanged]
+            updatePatientList() {
+                const patientList = document.getElementById('patientList');
+                patientList.innerHTML = '';
+                
+                Object.keys(this.patients).forEach(id => {
+                    const patient = this.patients[id];
+                    const li = document.createElement('li');
+                    li.style.padding = '8px';
+                    li.style.borderBottom = '1px solid #eee';
+                    li.style.cursor = 'pointer';
+                    li.dataset.id = id;
+                    li.textContent = `${patient.name} (${patient.age}${patient.gender})`;
+                    
+                    if (patient.aiHistory.length > 0) {
+                        const tag = document.createElement('span');
+                        tag.className = 'patient-tag';
+                        tag.textContent = 'AI';
+                        li.appendChild(tag);
+                    }
+                    
+                    li.addEventListener('click', () => this.showPatientDetails(id));
+                    patientList.appendChild(li);
+                });
+                
+                this.completedDiagnostics.forEach((diagnostic, index) => {
+                    const patientKey = `${diagnostic.patientName}-${diagnostic.patientAge}`;
+                    const existingItem = Array.from(patientList.children).find(item => 
+                        item.textContent.includes(`${diagnostic.patientName} (${diagnostic.patientAge}${diagnostic.patientGender}`));
+                    
+                    if (!existingItem) {
+                        const li = document.createElement('li');
+                        li.style.padding = '8px';
+                        li.style.borderBottom = '1px solid #eee';
+                        li.style.cursor = 'pointer';
+                        li.dataset.id = `diag-${index}`;
+                        li.textContent = `${diagnostic.patientName} (${diagnostic.patientAge}${diagnostic.patientGender})`;
+                        
+                        const tag = document.createElement('span');
+                        tag.className = 'patient-tag';
+                        tag.textContent = 'AI';
+                        li.appendChild(tag);
+                        
+                        li.addEventListener('click', () => this.showDiagnosticPatient(diagnostic));
+                        patientList.appendChild(li);
+                    }
+                });
+            }
+
+            showPatientDetails(patientId) {
+                this.currentPatientId = patientId;
+                const patient = this.patients[patientId];
+                const currentPatient = document.getElementById('currentPatient');
+                const patientDetails = document.getElementById('patientDetails');
+                const progressNotes = document.getElementById('progressNotes');
+                const diagnosisHistory = document.getElementById('diagnosisHistory');
+                const historyItems = document.getElementById('historyItems');
+                
+                currentPatient.textContent = `${patient.name} (${patient.age}${patient.gender})`;
+                
+                patientDetails.innerHTML = `
+                    <p><strong>Diagnosis:</strong> ${patient.diagnosis}</p>
+                    <p><strong>Medications:</strong></p>
+                    <ul>
+                        ${patient.medications.map(med => `<li>${med}</li>`).join('')}
+                    </ul>
+                `;
+                
+                progressNotes.value = patient.notes;
+                
+                if (patient.aiHistory && patient.aiHistory.length > 0) {
+                    diagnosisHistory.style.display = 'block';
+                    historyItems.innerHTML = '';
+                    
+                    patient.aiHistory.forEach((item, index) => {
+                        const historyItem = document.createElement('div');
+                        historyItem.className = 'history-item';
+                        historyItem.innerHTML = `
+                            <p><strong>${new Date(item.timestamp).toLocaleString()}</strong> (${item.modelType})</p>
+                            <p>${item.result.split('\n').slice(0, 3).join('\n')}...</p>
+                            <button class="btn btn-primary" data-index="${index}" style="margin-top: 5px;">
+                                <i class="fas fa-eye"></i> View Full
+                            </button>
+                        `;
+                        historyItems.appendChild(historyItem);
+                    });
+                } else {
+                    diagnosisHistory.style.display = 'none';
+                }
+            }
+
+            showDiagnosticPatient(diagnostic) {
+                this.currentPatientId = null;
+                const currentPatient = document.getElementById('currentPatient');
+                const patientDetails = document.getElementById('patientDetails');
+                const progressNotes = document.getElementById('progressNotes');
+                const diagnosisHistory = document.getElementById('diagnosisHistory');
+                const historyItems = document.getElementById('historyItems');
+                
+                currentPatient.textContent = `${diagnostic.patientName} (${diagnostic.patientAge}${diagnostic.patientGender})`;
+                
+                patientDetails.innerHTML = `
+                    <p><strong>Specialty:</strong> ${diagnostic.specialty}</p>
+                    <p><strong>AI Model:</strong> ${diagnostic.modelType}</p>
+                    <p><strong>Processing Mode:</strong> ${diagnostic.processingMode}</p>
+                    <p><strong>Confidence:</strong> ${(diagnostic.confidence * 100).toFixed(1)}%</p>
+                `;
+                
+                progressNotes.value = `AI-generated notes for ${diagnostic.patientName}:\n\n${diagnostic.result}`;
+                
+                diagnosisHistory.style.display = 'block';
+                historyItems.innerHTML = '';
+                
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.innerHTML = `
+                    <p><strong>${new Date(diagnostic.timestamp).toLocaleString()}</strong> (${diagnostic.modelType})</p>
+                    <div>${diagnostic.result}</div>
+                `;
+                historyItems.appendChild(historyItem);
+            }
+
+            setupScreenShare() {
+                const startBtn = document.getElementById('startShareBtn');
+                const stopBtn = document.getElementById('stopShareBtn');
+                const remoteVideo = document.getElementById('remoteScreen');
+                
+                this.peer = new Peer();
+                
+                this.peer.on('open', (id) => {
+                    console.log('PeerJS connected with ID:', id);
+                });
+                
+                startBtn.addEventListener('click', async () => {
+                    try {
+                        this.stream = await navigator.mediaDevices.getDisplayMedia({
+                            video: true,
+                            audio: false
+                        });
+                        
+                        remoteVideo.srcObject = this.stream;
+                        startBtn.disabled = true;
+                        stopBtn.disabled = false;
+                    } catch (err) {
+                        console.error('Screen sharing failed:', err);
+                    }
+                });
+                
+                stopBtn.addEventListener('click', () => {
+                    if (this.stream) {
+                        this.stream.getTracks().forEach(track => track.stop());
+                        remoteVideo.srcObject = null;
+                        startBtn.disabled = false;
+                        stopBtn.disabled = true;
+                    }
+                });
+            }
+
+            setupEHRSimulator() {
+                const saveNoteBtn = document.getElementById('saveNoteBtn');
+                
+                this.updatePatientList();
+                
+                saveNoteBtn.addEventListener('click', () => {
+                    const progressNotes = document.getElementById('progressNotes').value;
+                    
+                    if (this.currentPatientId && this.patients[this.currentPatientId]) {
+                        this.patients[this.currentPatientId].notes = progressNotes;
+                        alert("Note saved successfully");
+                    } else {
+                        alert("No patient selected or patient not in system");
+                    }
+                });
+                
+                document.getElementById('historyItems').addEventListener('click', (e) => {
+                    if (e.target.tagName === 'BUTTON' || e.target.parentElement.tagName === 'BUTTON') {
+                        const button = e.target.tagName === 'BUTTON' ? e.target : e.target.parentElement;
+                        const index = button.dataset.index;
+                        const patient = this.patients[this.currentPatientId];
+                        
+                        if (patient && patient.aiHistory && patient.aiHistory[index]) {
+                            const historyItem = patient.aiHistory[index];
+                            alert(`Full AI Analysis (${historyItem.modelType}):\n\n${historyItem.result}`);
+                        }
+                    }
+                });
+            }
         }
 
         // Initialize the application
