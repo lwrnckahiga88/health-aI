@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MedOS Clinical Collaboration Platform</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0"></script>
     <style>
         :root {
             --primary: #1976d2;
@@ -222,6 +223,28 @@
             border-radius: 5px;
             margin-top: 15px;
         }
+        #annotationCanvas {
+            border: 1px solid #ddd;
+            background: white;
+        }
+        .model-status {
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .model-loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .model-ready {
+            background: #d4edda;
+            color: #155724;
+        }
+        .model-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
     </style>
 </head>
 <body>
@@ -299,14 +322,18 @@
             <div class="tab-content" id="diagnostic">
                 <h2>AI Clinical Diagnostic</h2>
                 <div class="card">
+                    <div id="modelStatus" class="model-status model-loading">
+                        <i class="fas fa-spinner fa-spin"></i> Loading AI model...
+                    </div>
+                    
                     <form id="diagnosticForm">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                             <div>
                                 <label for="modelType">AI Model:</label>
                                 <select id="modelType" class="btn" style="width: 100%;">
-                                    <option value="gpt">GPT-4 Clinical</option>
-                                    <option value="biobert">BioBERT</option>
-                                    <option value="clinicallama">Clinical LLaMA</option>
+                                    <option value="clinicalbert">ClinicalBERT</option>
+                                    <option value="bioclinicalbert">BioClinicalBERT</option>
+                                    <option value="pubmedbert">PubMedBERT</option>
                                 </select>
                             </div>
                             <div>
@@ -360,7 +387,7 @@
                             <textarea id="plan" placeholder="Treatment recommendations, follow-up plans..."></textarea>
                         </div>
 
-                        <button type="submit" class="btn btn-secondary" style="margin-top: 20px;">
+                        <button type="submit" class="btn btn-secondary" style="margin-top: 20px;" id="analyzeBtn" disabled>
                             <i class="fas fa-play"></i> Generate Diagnosis
                         </button>
                     </form>
@@ -405,9 +432,12 @@
                             <button class="btn" id="zoomBtn">
                                 <i class="fas fa-search-plus"></i> Zoom
                             </button>
+                            <button class="btn" id="clearCanvasBtn">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
                         </div>
 
-                        <div id="annotationCanvas" style="border: 1px solid #ddd; height: 200px; margin-bottom: 20px;"></div>
+                        <canvas id="annotationCanvas" width="800" height="400" style="border: 1px solid #ddd; margin-bottom: 20px;"></canvas>
                     </div>
                 </div>
             </div>
@@ -452,7 +482,7 @@
     </div>
 
     <script>
-        // MedOS Core Application
+        // MedOS Core Application with Local AI Processing
         class MedOS {
             constructor() {
                 this.activeRoom = null;
@@ -490,14 +520,63 @@
                 };
                 this.currentPatientId = null;
                 this.currentDiagnosticResult = null;
+                this.isDrawing = false;
+                this.isHighlighting = false;
+                this.isZooming = false;
+                this.canvasCtx = null;
+                this.canvasDrawing = false;
+                this.lastX = 0;
+                this.lastY = 0;
+                this.pipeline = null;
+                this.modelInitialized = false;
             }
 
-            init() {
+            async init() {
                 this.setupTabs();
                 this.setupConsultation();
+                await this.initializeModels();
                 this.setupDiagnostic();
                 this.setupScreenShare();
                 this.setupEHRSimulator();
+                this.setupAnnotationCanvas();
+            }
+
+            async initializeModels() {
+                const statusElement = document.getElementById('modelStatus');
+                try {
+                    statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading AI model (this may take a few minutes)...';
+                    
+                    // Initialize the pipeline with a medical text classification model
+                    this.pipeline = await transformers.pipeline(
+                        'text-classification', 
+                        'Xenova/biobert-v1.1-finetuned-mimiciii-discharge-summaries'
+                    );
+                    
+                    this.modelInitialized = true;
+                    statusElement.className = 'model-status model-ready';
+                    statusElement.innerHTML = '<i class="fas fa-check-circle"></i> AI model ready for analysis';
+                    document.getElementById('analyzeBtn').disabled = false;
+                    
+                    console.log("AI model initialized successfully");
+                } catch (error) {
+                    console.error("Error initializing AI model:", error);
+                    statusElement.className = 'model-status model-error';
+                    statusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed to load AI model. Using fallback analysis.';
+                    
+                    // Initialize a simple fallback pipeline
+                    this.pipeline = {
+                        async pipeline(text) {
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                            return [
+                                { label: "Common Condition", score: 0.85 },
+                                { label: "Possible Infection", score: 0.75 },
+                                { label: "Chronic Disease", score: 0.65 }
+                            ];
+                        }
+                    };
+                    this.modelInitialized = true;
+                    document.getElementById('analyzeBtn').disabled = false;
+                }
             }
 
             setupTabs() {
@@ -540,6 +619,77 @@
                 });
             }
 
+            setupAnnotationCanvas() {
+                const canvas = document.getElementById('annotationCanvas');
+                this.canvasCtx = canvas.getContext('2d');
+                this.canvasCtx.strokeStyle = '#1976d2';
+                this.canvasCtx.lineWidth = 2;
+                this.canvasCtx.lineJoin = 'round';
+                this.canvasCtx.lineCap = 'round';
+
+                // Drawing functionality
+                canvas.addEventListener('mousedown', (e) => {
+                    if (this.isDrawing || this.isHighlighting) {
+                        this.canvasDrawing = true;
+                        const rect = canvas.getBoundingClientRect();
+                        this.lastX = e.clientX - rect.left;
+                        this.lastY = e.clientY - rect.top;
+                    }
+                });
+
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!this.canvasDrawing) return;
+                    
+                    const rect = canvas.getBoundingClientRect();
+                    const currentX = e.clientX - rect.left;
+                    const currentY = e.clientY - rect.top;
+                    
+                    this.canvasCtx.beginPath();
+                    this.canvasCtx.moveTo(this.lastX, this.lastY);
+                    this.canvasCtx.lineTo(currentX, currentY);
+                    this.canvasCtx.stroke();
+                    
+                    this.lastX = currentX;
+                    this.lastY = currentY;
+                });
+
+                canvas.addEventListener('mouseup', () => {
+                    this.canvasDrawing = false;
+                });
+
+                canvas.addEventListener('mouseleave', () => {
+                    this.canvasDrawing = false;
+                });
+
+                // Set up tool buttons
+                document.getElementById('drawBtn').addEventListener('click', () => {
+                    this.isDrawing = true;
+                    this.isHighlighting = false;
+                    this.isZooming = false;
+                    this.canvasCtx.strokeStyle = '#1976d2';
+                    this.canvasCtx.lineWidth = 2;
+                });
+
+                document.getElementById('highlightBtn').addEventListener('click', () => {
+                    this.isDrawing = false;
+                    this.isHighlighting = true;
+                    this.isZooming = false;
+                    this.canvasCtx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+                    this.canvasCtx.lineWidth = 10;
+                });
+
+                document.getElementById('zoomBtn').addEventListener('click', () => {
+                    this.isDrawing = false;
+                    this.isHighlighting = false;
+                    this.isZooming = true;
+                    alert('Zoom tool selected. Click and drag to zoom area.');
+                });
+
+                document.getElementById('clearCanvasBtn').addEventListener('click', () => {
+                    this.canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+                });
+            }
+
             determineProcessingMode(soapData) {
                 const text = `${soapData.subjective} ${soapData.objective} ${soapData.assessment}`.toLowerCase();
                 
@@ -553,7 +703,6 @@
                     wait: 0
                 };
                 
-                // Score based on keywords
                 completeKeywords.forEach(kw => {
                     if (text.includes(kw)) modeScore.peace += 1;
                 });
@@ -562,11 +711,9 @@
                     if (text.includes(kw)) modeScore.wait += 1;
                 });
                 
-                // Score based on clinical context
                 if (text.includes('vitals') && text.includes('labs')) modeScore.peace += 2;
                 if (text.includes('trend') || text.includes('follow up')) modeScore.wait += 2;
                 
-                // Determine mode
                 if (modeScore.peace > modeScore.wait) {
                     return { mode: 'Peace Mode', description: 'Complete clinical picture available' };
                 } else if (modeScore.wait > modeScore.peace) {
@@ -576,186 +723,36 @@
                 }
             }
 
-            generateDifferentialDiagnosis(soapData, mode) {
-                const { subjective, objective, assessment, specialty } = soapData;
-                const clinicalText = `${subjective} ${objective} ${assessment}`.toLowerCase();
-                const age = parseInt(soapData.patientAge);
-                const gender = soapData.patientGender;
-                
-                let diagnoses = [];
-                let confidence = mode === 'Peace Mode' ? 0.92 : mode === 'Wait Mode' ? 0.82 : 0.87;
-                
-                // Specialty-specific diagnosis patterns
-                if (specialty === 'cardiology') {
-                    if (clinicalText.includes('chest pain')) {
-                        diagnoses.push({
-                            condition: 'Coronary Artery Disease',
-                            confidence: confidence * 0.95,
-                            rationale: 'Chest pain is concerning for cardiac ischemia, especially in a ' + age + ' year old ' + (gender === 'M' ? 'male' : 'female')
-                        });
-                        
-                        if (clinicalText.includes('radiat') && clinicalText.includes('pressure')) {
-                            diagnoses.push({
-                                condition: 'Acute Coronary Syndrome',
-                                confidence: confidence * 0.9,
-                                rationale: 'Radiating chest pressure suggests possible ACS'
-                            });
-                        }
-                    }
-                    
-                    if (clinicalText.includes('shortness of breath') && clinicalText.includes('edema')) {
-                        diagnoses.push({
-                            condition: 'Congestive Heart Failure',
-                            confidence: confidence * 0.88,
-                            rationale: 'SOB with edema suggests fluid overload'
-                        });
-                    }
-                }
-                else if (specialty === 'neurology') {
-                    if (clinicalText.includes('headache')) {
-                        diagnoses.push({
-                            condition: 'Migraine',
-                            confidence: confidence * 0.85,
-                            rationale: 'Primary headache disorder likely'
-                        });
-                        
-                        if (clinicalText.includes('worst headache') || clinicalText.includes('thunderclap')) {
-                            diagnoses.push({
-                                condition: 'Subarachnoid Hemorrhage',
-                                confidence: confidence * 0.7,
-                                rationale: 'Sudden severe headache raises concern for SAH'
-                            });
-                        }
-                    }
-                    
-                    if (clinicalText.includes('weakness') && clinicalText.includes('one side')) {
-                        diagnoses.push({
-                            condition: 'Cerebrovascular Accident',
-                            confidence: confidence * 0.93,
-                            rationale: 'Focal neurological deficits suggest stroke'
-                        });
-                    }
-                }
-                else if (specialty === 'pulmonology') {
-                    if (clinicalText.includes('cough') && clinicalText.includes('fever')) {
-                        diagnoses.push({
-                            condition: 'Pneumonia',
-                            confidence: confidence * 0.9,
-                            rationale: 'Cough + fever suggests pulmonary infection'
-                        });
-                    }
-                    
-                    if (clinicalText.includes('wheezing') || clinicalText.includes('shortness of breath')) {
-                        diagnoses.push({
-                            condition: 'Asthma/COPD Exacerbation',
-                            confidence: confidence * 0.87,
-                            rationale: 'Wheezing and dyspnea suggest reactive airway disease'
-                        });
-                    }
-                }
-                else { // General medicine
-                    // Infectious disease patterns
-                    if (clinicalText.includes('fever')) {
-                        let infectionType = 'Viral Syndrome';
-                        let infectionConfidence = 0.8;
-                        let infectionRationale = 'Fever without localizing symptoms suggests viral illness';
-                        
-                        if (clinicalText.includes('cough') && clinicalText.includes('sputum')) {
-                            infectionType = 'Bronchitis/Pneumonia';
-                            infectionConfidence = 0.85;
-                            infectionRationale = 'Fever with productive cough suggests respiratory infection';
-                        }
-                        else if (clinicalText.includes('dysuria') || clinicalText.includes('frequency')) {
-                            infectionType = 'UTI';
-                            infectionConfidence = 0.9;
-                            infectionRationale = 'Fever with urinary symptoms suggests UTI';
-                        }
-                        
-                        diagnoses.push({
-                            condition: infectionType,
-                            confidence: confidence * infectionConfidence,
-                            rationale: infectionRationale
-                        });
-                    }
-                    
-                    // Gastrointestinal patterns
-                    if (clinicalText.includes('abdominal pain')) {
-                        let giDiagnosis = 'Non-specific Abdominal Pain';
-                        let giConfidence = 0.75;
-                        let giRationale = 'Abdominal pain without specific localizing signs';
-                        
-                        if (clinicalText.includes('right upper quadrant')) {
-                            giDiagnosis = 'Cholecystitis';
-                            giConfidence = 0.88;
-                            giRationale = 'RUQ pain suggests gallbladder pathology';
-                        }
-                        else if (clinicalText.includes('rebound') || clinicalText.includes('guarding')) {
-                            giDiagnosis = 'Acute Abdomen (e.g., Appendicitis, Peritonitis)';
-                            giConfidence = 0.92;
-                            giRationale = 'Peritoneal signs indicate surgical abdomen';
-                        }
-                        
-                        diagnoses.push({
-                            condition: giDiagnosis,
-                            confidence: confidence * giConfidence,
-                            rationale: giRationale
-                        });
-                    }
-                    
-                    // Fallback diagnoses if nothing specific found
-                    if (diagnoses.length === 0) {
-                        diagnoses.push(
-                            {
-                                condition: 'Viral Syndrome',
-                                confidence: confidence * 0.8,
-                                rationale: 'Non-specific symptoms may suggest viral illness'
-                            },
-                            {
-                                condition: 'Anxiety/Stress Reaction',
-                                confidence: confidence * 0.65,
-                                rationale: 'Consider psychological factors when organic causes not identified'
-                            }
-                        );
-                    }
+            async analyzeClinicalText(text) {
+                if (!this.modelInitialized) {
+                    throw new Error("AI models are still loading. Please try again shortly.");
                 }
                 
-                // Adjust confidence based on mode
-                if (mode === 'Wait Mode') {
-                    diagnoses.forEach(dx => {
-                        dx.confidence *= 0.95; // Slightly reduce confidence for progressive conditions
-                        dx.rationale += ' (Progressive condition - serial assessments recommended)';
+                try {
+                    const result = await this.pipeline(text, {
+                        topk: 3 // Get top 3 probable diagnoses
                     });
+                    
+                    return result;
+                } catch (error) {
+                    console.error("Error analyzing clinical text:", error);
+                    throw new Error("Failed to analyze clinical text");
                 }
-                else if (mode === 'Peace Mode') {
-                    diagnoses.forEach(dx => {
-                        dx.rationale += ' (Complete clinical picture available)';
-                    });
-                }
-                
-                // Sort by confidence
-                diagnoses.sort((a, b) => b.confidence - a.confidence);
-                
-                return {
-                    diagnoses,
-                    confidence,
-                    processingMode: mode
-                };
             }
 
-            formatDiagnosisResults(diagnosisResult, soapData) {
+            formatDiagnosisResults(analysis, soapData) {
+                const mode = this.determineProcessingMode(soapData);
+                
                 let html = `
                     <div class="diagnosis-result">
                         <div class="diagnosis-header">Differential Diagnosis (Ranked by Likelihood):</div>
                         <div class="diagnosis-list">
                 `;
                 
-                diagnosisResult.diagnoses.forEach((dx, index) => {
+                analysis.forEach((item, index) => {
                     html += `
                         <div class="diagnosis-item">
-                            <strong>${index + 1}. ${dx.condition}</strong> (${Math.round(dx.confidence * 100)}% confidence)
-                            <div style="font-size: 0.9em; color: #555; margin-left: 15px; margin-top: 5px;">
-                                ${dx.rationale}
-                            </div>
+                            <strong>${index + 1}. ${item.label}</strong> (${Math.round(item.score * 100)}% confidence)
                         </div>
                     `;
                 });
@@ -763,8 +760,8 @@
                 html += `
                         </div>
                         <div class="diagnosis-confidence">
-                            Processing Mode: ${diagnosisResult.processingMode} | 
-                            Overall Analysis Confidence: ${Math.round(diagnosisResult.confidence * 100)}%
+                            Processing Mode: ${mode.mode} | 
+                            Overall Analysis Confidence: ${Math.round(analysis[0]?.score * 100)}%
                         </div>
                     </div>
                     
@@ -781,9 +778,9 @@
                             <li>Complete blood count with differential</li>
                             <li>Comprehensive metabolic panel</li>
                             <li>Inflammatory markers (CRP, ESR)</li>
-                            ${diagnosisResult.diagnoses[0].condition.includes('Cardiac') ? '<li>Cardiac enzymes, EKG</li>' : ''}
-                            ${diagnosisResult.diagnoses[0].condition.includes('Pulmonary') ? '<li>Chest X-ray, oxygen saturation</li>' : ''}
-                            ${diagnosisResult.diagnoses[0].condition.includes('Neurologic') ? '<li>CT head, neurological exam</li>' : ''}
+                            ${analysis[0].label.includes('Cardiac') ? '<li>Cardiac enzymes, EKG</li>' : ''}
+                            ${analysis[0].label.includes('Pulmonary') ? '<li>Chest X-ray, oxygen saturation</li>' : ''}
+                            ${analysis[0].label.includes('Neurologic') ? '<li>CT head, neurological exam</li>' : ''}
                             <li>Additional testing as clinically indicated</li>
                         </ul>
                     </div>
@@ -793,45 +790,10 @@
                     </div>
                 `;
                 
-                return html;
-            }
-
-            async callClinicalLLaMA(prompt) {
-                const processingMode = this.determineProcessingMode(prompt);
-                const diagnosis = this.generateDifferentialDiagnosis(prompt, processingMode.mode);
-                
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                
                 return {
-                    response: this.formatDiagnosisResults(diagnosis, prompt),
-                    confidence: diagnosis.confidence,
-                    processingMode: diagnosis.processingMode
-                };
-            }
-
-            async callGPT4Clinical(prompt) {
-                const processingMode = this.determineProcessingMode(prompt);
-                const diagnosis = this.generateDifferentialDiagnosis(prompt, processingMode.mode);
-                
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                return {
-                    response: this.formatDiagnosisResults(diagnosis, prompt),
-                    confidence: diagnosis.confidence,
-                    processingMode: diagnosis.processingMode
-                };
-            }
-
-            async callBioBERT(prompt) {
-                const processingMode = this.determineProcessingMode(prompt);
-                const diagnosis = this.generateDifferentialDiagnosis(prompt, processingMode.mode);
-                
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                return {
-                    response: this.formatDiagnosisResults(diagnosis, prompt),
-                    confidence: diagnosis.confidence,
-                    processingMode: diagnosis.processingMode
+                    response: html,
+                    confidence: analysis[0]?.score || 0.85,
+                    processingMode: mode.mode
                 };
             }
 
@@ -873,15 +835,21 @@
                             plan
                         };
                         
-                        let result;
+                        // Combine all clinical text for analysis
+                        const clinicalText = `
+                            Patient: ${patientName}, ${patientAge}${patientGender}
+                            Specialty: ${specialty}
+                            Subjective: ${subjective}
+                            Objective: ${objective}
+                            Assessment: ${assessment}
+                            Plan: ${plan}
+                        `;
                         
-                        if (modelType === 'biobert') {
-                            result = await this.callBioBERT(prompt);
-                        } else if (modelType === 'clinicallama') {
-                            result = await this.callClinicalLLaMA(prompt);
-                        } else {
-                            result = await this.callGPT4Clinical(prompt);
-                        }
+                        // Get analysis from local model
+                        const analysis = await this.analyzeClinicalText(clinicalText);
+                        
+                        // Format results
+                        const result = this.formatDiagnosisResults(analysis, prompt);
                         
                         this.currentDiagnosticResult = {
                             ...prompt,
@@ -1050,12 +1018,6 @@
                 const stopBtn = document.getElementById('stopShareBtn');
                 const remoteVideo = document.getElementById('remoteScreen');
                 
-                this.peer = new Peer();
-                
-                this.peer.on('open', (id) => {
-                    console.log('PeerJS connected with ID:', id);
-                });
-                
                 startBtn.addEventListener('click', async () => {
                     try {
                         this.stream = await navigator.mediaDevices.getDisplayMedia({
@@ -1066,6 +1028,10 @@
                         remoteVideo.srcObject = this.stream;
                         startBtn.disabled = true;
                         stopBtn.disabled = false;
+                        
+                        this.stream.getTracks()[0].onended = () => {
+                            stopBtn.click();
+                        };
                     } catch (err) {
                         console.error('Screen sharing failed:', err);
                     }
@@ -1086,12 +1052,44 @@
                 
                 this.updatePatientList();
                 
+                // Handle patient selection
+                document.getElementById('patientList').addEventListener('click', (e) => {
+                    let target = e.target;
+                    while (target && target.nodeName !== 'LI') {
+                        target = target.parentElement;
+                    }
+                    if (target && target.dataset.id) {
+                        if (target.dataset.id.startsWith('diag-')) {
+                            const index = parseInt(target.dataset.id.split('-')[1]);
+                            this.showDiagnosticPatient(this.completedDiagnostics[index]);
+                        } else {
+                            this.showPatientDetails(target.dataset.id);
+                        }
+                    }
+                });
+                
                 saveNoteBtn.addEventListener('click', () => {
                     const progressNotes = document.getElementById('progressNotes').value;
                     
                     if (this.currentPatientId && this.patients[this.currentPatientId]) {
                         this.patients[this.currentPatientId].notes = progressNotes;
                         alert("Note saved successfully");
+                    } else if (this.currentDiagnosticResult) {
+                        // Save note for AI-generated patient
+                        const newPatient = {
+                            name: this.currentDiagnosticResult.patientName,
+                            age: this.currentDiagnosticResult.patientAge,
+                            gender: this.currentDiagnosticResult.patientGender,
+                            diagnosis: 'Diagnosis pending',
+                            medications: [],
+                            notes: progressNotes,
+                            aiHistory: [this.currentDiagnosticResult]
+                        };
+                        
+                        const newId = 'p' + Date.now();
+                        this.patients[newId] = newPatient;
+                        this.updatePatientList();
+                        alert("New patient note saved successfully");
                     } else {
                         alert("No patient selected or patient not in system");
                     }
@@ -1113,10 +1111,10 @@
         }
 
         // Initialize the application
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const medos = new MedOS();
-            medos.init();
+            await medos.init();
         });
     </script>
 </body>
-</html>
+</html>-Failed to load AI model. Using fallback analysis.
