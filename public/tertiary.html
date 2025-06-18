@@ -3,869 +3,383 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MedOS Clinical Collaboration Platform</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <title>SoleTailor AI - Foot Analysis & Customization</title>
     <style>
         :root {
-            --primary: #1976d2;
-            --secondary: #28a745;
-            --danger: #dc3545;
-            --dark: #343a40;
-            --light: #f8f9fa;
+            --primary: #5c6ac4;
+            --primary-dark: #3f4eae;
+            --success: #50b83c;
+            --danger: #de3618;
+            --warning: #ffea8a;
+            --text-dark: #212b36;
+            --text-light: #919eab;
+            --bg-light: #f9fafb;
+            --border: #dfe3e8;
         }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
-            color: #333;
         }
-        .app-container {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            min-height: 100vh;
-        }
-        .sidebar {
-            background: #2c3e50;
-            color: white;
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background-color: var(--bg-light);
             padding: 20px;
         }
-        .main-content {
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .app-content {
             display: grid;
-            grid-template-rows: auto 1fr;
+            grid-template-columns: 1fr;
             gap: 20px;
             padding: 20px;
         }
-        .card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 20px;
-            margin-bottom: 20px;
+        
+        @media (min-width: 768px) {
+            .app-content {
+                grid-template-columns: 1fr 1fr;
+            }
         }
+        
+        .panel {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        
+        .panel-title {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: var(--primary-dark);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+        }
+        
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: var(--primary);
+            background-color: rgba(92, 106, 196, 0.05);
+        }
+        
+        .upload-area.highlight {
+            border-color: var(--primary);
+            background-color: rgba(92, 106, 196, 0.1);
+        }
+        
         .btn {
-            padding: 10px 15px;
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: var(--primary);
+            color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            font-size: 14px;
             font-weight: 500;
             transition: all 0.3s;
+            text-align: center;
         }
-        .btn-primary {
-            background: var(--primary);
-            color: white;
+        
+        .btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
         }
-        .btn-primary:hover {
-            background: #1565c0;
+        
+        .btn:disabled {
+            background-color: var(--text-light);
+            cursor: not-allowed;
+            transform: none;
         }
+        
         .btn-secondary {
-            background: var(--secondary);
-            color: white;
+            background-color: white;
+            color: var(--primary);
+            border: 1px solid var(--primary);
         }
+        
         .btn-secondary:hover {
-            background: #218838;
+            background-color: rgba(92, 106, 196, 0.1);
         }
+        
         .btn-danger {
-            background: var(--danger);
-            color: white;
+            background-color: var(--danger);
         }
+        
         .btn-danger:hover {
-            background: #c82333;
+            background-color: #c62c1a;
         }
-        .module-card {
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
+        
+        .preview-container {
+            margin-top: 20px;
+        }
+        
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .pain-point-list {
+            margin-top: 20px;
+        }
+        
+        .pain-point {
+            border: 1px solid var(--border);
+            border-radius: 4px;
             padding: 15px;
             margin-bottom: 15px;
-            cursor: pointer;
-        }
-        .module-card.active {
-            background: var(--primary);
-        }
-        .video-container {
             position: relative;
-            background: black;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 20px;
         }
-        .video-container video {
-            width: 100%;
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
             display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            font-size: 14px;
         }
-        .video-controls {
-            position: absolute;
-            bottom: 10px;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
+        
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
         }
-        .suggestion-card {
-            border-left: 3px solid var(--primary);
-            padding: 10px;
-            margin: 10px 0;
-            background: #f5fbff;
+        
+        input[type="range"] {
+            width: 100%;
+            margin-top: 5px;
         }
-        .tab-container {
-            display: flex;
-            border-bottom: 1px solid #ddd;
-            margin-bottom: 20px;
-        }
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-        }
-        .tab.active {
-            border-bottom-color: var(--primary);
+        
+        .severity-value {
+            display: inline-block;
+            margin-left: 10px;
             font-weight: bold;
         }
-        .tab-content {
-            display: none;
+        
+        .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 18px;
         }
-        .tab-content.active {
-            display: block;
+        
+        .analysis-results {
+            margin-top: 20px;
         }
-        textarea {
-            width: 100%;
-            min-height: 100px;
-            padding: 10px;
-            border: 1px solid #ddd;
+        
+        .result-item {
+            margin-bottom: 15px;
+        }
+        
+        .result-label {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .result-value {
+            padding: 8px 12px;
+            background-color: var(--bg-light);
             border-radius: 4px;
-            resize: vertical;
+            font-size: 14px;
         }
+        
+        .recommendations {
+            margin-top: 20px;
+        }
+        
+        .recommendation {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .recommendation:before {
+            content: "•";
+            color: var(--primary);
+            font-size: 24px;
+            position: absolute;
+            left: 0;
+            top: -4px;
+        }
+        
         .loading {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(0,0,0,0.1);
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
             border-radius: 50%;
-            border-top-color: var(--primary);
+            border-top-color: white;
             animation: spin 1s linear infinite;
-            margin-right: 10px;
+            margin-right: 8px;
+            vertical-align: middle;
         }
+        
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        .patient-tag {
-            display: inline-block;
-            background: var(--primary);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-left: 5px;
+        
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
         }
-        .diagnosis-history {
-            margin-top: 20px;
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-        }
-        .history-item {
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        .diagnosis-result {
-            background: #e8f5e9;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 15px;
-            border-left: 4px solid #4caf50;
-        }
-        .diagnosis-header {
-            font-weight: bold;
+        
+        .notification {
+            padding: 12px 16px;
             margin-bottom: 10px;
-            color: #2e7d32;
-        }
-        .diagnosis-list {
-            margin-left: 20px;
-        }
-        .diagnosis-item {
-            margin-bottom: 8px;
-        }
-        .diagnosis-confidence {
-            font-style: italic;
-            color: #666;
-            margin-top: 10px;
-        }
-        .processing-mode {
-            display: inline-block;
-            padding: 3px 8px;
             border-radius: 4px;
-            font-size: 12px;
-            margin-left: 10px;
-        }
-        .peace-mode {
-            background-color: #4caf50;
             color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease-out;
         }
-        .wait-mode {
-            background-color: #ff9800;
-            color: white;
+        
+        .notification.success {
+            background-color: var(--success);
         }
-        .mixed-mode {
-            background-color: #9c27b0;
-            color: white;
+        
+        .notification.error {
+            background-color: var(--danger);
         }
-        .clinical-summary {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 15px;
+        
+        .notification.warning {
+            background-color: var(--warning);
+            color: var(--text-dark);
         }
-        .workup-recommendations {
-            background: #fff8e1;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 15px;
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
         }
-        #annotationCanvas {
-            border: 1px solid #ddd;
-            background: white;
+        
+        .error-message {
+            color: var(--danger);
+            font-size: 13px;
+            margin-top: 5px;
         }
-        .model-status {
-            padding: 8px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-        .model-loading {
-            background: #fff3cd;
-            color: #856404;
-        }
-        .model-ready {
-            background: #d4edda;
-            color: #155724;
-        }
-        .model-error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        /* Facial Recognition Styles */
-        .face-verification-container {
-            margin-top: 20px;
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-        }
-        #faceVideo {
-            width: 100%;
-            background: #000;
-            border-radius: 8px;
-        }
-        #faceCanvas {
+        
+        .hidden {
             display: none;
         }
-        .verification-steps {
-            margin-top: 15px;
-        }
-        .verification-step {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .verification-step i {
-            margin-right: 10px;
-            width: 20px;
-            text-align: center;
-        }
-        .step-complete {
-            color: #28a745;
-        }
-        .step-pending {
-            color: #6c757d;
-        }
-        .step-active {
-            color: #007bff;
-            font-weight: bold;
-        }
-        .verification-result {
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 15px;
-            text-align: center;
-            display: none;
-        }
-        .verification-success {
-            background: #d4edda;
-            color: #155724;
-            border-left: 4px solid #28a745;
-        }
-        .verification-failure {
-            background: #f8d7da;
-            color: #721c24;
-            border-left: 4px solid #dc3545;
-        }
-        .clinician-profile {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .clinician-avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: #ddd;
-            margin-right: 15px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .clinician-avatar img {
+        
+        #3d-viewer {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .clinician-details {
-            flex: 1;
-        }
-        .clinician-name {
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .clinician-license {
-            font-size: 0.9em;
-            color: #666;
-        }
-        .license-status {
-            display: inline-block;
-            padding: 2px 6px;
+            height: 400px;
+            background-color: #f0f0f0;
             border-radius: 4px;
-            font-size: 0.8em;
-            margin-left: 5px;
+            margin-top: 20px;
         }
-        .status-verified {
-            background: #28a745;
-            color: white;
-        }
-        .status-pending {
-            background: #ffc107;
-            color: #000;
-        }
-        .status-unverified {
-            background: #dc3545;
-            color: white;
-        }
-        .status-processing {
-            background: #17a2b8;
-            color: white;
-        }
-        .status-uploaded {
-            background: #17a2b8;
-            color: white;
-        }
-        .status-missing {
-            background: #6c757d;
-            color: white;
-        }
-        .cadre-selector {
-            margin-top: 15px;
-        }
-        .jurisdiction-status {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .jurisdiction-icon {
-            font-size: 2em;
-            margin-right: 15px;
-        }
-        .jurisdiction-pending {
-            color: #ffc107;
-        }
-        .jurisdiction-verified {
-            color: #28a745;
-        }
-        .jurisdiction-denied {
-            color: #dc3545;
-        }
-        .jurisdiction-details {
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 5px;
-        }
-        .credential-item {
-            margin-bottom: 15px;
-        }
-        .credential-label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-        .credential-status {
-            margin-left: 10px;
-        }
-        .access-status {
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .access-pending {
-            background: #fff3cd;
-            color: #856404;
-            border-left: 4px solid #ffc107;
-        }
-        .access-granted {
-            background: #d4edda;
-            color: #155724;
-            border-left: 4px solid #28a745;
-        }
-        .room-card {
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 5px;
-            text-align: center;
-        }
-        .qr-code-container {
-            text-align: center;
-            margin: 20px 0;
-        }
-        #jurisdictionQrCode {
-            width: 200px;
-            height: 200px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 10px;
-        }
-        .telehealth-scopes {
-            margin: 20px 0;
-        }
-        .scope-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .scope-icon {
-            margin-right: 10px;
-            color: #28a745;
-        }
-        .jurisdiction-approved {
-            color: #28a745;
-        }
-        .jurisdiction-pending {
-            color: #ffc107;
-        }
-        .jurisdiction-denied {
-            color: #dc3545;
+        
+        .input-error {
+            border-color: var(--danger) !important;
         }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <h2>MedOS</h2>
-            <div class="module-list">
-                <div class="module-card active" data-tab="jurisdiction">
-                    <h4><i class="fas fa-globe"></i> Jurisdiction</h4>
+    <div class="container">
+        <header>
+            <h1>SoleTailor AI Foot Analysis</h1>
+            <p class="subtitle">Personalized shoe customization based on your foot scan</p>
+        </header>
+        
+        <div class="notification-container" id="notification-container"></div>
+        
+        <div class="app-content">
+            <div class="left-column">
+                <!-- Scan Upload Panel -->
+                <div class="panel">
+                    <h2 class="panel-title">1. Upload Foot Scan</h2>
+                    <div class="upload-area" id="upload-area">
+                        <p>Drag & drop your foot scan image here</p>
+                        <p>or</p>
+                        <input type="file" id="file-input" accept="image/*" class="hidden">
+                        <button class="btn" id="select-btn">Select Image</button>
+                    </div>
+                    <div class="preview-container">
+                        <img id="image-preview" class="image-preview hidden">
+                        <div id="upload-error" class="error-message"></div>
+                    </div>
+                    <button class="btn" id="analyze-btn" disabled>Analyze Scan</button>
                 </div>
-                <div class="module-card" data-tab="ehr">
-                    <h4><i class="fas fa-hospital"></i> EHR System</h4>
-                </div>
-                <div class="module-card" data-tab="consultation">
-                    <h4><i class="fas fa-users"></i> Consultation</h4>
-                </div>
-                <div class="module-card" data-tab="diagnostic">
-                    <h4><i class="fas fa-robot"></i> AI Diagnostic</h4>
-                </div>
-                <div class="module-card" data-tab="screenshare">
-                    <h4><i class="fas fa-desktop"></i> Screen Sharing</h4>
+                
+                <!-- Pain Points Panel -->
+                <div class="panel">
+                    <h2 class="panel-title">2. Identify Pain Points</h2>
+                    <div id="pain-point-error" class="error-message"></div>
+                    <div id="pain-point-list" class="pain-point-list"></div>
+                    <button class="btn btn-secondary" id="add-pain-point-btn">Add Pain Point</button>
                 </div>
             </div>
             
-            <div style="margin-top: 30px;">
-                <h4>Access Status</h4>
-                <ul id="access-status-list">
-                    <li><i class="fas fa-id-card"></i> Identity: <span id="identity-status">Pending</span></li>
-                    <li><i class="fas fa-file-contract"></i> License: <span id="license-status">Pending</span></li>
-                    <li><i class="fas fa-globe"></i> Jurisdiction: <span id="jurisdiction-status">Pending</span></li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="main-content">
-            <!-- Jurisdiction Verification -->
-            <div class="tab-content active" id="jurisdiction">
-                <h2>Telehealth Jurisdiction Verification</h2>
-                <div class="card">
-                    <div class="clinician-profile">
-                        <div class="clinician-avatar">
-                            <img id="clinicianAvatar" src="https://ui-avatars.com/api/?name=MD&background=1976d2&color=fff" alt="Clinician">
-                        </div>
-                        <div class="clinician-details">
-                            <div class="clinician-name" id="clinicianName">Medical Doctor</div>
-                            <div class="clinician-license">
-                                License: <span id="clinicianLicense">Not verified</span>
-                                <span class="license-status status-pending" id="licenseBadge">Pending</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="jurisdiction-verification">
-                        <h3>Practice Authorization Status</h3>
-                        <div class="jurisdiction-status">
-                            <i class="fas fa-globe-americas jurisdiction-icon jurisdiction-pending"></i>
-                            <div class="jurisdiction-text">
-                                <strong>Current Jurisdiction:</strong> 
-                                <span id="currentJurisdiction">Loading...</span>
-                            </div>
-                        </div>
-                        
-                        <div id="jurisdictionResult" class="jurisdiction-details">
-                            <p>Complete identity verification and upload credentials to check jurisdiction status</p>
-                        </div>
-                    </div>
-
-                    <div class="credential-upload">
-                        <h3>Credential Verification</h3>
-                        
-                        <div class="credential-item">
-                            <label class="credential-label">Medical License:</label>
-                            <input type="file" id="licenseUpload" accept=".pdf,.jpg,.png" style="display: none;">
-                            <button id="uploadLicenseBtn" class="btn btn-secondary">
-                                <i class="fas fa-upload"></i> Upload License
-                            </button>
-                            <span id="licenseStatusBadge" class="credential-status status-missing">Missing</span>
-                        </div>
-                        
-                        <div class="credential-item">
-                            <label class="credential-label">ID Document:</label>
-                            <input type="file" id="idUpload" accept=".pdf,.jpg,.png" style="display: none;">
-                            <button id="uploadIdBtn" class="btn btn-secondary">
-                                <i class="fas fa-upload"></i> Upload ID
-                            </button>
-                            <span id="idStatusBadge" class="credential-status status-missing">Missing</span>
-                        </div>
-                        
-                        <div class="credential-item">
-                            <label class="credential-label">Practice Country:</label>
-                            <select id="practiceCountry" class="btn" style="width: 100%;">
-                                <option value="">Select country</option>
-                                <option value="US">United States</option>
-                                <option value="KE">Kenya</option>
-                                <option value="UK">United Kingdom</option>
-                                <option value="CA">Canada</option>
-                                <option value="AU">Australia</option>
-                            </select>
-                        </div>
-                        
-                        <button id="verifyCredentialsBtn" class="btn btn-primary" style="margin-top: 15px;" disabled>
-                            <i class="fas fa-check-circle"></i> Verify Credentials
-                        </button>
-                    </div>
-
-                    <div id="verificationResults" style="display: none;">
-                        <div class="qr-code-container">
-                            <h4>Telehealth Authorization QR Code</h4>
-                            <div id="jurisdictionQrCode"></div>
-                            <p>Scan this code to verify your telehealth authorization status</p>
-                        </div>
-                        
-                        <div class="telehealth-scopes">
-                            <h4>Authorized Practice Scopes:</h4>
-                            <div id="practiceScopes">
-                                <!-- Scopes will be added here dynamically -->
-                            </div>
-                        </div>
-                        
-                        <div style="margin-top: 15px;">
-                            <h4>Next Steps:</h4>
-                            <ul id="nextStepsList">
-                                <!-- Next steps will be added here dynamically -->
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Facial Recognition Verification -->
-                    <div class="face-verification-container">
-                        <h4>Biometric Identity Verification</h4>
-                        <div class="verification-steps">
-                            <div class="verification-step" id="step1">
-                                <i class="fas fa-circle step-pending"></i>
-                                <span>Start facial recognition</span>
-                            </div>
-                            <div class="verification-step" id="step2">
-                                <i class="fas fa-circle step-pending"></i>
-                                <span>Position your face</span>
-                            </div>
-                            <div class="verification-step" id="step3">
-                                <i class="fas fa-circle step-pending"></i>
-                                <span>Complete verification</span>
-                            </div>
-                        </div>
-
-                        <div style="margin-top: 15px;">
-                            <video id="faceVideo" autoplay playsinline></video>
-                            <canvas id="faceCanvas"></canvas>
-                        </div>
-
-                        <div style="margin-top: 15px; text-align: center;">
-                            <button id="startVerificationBtn" class="btn btn-primary">
-                                <i class="fas fa-id-card"></i> Start Verification
-                            </button>
-                            <button id="retryVerificationBtn" class="btn btn-secondary" style="display: none;">
-                                <i class="fas fa-redo"></i> Retry
-                            </button>
-                        </div>
-
-                        <div id="verificationResult" class="verification-result">
-                            <i class="fas fa-check-circle" style="font-size: 2em;"></i>
-                            <h3 id="resultMessage">Verification Successful</h3>
-                            <p id="resultDetails">You can now access patient records</p>
-                        </div>
-                    </div>
+            <div class="right-column">
+                <!-- 3D Model Viewer -->
+                <div class="panel">
+                    <h2 class="panel-title">3D Shoe Model</h2>
+                    <div id="3d-viewer"></div>
                 </div>
-            </div>
-
-            <!-- EHR System -->
-            <div class="tab-content" id="ehr">
-                <h2>Electronic Health Records</h2>
-                <div class="card">
-                    <div id="ehrAccessStatus" class="access-status access-pending">
-                        <i class="fas fa-lock"></i> Please complete identity verification, license upload, and jurisdictional clearance to access patient records
+                
+                <!-- Analysis Results Panel -->
+                <div class="panel">
+                    <h2 class="panel-title">Analysis Results</h2>
+                    <div id="results-content">
+                        <p>Upload and analyze your foot scan to see personalized recommendations.</p>
                     </div>
-
-                    <div id="ehrSystem" style="display: none;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-                            <h3>Patient Records</h3>
-                            <button id="refreshPatientsBtn" class="btn">
-                                <i class="fas fa-sync-alt"></i> Refresh
-                            </button>
-                        </div>
-
-                        <ul id="patientList" style="list-style: none; padding: 0;">
-                            <li style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer;" data-id="1001">
-                                John Smith (58M)
-                                <span class="patient-tag">Active</span>
-                            </li>
-                            <li style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer;" data-id="1002">
-                                Sarah Lee (42F)
-                                <span class="patient-tag">Active</span>
-                            </li>
-                            <li style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer;" data-id="1003">
-                                Miguel Garcia (67M)
-                                <span class="patient-tag">Follow-up</span>
-                            </li>
-                        </ul>
-
-                        <div id="patientDetails" style="margin-top: 20px; display: none;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <h4>Patient Details</h4>
-                                <span class="license-status status-verified">Verified</span>
-                            </div>
-
-                            <div style="margin-top: 15px;">
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                    <div>
-                                        <label>Name:</label>
-                                        <div class="card" style="padding: 10px;">John Smith</div>
-                                    </div>
-                                    <div>
-                                        <label>Age/Gender:</label>
-                                        <div class="card" style="padding: 10px;">58 / Male</div>
-                                    </div>
-                                </div>
-
-                                <div style="margin-top: 15px;">
-                                    <label>Diagnosis:</label>
-                                    <div class="card" style="padding: 10px;">Hypertension, Type 2 Diabetes</div>
-                                </div>
-
-                                <div style="margin-top: 15px;">
-                                    <label>Medications:</label>
-                                    <div class="card" style="padding: 10px;">
-                                        <ul>
-                                            <li>Lisinopril 10mg daily</li>
-                                            <li>Metformin 500mg BID</li>
-                                        </ul>
-                                    </div>
-                                </div>
-
-                                <div style="margin-top: 15px;">
-                                    <label>Progress Notes:</label>
-                                    <textarea class="card" style="width: 100%; min-height: 100px; padding: 10px;">58yo male with HTN and DM2. BP today 145/88. Glucose 132.</textarea>
-                                </div>
-
-                                <button class="btn btn-primary" style="margin-top: 15px;">
-                                    <i class="fas fa-save"></i> Save Changes
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Consultation Rooms -->
-            <div class="tab-content" id="consultation">
-                <h2>Consultation Rooms</h2>
-                <div class="card">
-                    <div id="consultationAccessStatus" class="access-status access-pending">
-                        <i class="fas fa-lock"></i> Please complete identity verification and jurisdictional clearance to join consultations
-                    </div>
-
-                    <div id="consultationRooms" style="display: none;">
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
-                            <div class="room-card">
-                                <h3>General Medicine</h3>
-                                <button class="btn btn-primary join-room" data-room="general">
-                                    <i class="fas fa-door-open"></i> Join
-                                </button>
-                            </div>
-                            <div class="room-card">
-                                <h3>Cardiology</h3>
-                                <button class="btn btn-primary join-room" data-room="cardiology">
-                                    <i class="fas fa-door-open"></i> Join
-                                </button>
-                            </div>
-                            <div class="room-card">
-                                <h3>Neurology</h3>
-                                <button class="btn btn-primary join-room" data-room="neurology">
-                                    <i class="fas fa-door-open"></i> Join
-                                </button>
-                            </div>
-                            <div class="room-card">
-                                <h3>Pediatrics</h3>
-                                <button class="btn btn-primary join-room" data-room="pediatrics">
-                                    <i class="fas fa-door-open"></i> Join
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- AI Diagnostic -->
-            <div class="tab-content" id="diagnostic">
-                <h2>AI Clinical Diagnostic</h2>
-                <div class="card">
-                    <div id="modelStatus" class="model-status model-loading">
-                        <i class="fas fa-spinner fa-spin"></i> Loading AI model...
-                    </div>
-                    
-                    <form id="diagnosticForm">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                            <div>
-                                <label for="modelType">AI Model:</label>
-                                <select id="modelType" class="btn" style="width: 100%;">
-                                    <option value="clinicalbert">ClinicalBERT</option>
-                                    <option value="bioclinicalbert">BioClinicalBERT</option>
-                                    <option value="pubmedbert">PubMedBERT</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="specialty">Specialty:</label>
-                                <select id="specialty" class="btn" style="width: 100%;">
-                                    <option value="general">General Medicine</option>
-                                    <option value="cardiology">Cardiology</option>
-                                    <option value="neurology">Neurology</option>
-                                    <option value="pulmonology">Pulmonology</option>
-                                    <option value="gastroenterology">Gastroenterology</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="patientName">Patient Name:</label>
-                            <input type="text" id="patientName" class="btn" style="width: 100%; padding: 10px;" placeholder="Enter patient name">
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="patientAge">Patient Age:</label>
-                            <input type="number" id="patientAge" class="btn" style="width: 100%; padding: 10px;" placeholder="Enter patient age">
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="patientGender">Patient Gender:</label>
-                            <select id="patientGender" class="btn" style="width: 100%;">
-                                <option value="M">Male</option>
-                                <option value="F">Female</option>
-                                <option value="O">Other</option>
-                            </select>
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="subjective">Subjective:</label>
-                            <textarea id="subjective" placeholder="Patient's symptoms, history, duration, severity..."></textarea>
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="objective">Objective:</label>
-                            <textarea id="objective" placeholder="Vital signs, physical exam findings, lab results, imaging..."></textarea>
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="assessment">Assessment:</label>
-                            <textarea id="assessment" placeholder="Clinical impressions, working diagnosis..."></textarea>
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="plan">Plan:</label>
-                            <textarea id="plan" placeholder="Treatment recommendations, follow-up plans..."></textarea>
-                        </div>
-
-                        <button type="submit" class="btn btn-secondary" style="margin-top: 20px;" id="analyzeBtn" disabled>
-                            <i class="fas fa-play"></i> Generate Diagnosis
-                        </button>
-                    </form>
-
-                    <div id="diagnosticResults" style="margin-top: 30px; display: none;">
-                        <h3>AI Diagnosis Results <span id="processingModeBadge" class="processing-mode"></span></h3>
-                        <div class="suggestion-card">
-                            <div id="aiResultContent"></div>
-                            <button id="saveToEHRBtn" class="btn btn-primary" style="margin-top: 10px;">
-                                <i class="fas fa-clipboard"></i> Save to EHR
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Screen Sharing -->
-            <div class="tab-content" id="screenshare">
-                <h2>Clinical Screen Sharing</h2>
-                <div class="card">
-                    <div id="screenshareAccessStatus" class="access-status access-pending">
-                        <i class="fas fa-lock"></i> Please complete identity verification and jurisdictional clearance to access screen sharing
-                    </div>
-
-                    <div id="screenshareContent" style="display: none;">
-                        <div class="video-container">
-                            <video id="remoteScreen" autoplay playsinline></video>
-                            <div class="video-controls">
-                                <button id="startShareBtn" class="btn btn-primary">
-                                    <i class="fas fa-share-square"></i> Share Screen
-                                </button>
-                                <button id="stopShareBtn" class="btn btn-danger" disabled>
-                                    <i class="fas fa-stop"></i> Stop Sharing
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3>Collaboration Tools</h3>
-                            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                                <button class="btn" id="drawBtn">
-                                    <i class="fas fa-pencil-alt"></i> Draw
-                                </button>
-                                <button class="btn" id="highlightBtn">
-                                    <i class="fas fa-highlighter"></i> Highlight
-                                </button>
-                                <button class="btn" id="zoomBtn">
-                                    <i class="fas fa-search-plus"></i> Zoom
-                                </button>
-                                <button class="btn" id="clearCanvasBtn">
-                                    <i class="fas fa-trash"></i> Clear
-                                </button>
-                            </div>
-
-                            <canvas id="annotationCanvas" width="800" height="400" style="border: 1px solid #ddd; margin-bottom: 20px;"></canvas>
-                        </div>
+                    <div class="action-buttons" style="margin-top: 20px;">
+                        <button class="btn" id="save-scan-btn" disabled>Save Scan</button>
+                        <button class="btn" id="create-order-btn" disabled>Create Order</button>
                     </div>
                 </div>
             </div>
@@ -873,862 +387,630 @@
     </div>
 
     <script>
-        // MedOS Core Application with Integrated Verification System
-        class MedOS {
-            constructor() {
-                this.licenseFile = null;
-                this.idFile = null;
-                this.practiceCountry = '';
-                this.jurisdictionStatus = 'pending';
-                this.credentialHash = '';
-                this.telehealthScopes = [];
-                this.nextSteps = [];
-                this.identityVerified = false;
-                this.licenseVerified = false;
-                this.jurisdictionVerified = false;
-                this.faceDetectionActive = false;
-                this.faceVideo = null;
-                this.faceCanvas = null;
-                this.faceCanvasCtx = null;
-                this.verificationSteps = [];
-                this.currentStep = 0;
-                this.verificationComplete = false;
-                this.cadreType = 'MD';
-                this.patients = {
-                    '1001': { name: 'John Smith', age: 58, gender: 'M', conditions: ['Hypertension', 'Type 2 Diabetes'] },
-                    '1002': { name: 'Sarah Lee', age: 42, gender: 'F', conditions: ['Migraine', 'Anxiety'] },
-                    '1003': { name: 'Miguel Garcia', age: 67, gender: 'M', conditions: ['COPD', 'Osteoarthritis'] }
-                };
-                this.currentDiagnosticResult = null;
-                this.completedDiagnostics = [];
-                this.modelInitialized = false;
-                this.stream = null;
+        // Main App Controller
+        const SoleTailorAI = (function() {
+            // State
+            const state = {
+                scanImage: null,
+                painPoints: [],
+                analysisResults: null,
+                loading: false,
+                shopData: null,
+                shoeModel: null,
+                scene: null,
+                camera: null,
+                renderer: null,
+                controls: null
+            };
+            
+            // DOM Elements
+            const elements = {
+                uploadArea: document.getElementById('upload-area'),
+                fileInput: document.getElementById('file-input'),
+                selectBtn: document.getElementById('select-btn'),
+                imagePreview: document.getElementById('image-preview'),
+                uploadError: document.getElementById('upload-error'),
+                analyzeBtn: document.getElementById('analyze-btn'),
+                painPointList: document.getElementById('pain-point-list'),
+                painPointError: document.getElementById('pain-point-error'),
+                addPainPointBtn: document.getElementById('add-pain-point-btn'),
+                resultsContent: document.getElementById('results-content'),
+                saveScanBtn: document.getElementById('save-scan-btn'),
+                createOrderBtn: document.getElementById('create-order-btn'),
+                notificationContainer: document.getElementById('notification-container'),
+                viewerContainer: document.getElementById('3d-viewer')
+            };
+            
+            // Initialize the application
+            function init() {
+                setupEventListeners();
+                init3DViewer();
+                fetchShopData();
             }
-
-            async init() {
-                this.setupTabs();
-                this.setupJurisdictionVerification();
-                this.setupFaceVerification();
-                this.setupEHRSystem();
-                this.setupConsultation();
-                this.setupDiagnostic();
-                this.setupScreenShare();
-                this.detectLocation();
+            
+            // Set up event listeners
+            function setupEventListeners() {
+                // File upload
+                elements.selectBtn.addEventListener('click', () => elements.fileInput.click());
+                elements.fileInput.addEventListener('change', handleFileUpload);
                 
-                // Initialize AI model
-                try {
-                    this.pipeline = await transformers.pipeline(
-                        'text-classification',
-                        'bvanaken/clinical-assertion-negation-bert'
+                // Drag and drop
+                elements.uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    elements.uploadArea.classList.add('highlight');
+                });
+                
+                elements.uploadArea.addEventListener('dragleave', () => {
+                    elements.uploadArea.classList.remove('highlight');
+                });
+                
+                elements.uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    elements.uploadArea.classList.remove('highlight');
+                    
+                    if (e.dataTransfer.files.length) {
+                        elements.fileInput.files = e.dataTransfer.files;
+                        handleFileUpload({ target: elements.fileInput });
+                    }
+                });
+                
+                // Pain points
+                elements.addPainPointBtn.addEventListener('click', addPainPoint);
+                
+                // Actions
+                elements.analyzeBtn.addEventListener('click', analyzeFootScan);
+                elements.saveScanBtn.addEventListener('click', saveScan);
+                elements.createOrderBtn.addEventListener('click', createOrder);
+            }
+            
+            // Initialize 3D viewer
+            function init3DViewer() {
+                // Set up Three.js scene
+                state.scene = new THREE.Scene();
+                state.scene.background = new THREE.Color(0xf0f0f0);
+                
+                // Camera
+                state.camera = new THREE.PerspectiveCamera(
+                    75, 
+                    elements.viewerContainer.clientWidth / elements.viewerContainer.clientHeight, 
+                    0.1, 
+                    1000
+                );
+                state.camera.position.z = 5;
+                
+                // Renderer
+                state.renderer = new THREE.WebGLRenderer({ antialias: true });
+                state.renderer.setSize(
+                    elements.viewerContainer.clientWidth, 
+                    elements.viewerContainer.clientHeight
+                );
+                elements.viewerContainer.appendChild(state.renderer.domElement);
+                
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                state.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(1, 1, 3);
+                state.scene.add(directionalLight);
+                
+                // Controls
+                state.controls = new THREE.OrbitControls(state.camera, state.renderer.domElement);
+                state.controls.enableDamping = true;
+                
+                // Load shoe model
+                const loader = new THREE.GLTFLoader();
+                loader.load(
+                    'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Shoe/glTF/Shoe.gltf',
+                    (gltf) => {
+                        state.shoeModel = gltf.scene;
+                        state.shoeModel.scale.set(0.5, 0.5, 0.5);
+                        state.shoeModel.position.y = -0.5;
+                        state.scene.add(state.shoeModel);
+                        
+                        // Animation loop
+                        function animate() {
+                            requestAnimationFrame(animate);
+                            state.controls.update();
+                            state.renderer.render(state.scene, state.camera);
+                        }
+                        animate();
+                    },
+                    undefined,
+                    (error) => {
+                        console.error('Error loading shoe model:', error);
+                        showNotification('Failed to load 3D model', 'error');
+                    }
+                );
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    state.camera.aspect = elements.viewerContainer.clientWidth / elements.viewerContainer.clientHeight;
+                    state.camera.updateProjectionMatrix();
+                    state.renderer.setSize(
+                        elements.viewerContainer.clientWidth, 
+                        elements.viewerContainer.clientHeight
                     );
-                    document.getElementById('modelStatus').className = 'model-status model-ready';
-                    document.getElementById('modelStatus').innerHTML = '<i class="fas fa-check-circle"></i> AI model ready';
-                    document.getElementById('analyzeBtn').disabled = false;
-                    this.modelInitialized = true;
-                } catch (error) {
-                    console.error('Error loading AI model:', error);
-                    document.getElementById('modelStatus').className = 'model-status model-error';
-                    document.getElementById('modelStatus').innerHTML = '<i class="fas fa-exclamation-circle"></i> Failed to load AI model';
-                }
-            }
-
-            setupTabs() {
-                const moduleCards = document.querySelectorAll('.module-card');
-
-                moduleCards.forEach(card => {
-                    card.addEventListener('click', () => {
-                        const tabId = card.dataset.tab;
-                        document.querySelectorAll('.tab-content').forEach(content => {
-                            content.classList.remove('active');
-                        });
-                        document.querySelectorAll('.module-card').forEach(c => {
-                            c.classList.remove('active');
-                        });
-                        
-                        document.getElementById(tabId).classList.add('active');
-                        card.classList.add('active');
-                    });
-                });
-            }
-
-            setupJurisdictionVerification() {
-                // Set up file upload buttons
-                document.getElementById('uploadLicenseBtn').addEventListener('click', () => {
-                    document.getElementById('licenseUpload').click();
-                });
-                
-                document.getElementById('uploadIdBtn').addEventListener('click', () => {
-                    document.getElementById('idUpload').click();
-                });
-                
-                // Handle file uploads
-                document.getElementById('licenseUpload').addEventListener('change', (e) => {
-                    this.licenseFile = e.target.files[0];
-                    if (this.licenseFile) {
-                        document.getElementById('licenseStatusBadge').className = 'credential-status status-processing';
-                        document.getElementById('licenseStatusBadge').textContent = 'Processing...';
-                        this.processLicenseFile(this.licenseFile);
-                    }
-                });
-                
-                document.getElementById('idUpload').addEventListener('change', (e) => {
-                    this.idFile = e.target.files[0];
-                    if (this.idFile) {
-                        document.getElementById('idStatusBadge').className = 'credential-status status-processing';
-                        document.getElementById('idStatusBadge').textContent = 'Processing...';
-                        this.processIdFile(this.idFile);
-                    }
-                });
-                
-                // Handle country selection
-                document.getElementById('practiceCountry').addEventListener('change', (e) => {
-                    this.practiceCountry = e.target.value;
-                    this.checkVerificationReady();
-                });
-                
-                // Set up verify button
-                document.getElementById('verifyCredentialsBtn').addEventListener('click', () => {
-                    this.verifyCredentials();
                 });
             }
             
-            async processLicenseFile(file) {
-                // Simulate document processing
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                
-                // Generate a hash of the file for verification
-                const fileReader = new FileReader();
-                fileReader.onload = async (e) => {
-                    const arrayBuffer = e.target.result;
-                    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-                    const hashArray = Array.from(new Uint8Array(hashBuffer));
-                    this.credentialHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-                    
-                    document.getElementById('licenseStatusBadge').className = 'credential-status status-uploaded';
-                    document.getElementById('licenseStatusBadge').textContent = 'Verified';
-                    document.getElementById('clinicianLicense').textContent = 'KMPDC-' + Math.floor(10000 + Math.random() * 90000);
-                    document.getElementById('licenseBadge').className = 'license-status status-verified';
-                    document.getElementById('licenseBadge').textContent = 'Verified';
-                    
-                    this.licenseVerified = true;
-                    this.updateAccessStatus();
-                    this.checkVerificationReady();
-                };
-                fileReader.readAsArrayBuffer(file);
-            }
-            
-            async processIdFile(file) {
-                // Simulate ID processing
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                
-                document.getElementById('idStatusBadge').className = 'credential-status status-uploaded';
-                document.getElementById('idStatusBadge').textContent = 'Verified';
-                this.updateAccessStatus();
-                this.checkVerificationReady();
-            }
-            
-            checkVerificationReady() {
-                const verifyBtn = document.getElementById('verifyCredentialsBtn');
-                if (this.licenseFile && this.idFile && this.practiceCountry) {
-                    verifyBtn.disabled = false;
-                } else {
-                    verifyBtn.disabled = true;
-                }
-            }
-            
-            async verifyCredentials() {
-                const verifyBtn = document.getElementById('verifyCredentialsBtn');
-                verifyBtn.innerHTML = '<span class="loading"></span> Verifying...';
-                verifyBtn.disabled = true;
-                
-                // Simulate compliance check (20 sec)
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                // Check telehealth rules based on country
-                const clearance = this.checkTelehealthRules(this.practiceCountry);
-                
-                // Simulate blockchain storage (10 sec)
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                const txHash = this.generateTxHash();
-                
-                // Update verification status
-                this.jurisdictionStatus = clearance.approved ? 'approved' : 'pending';
-                this.telehealthScopes = clearance.allowed_actions;
-                this.nextSteps = clearance.additional_requirements;
-                this.jurisdictionVerified = clearance.approved;
-                
-                this.updateJurisdictionStatus(clearance);
-                this.generateQrCode(txHash);
-                this.updateAccessStatus();
-                
-                verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verify Credentials';
-                verifyBtn.disabled = false;
-            }
-            
-            checkTelehealthRules(countryCode) {
-                const rules = {
-                    "US": {
-                        requirements: ["active_license", "english_proficiency", "state_telehealth_cert"],
-                        auto_approve: true,
-                        additional_steps: ["DEA_registration"],
-                        allowed_actions: ["consult", "prescribe"],
-                        gap_analysis: {
-                            "KE": ["state_telehealth_cert", "DEA_registration"],
-                            "UK": ["state_telehealth_cert", "malpractice_insurance"]
-                        }
-                    },
-                    "KE": {
-                        requirements: ["kmpdc_registration", "english_proficiency"],
-                        auto_approve: true,
-                        additional_steps: [],
-                        allowed_actions: ["consult", "prescribe", "refer"],
-                        gap_analysis: {
-                            "US": ["kmpdc_equivalency"],
-                            "UK": ["kmpdc_equivalency"]
-                        }
-                    },
-                    "UK": {
-                        requirements: ["gmc_registration", "english_proficiency"],
-                        auto_approve: false,
-                        additional_steps: ["malpractice_insurance"],
-                        allowed_actions: ["consult"],
-                        gap_analysis: {
-                            "US": ["gmc_equivalency"],
-                            "KE": ["gmc_equivalency"]
-                        }
-                    }
-                };
-                
-                const countryRules = rules[countryCode] || rules["US"];
-                const approved = countryRules.auto_approve;
-                
-                // Generate gap analysis for foreign jurisdictions
-                let gapAnalysis = [];
-                if (this.practiceCountry !== "KE" && countryRules.gap_analysis && countryRules.gap_analysis["KE"]) {
-                    gapAnalysis = countryRules.gap_analysis["KE"];
-                }
-                
-                return {
-                    approved,
-                    level: approved ? "full" : "limited",
-                    allowed_actions: approved ? countryRules.allowed_actions : ["consult"],
-                    additional_requirements: [...countryRules.additional_steps, ...gapAnalysis],
-                    valid_until: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-                };
-            }
-            
-            generateTxHash() {
-                return '0x' + Array.from(crypto.getRandomValues(new Uint8Array(16)))
-                    .map(b => b.toString(16).padStart(2, '0')).join('');
-            }
-            
-            updateJurisdictionStatus(clearance) {
-                const jurisdictionElement = document.getElementById('currentJurisdiction');
-                const resultElement = document.getElementById('jurisdictionResult');
-                
-                jurisdictionElement.textContent = this.getCountryName(this.practiceCountry);
-                
-                if (clearance.approved) {
-                    jurisdictionElement.className = 'jurisdiction-approved';
-                    resultElement.innerHTML = `
-                        <p><i class="fas fa-check-circle jurisdiction-approved"></i> 
-                        <strong>Approved for telehealth practice</strong></p>
-                        <p>Clearance level: ${clearance.level}</p>
-                        <p>Expires: ${new Date(clearance.valid_until).toLocaleDateString()}</p>
-                    `;
-                } else {
-                    jurisdictionElement.className = 'jurisdiction-pending';
-                    resultElement.innerHTML = `
-                        <p><i class="fas fa-exclamation-triangle jurisdiction-pending"></i> 
-                        <strong>Pending approval</strong></p>
-                        <p>Your application requires manual review by the medical board.</p>
-                        ${clearance.additional_requirements.length > 0 ? `
-                        <div style="margin-top: 10px;">
-                            <strong>Additional Requirements:</strong>
-                            <ul>
-                                ${clearance.additional_requirements.map(req => `<li>${req}</li>`).join('')}
-                            </ul>
-                        </div>
-                        ` : ''}
-                    `;
-                }
-                
-                // Show verification results
-                document.getElementById('verificationResults').style.display = 'block';
-            }
-            
-            generateQrCode(txHash) {
-                const qrContainer = document.getElementById('jurisdictionQrCode');
-                qrContainer.innerHTML = '';
-                
-                QRCode.toCanvas(qrContainer, txHash, { width: 150 }, (error) => {
-                    if (error) console.error('QR code generation error:', error);
-                });
-                
-                // Update practice scopes
-                const scopesContainer = document.getElementById('practiceScopes');
-                scopesContainer.innerHTML = '';
-                
-                this.telehealthScopes.forEach(scope => {
-                    const scopeElement = document.createElement('div');
-                    scopeElement.className = 'scope-item';
-                    scopeElement.innerHTML = `<i class="fas fa-check-circle scope-icon"></i> ${scope}`;
-                    scopesContainer.appendChild(scopeElement);
-                });
-                
-                // Update next steps
-                const nextStepsList = document.getElementById('nextStepsList');
-                nextStepsList.innerHTML = '';
-                
-                this.nextSteps.forEach(step => {
-                    const li = document.createElement('li');
-                    li.textContent = step;
-                    nextStepsList.appendChild(li);
-                });
-            }
-            
-            getCountryName(code) {
-                const countries = {
-                    "US": "United States",
-                    "KE": "Kenya",
-                    "UK": "United Kingdom",
-                    "CA": "Canada",
-                    "AU": "Australia"
-                };
-                return countries[code] || code;
-            }
-            
-            detectLocation() {
-                // In a real app, would use geolocation or IP detection
-                setTimeout(() => {
-                    document.getElementById('currentJurisdiction').textContent = "Kenya";
-                }, 1000);
-            }
-            
-            updateAccessStatus() {
-                // Update sidebar status
-                document.getElementById('identity-status').textContent = 
-                    this.identityVerified ? 'Verified' : 'Pending';
-                document.getElementById('license-status').textContent = 
-                    this.licenseVerified ? 'Verified' : 'Pending';
-                document.getElementById('jurisdiction-status').textContent = 
-                    this.jurisdictionVerified ? 'Approved' : 'Pending';
-                
-                if (this.identityVerified) {
-                    document.getElementById('identity-status').className = 'jurisdiction-approved';
-                }
-                if (this.licenseVerified) {
-                    document.getElementById('license-status').className = 'jurisdiction-approved';
-                }
-                if (this.jurisdictionVerified) {
-                    document.getElementById('jurisdiction-status').className = 'jurisdiction-approved';
-                }
-                
-                // Update access status in all modules
-                this.updateModuleAccess();
-            }
-            
-            updateModuleAccess() {
-                const hasFullAccess = this.identityVerified && this.licenseVerified && this.jurisdictionVerified;
-                
-                // EHR System
-                document.getElementById('ehrSystem').style.display = hasFullAccess ? 'block' : 'none';
-                document.getElementById('ehrAccessStatus').style.display = hasFullAccess ? 'none' : 'block';
-                
-                // Consultation
-                document.getElementById('consultationRooms').style.display = hasFullAccess ? 'block' : 'none';
-                document.getElementById('consultationAccessStatus').style.display = hasFullAccess ? 'none' : 'block';
-                
-                // Screen Sharing
-                document.getElementById('screenshareContent').style.display = hasFullAccess ? 'block' : 'none';
-                document.getElementById('screenshareAccessStatus').style.display = hasFullAccess ? 'none' : 'block';
-            }
-            
-            setupFaceVerification() {
-                this.faceVideo = document.getElementById('faceVideo');
-                this.faceCanvas = document.getElementById('faceCanvas');
-                this.faceCanvasCtx = this.faceCanvas.getContext('2d');
-                this.verificationSteps = [
-                    document.getElementById('step1'),
-                    document.getElementById('step2'),
-                    document.getElementById('step3')
-                ];
-                
-                document.getElementById('startVerificationBtn').addEventListener('click', () => {
-                    this.startFaceVerification();
-                });
-                
-                document.getElementById('retryVerificationBtn').addEventListener('click', () => {
-                    this.resetFaceVerification();
-                });
-            }
-            
-            async startFaceVerification() {
+            // Fetch shop data
+            async function fetchShopData() {
                 try {
-                    this.faceDetectionActive = true;
-                    this.currentStep = 0;
-                    this.updateVerificationSteps();
-                    
-                    // Get user media
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    this.faceVideo.srcObject = stream;
-                    
-                    // Simulate face detection process
-                    this.simulateFaceDetection();
-                    
-                    document.getElementById('startVerificationBtn').style.display = 'none';
-                    document.getElementById('retryVerificationBtn').style.display = 'inline-block';
+                    // In a real app, this would fetch from your API
+                    state.shopData = { shop: 'SoleTailor Demo' };
                 } catch (error) {
-                    console.error('Error accessing camera:', error);
-                    this.showVerificationResult(false, 'Camera access denied');
+                    console.error('Failed to fetch shop data:', error);
+                    showNotification('Failed to load shop data', 'error');
                 }
             }
             
-            simulateFaceDetection() {
-                let stepsCompleted = 0;
-                const totalSteps = 3;
+            // Handle file upload
+            async function handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
                 
-                const interval = setInterval(() => {
-                    if (!this.faceDetectionActive) {
-                        clearInterval(interval);
-                        return;
-                    }
-                    
-                    stepsCompleted++;
-                    this.currentStep = Math.min(stepsCompleted, totalSteps - 1);
-                    this.updateVerificationSteps();
-                    
-                    if (stepsCompleted >= totalSteps) {
-                        clearInterval(interval);
-                        this.completeFaceVerification();
-                    }
-                }, 1500);
-            }
-            
-            updateVerificationSteps() {
-                this.verificationSteps.forEach((step, index) => {
-                    const icon = step.querySelector('i');
-                    const text = step.querySelector('span');
-                    
-                    if (index < this.currentStep) {
-                        icon.className = 'fas fa-check-circle step-complete';
-                        text.style.color = '#28a745';
-                    } else if (index === this.currentStep) {
-                        icon.className = 'fas fa-circle-notch fa-spin step-active';
-                        text.style.color = '#007bff';
-                        text.style.fontWeight = 'bold';
-                    } else {
-                        icon.className = 'fas fa-circle step-pending';
-                        text.style.color = '';
-                        text.style.fontWeight = '';
-                    }
-                });
-            }
-            
-            completeFaceVerification() {
-                this.faceDetectionActive = false;
-                this.verificationComplete = true;
-                this.identityVerified = true;
+                // Validate file
+                if (!validateImageFile(file)) return;
                 
-                this.showVerificationResult(true, 'Identity verified successfully');
-                this.updateAccessStatus();
-                
-                // Stop video stream
-                if (this.faceVideo.srcObject) {
-                    this.faceVideo.srcObject.getTracks().forEach(track => track.stop());
+                try {
+                    state.scanImage = await readFileAsDataURL(file);
+                    elements.imagePreview.src = state.scanImage;
+                    elements.imagePreview.classList.remove('hidden');
+                    elements.analyzeBtn.disabled = false;
+                    elements.uploadError.textContent = '';
+                } catch (error) {
+                    console.error('Error processing image:', error);
+                    showNotification('Failed to process image', 'error');
                 }
             }
             
-            showVerificationResult(success, message) {
-                const resultElement = document.getElementById('verificationResult');
-                resultElement.style.display = 'block';
+            // Validate image file
+            function validateImageFile(file) {
+                const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+                const maxSize = 5 * 1024 * 1024; // 5MB
                 
-                if (success) {
-                    resultElement.className = 'verification-result verification-success';
-                    document.getElementById('resultMessage').textContent = 'Verification Successful';
-                    document.getElementById('resultDetails').textContent = message;
-                } else {
-                    resultElement.className = 'verification-result verification-failure';
-                    document.getElementById('resultMessage').textContent = 'Verification Failed';
-                    document.getElementById('resultDetails').textContent = message;
-                }
-            }
-            
-            resetFaceVerification() {
-                this.faceDetectionActive = false;
-                this.verificationComplete = false;
-                this.currentStep = 0;
-                
-                document.getElementById('verificationResult').style.display = 'none';
-                document.getElementById('startVerificationBtn').style.display = 'inline-block';
-                document.getElementById('retryVerificationBtn').style.display = 'none';
-                
-                this.verificationSteps.forEach(step => {
-                    const icon = step.querySelector('i');
-                    const text = step.querySelector('span');
-                    icon.className = 'fas fa-circle step-pending';
-                    text.style.color = '';
-                    text.style.fontWeight = '';
-                });
-                
-                if (this.faceVideo.srcObject) {
-                    this.faceVideo.srcObject.getTracks().forEach(track => track.stop());
-                    this.faceVideo.srcObject = null;
-                }
-            }
-            
-            setupEHRSystem() {
-                // Handle patient selection
-                document.getElementById('patientList').addEventListener('click', (e) => {
-                    let target = e.target;
-                    while (target && target.nodeName !== 'LI') {
-                        target = target.parentElement;
-                    }
-                    if (target && target.dataset.id) {
-                        this.showPatientDetails(target.dataset.id);
-                    }
-                });
-                
-                // Refresh patients button
-                document.getElementById('refreshPatientsBtn').addEventListener('click', () => {
-                    this.updatePatientList();
-                });
-            }
-            
-            showPatientDetails(patientId) {
-                const patient = this.patients[patientId];
-                const patientDetails = document.getElementById('patientDetails');
-                
-                if (patient) {
-                    document.getElementById('patientDetails').style.display = 'block';
-                }
-            }
-            
-            setupConsultation() {
-                document.querySelectorAll('.join-room').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        if (!this.checkConsultationAccess()) return;
-                        
-                        const room = e.target.dataset.room || e.target.parentElement.dataset.room;
-                        alert(`Joining ${room} consultation room`);
-                    });
-                });
-            }
-            
-            checkConsultationAccess() {
-                if (!this.identityVerified || !this.jurisdictionVerified) {
-                    alert('Please complete identity verification and jurisdictional clearance first');
+                if (!validTypes.includes(file.type)) {
+                    elements.uploadError.textContent = 'Please upload a JPEG, PNG, or GIF image';
                     return false;
                 }
+                
+                if (file.size > maxSize) {
+                    elements.uploadError.textContent = 'Image must be smaller than 5MB';
+                    return false;
+                }
+                
                 return true;
             }
             
-            setupDiagnostic() {
-                const form = document.getElementById('diagnosticForm');
-                const saveToEHRBtn = document.getElementById('saveToEHRBtn');
-                
-                form.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    
-                    const modelType = document.getElementById('modelType').value;
-                    const specialty = document.getElementById('specialty').value;
-                    const patientName = document.getElementById('patientName').value;
-                    const patientAge = document.getElementById('patientAge').value;
-                    const patientGender = document.getElementById('patientGender').value;
-                    const subjective = document.getElementById('subjective').value;
-                    const objective = document.getElementById('objective').value;
-                    const assessment = document.getElementById('assessment').value;
-                    const plan = document.getElementById('plan').value;
-                    
-                    if (!patientName || !patientAge) {
-                        alert("Please enter patient name and age");
-                        return;
-                    }
-                    
-                    const submitBtn = form.querySelector('button[type="submit"]');
-                    submitBtn.innerHTML = '<span class="loading"></span> Processing...';
-                    submitBtn.disabled = true;
-                    
-                    try {
-                        const prompt = {
-                            patientName,
-                            patientAge,
-                            patientGender,
-                            specialty,
-                            subjective,
-                            objective,
-                            assessment,
-                            plan
-                        };
-                        
-                        // Combine all clinical text for analysis
-                        const clinicalText = `
-                            Patient: ${patientName}, ${patientAge}${patientGender}
-                            Specialty: ${specialty}
-                            Subjective: ${subjective}
-                            Objective: ${objective}
-                            Assessment: ${assessment}
-                            Plan: ${plan}
-                        `;
-                        
-                        // Get analysis from local model
-                        const analysis = await this.analyzeClinicalText(clinicalText);
-                        
-                        // Format results
-                        const result = this.formatDiagnosisResults(analysis, prompt);
-                        
-                        this.currentDiagnosticResult = {
-                            ...prompt,
-                            modelType,
-                            result: result.response,
-                            confidence: result.confidence,
-                            processingMode: result.processingMode,
-                            timestamp: new Date().toISOString()
-                        };
-                        
-                        document.getElementById('aiResultContent').innerHTML = result.response;
-                        document.getElementById('diagnosticResults').style.display = 'block';
-                        
-                        const modeBadge = document.getElementById('processingModeBadge');
-                        modeBadge.textContent = result.processingMode;
-                        modeBadge.className = `processing-mode ${
-                            result.processingMode.includes('Peace') ? 'peace-mode' : 
-                            result.processingMode.includes('Wait') ? 'wait-mode' : 'mixed-mode'
-                        }`;
-                        
-                        saveToEHRBtn.disabled = false;
-                        
-                    } catch (error) {
-                        alert(`Error: ${error.message}`);
-                    } finally {
-                        submitBtn.innerHTML = '<i class="fas fa-play"></i> Generate Diagnosis';
-                        submitBtn.disabled = false;
-                    }
-                });
-                
-                saveToEHRBtn.addEventListener('click', () => {
-                    if (!this.currentDiagnosticResult) {
-                        alert("No diagnostic result to save");
-                        return;
-                    }
-                    
-                    this.completedDiagnostics.push(this.currentDiagnosticResult);
-                    this.updatePatientList();
-                    alert("Diagnostic results saved to EHR");
+            // Read file as data URL
+            function readFileAsDataURL(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
                 });
             }
             
-            async analyzeClinicalText(text) {
-                if (!this.modelInitialized) {
-                    throw new Error("AI models are still loading. Please try again shortly.");
+            // Add pain point
+            function addPainPoint() {
+                state.painPoints.push({
+                    id: Date.now(),
+                    area: '',
+                    severity: 5
+                });
+                renderPainPoints();
+            }
+            
+            // Remove pain point
+            function removePainPoint(id) {
+                state.painPoints = state.painPoints.filter(point => point.id !== id);
+                renderPainPoints();
+            }
+            
+            // Update pain point
+            function updatePainPoint(id, field, value) {
+                state.painPoints = state.painPoints.map(point => {
+                    if (point.id === id) {
+                        return { ...point, [field]: value };
+                    }
+                    return point;
+                });
+                
+                // Validate area field in real-time
+                if (field === 'area') {
+                    validatePainPointArea(id, value);
+                }
+                
+                renderPainPoints();
+            }
+            
+            // Validate pain point area
+            function validatePainPointArea(id, value) {
+                const inputElement = document.getElementById(`area-${id}`);
+                const errorElement = document.getElementById(`area-error-${id}`);
+                
+                if (!value || !value.trim()) {
+                    if (inputElement) inputElement.classList.add('input-error');
+                    if (errorElement) errorElement.textContent = 'Area is required';
+                    return false;
+                } else {
+                    if (inputElement) inputElement.classList.remove('input-error');
+                    if (errorElement) errorElement.textContent = '';
+                    return true;
+                }
+            }
+            
+            // Validate all pain points before analysis
+            function validateAllPainPoints() {
+                let isValid = true;
+                
+                state.painPoints.forEach(point => {
+                    if (!validatePainPointArea(point.id, point.area)) {
+                        isValid = false;
+                    }
+                });
+                
+                if (!isValid) {
+                    elements.painPointError.textContent = 'Please fill all required fields';
+                    return false;
+                }
+                
+                if (state.painPoints.length === 0) {
+                    elements.painPointError.textContent = 'Please add at least one pain point';
+                    return false;
+                }
+                
+                elements.painPointError.textContent = '';
+                return true;
+            }
+            
+            // Render pain points list
+            function renderPainPoints() {
+                elements.painPointList.innerHTML = '';
+                
+                if (state.painPoints.length === 0) {
+                    elements.painPointList.innerHTML = '<p>No pain points added yet</p>';
+                    return;
+                }
+                
+                state.painPoints.forEach(point => {
+                    const pointElement = document.createElement('div');
+                    pointElement.className = 'pain-point';
+                    pointElement.innerHTML = `
+                        <button class="remove-btn" onclick="SoleTailorAI.removePainPoint(${point.id})">×</button>
+                        <div class="form-group">
+                            <label for="area-${point.id}">Area</label>
+                            <input type="text" id="area-${point.id}" 
+                                   value="${point.area}" 
+                                   oninput="SoleTailorAI.updatePainPoint(${point.id}, 'area', this.value)"
+                                   placeholder="e.g. Heel, Arch, Ball">
+                            <div id="area-error-${point.id}" class="error-message"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="severity-${point.id}">Severity</label>
+                            <input type="range" id="severity-${point.id}" 
+                                   min="1" max="10" value="${point.severity}" 
+                                   oninput="SoleTailorAI.updatePainPoint(${point.id}, 'severity', parseInt(this.value))">
+                            <span class="severity-value">${point.severity}/10</span>
+                        </div>
+                    `;
+                    elements.painPointList.appendChild(pointElement);
+                    
+                    // Validate existing values
+                    validatePainPointArea(point.id, point.area);
+                });
+                
+                updateActionButtons();
+            }
+            
+            // Analyze foot scan
+            async function analyzeFootScan() {
+                // Validate inputs
+                if (!state.scanImage) {
+                    elements.uploadError.textContent = 'Please upload an image first';
+                    return;
+                }
+                
+                if (!validateAllPainPoints()) {
+                    return;
                 }
                 
                 try {
-                    // Simulate analysis with different results based on input
-                    const conditions = [
-                        'Hypertension', 'Type 2 Diabetes', 'Coronary Artery Disease',
-                        'Chronic Obstructive Pulmonary Disease', 'Migraine', 'Anxiety Disorder'
-                    ];
+                    setLoading(true);
+                    showNotification('Analyzing foot scan...', 'info');
                     
-                    const shuffled = conditions.sort(() => 0.5 - Math.random());
-                    const selected = shuffled.slice(0, 3);
+                    // Simulate AI analysis (replace with actual API call)
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                     
-                    return selected.map((condition, index) => ({
-                        label: condition,
-                        score: 0.9 - (index * 0.2)
-                    }));
+                    // Generate mock results based on inputs
+                    state.analysisResults = generateAnalysisResults();
                     
+                    // Update 3D model based on results
+                    update3DModel();
+                    
+                    // Render results
+                    renderResults();
+                    
+                    showNotification('Analysis complete!', 'success');
+                    updateActionButtons();
                 } catch (error) {
-                    console.error("Error analyzing clinical text:", error);
-                    throw new Error("Failed to analyze clinical text");
+                    console.error('Analysis failed:', error);
+                    showNotification('Analysis failed', 'error');
+                } finally {
+                    setLoading(false);
                 }
             }
             
-            formatDiagnosisResults(analysis, soapData) {
-                const mode = this.determineProcessingMode(soapData);
+            // Generate mock analysis results
+            function generateAnalysisResults() {
+                // In a real app, this would come from your AI model
+                const footType = ['Flat', 'Neutral', 'High'][Math.floor(Math.random() * 3)];
+                
+                // Analyze pain points
+                const pressurePoints = state.painPoints.map(point => ({
+                    area: point.area,
+                    severity: point.severity,
+                    riskLevel: point.severity > 7 ? 'High' : point.severity > 4 ? 'Medium' : 'Low'
+                }));
+                
+                // Generate recommendations
+                const recommendations = [];
+                
+                if (footType === 'Flat') {
+                    recommendations.push('Enhanced arch support needed');
+                    recommendations.push('Motion control features recommended');
+                } else if (footType === 'High') {
+                    recommendations.push('Extra cushioning for high arches');
+                    recommendations.push('Flexible midsole recommended');
+                }
+                
+                pressurePoints.forEach(point => {
+                    if (point.severity > 7) {
+                        recommendations.push(`High-density padding for ${point.area}`);
+                    } else if (point.severity > 5) {
+                        recommendations.push(`Additional cushioning for ${point.area}`);
+                    }
+                });
+                
+                return {
+                    footType,
+                    pressurePoints,
+                    recommendations
+                };
+            }
+            
+            // Update 3D model based on analysis
+            function update3DModel() {
+                if (!state.shoeModel || !state.analysisResults) return;
+                
+                // Change color based on foot type
+                let color;
+                switch(state.analysisResults.footType) {
+                    case 'Flat': color = 0x8e44ad; break; // Purple
+                    case 'High': color = 0x3498db; break; // Blue
+                    default: color = 0x2ecc71; // Green
+                }
+                
+                // Apply to all materials in the model
+                state.shoeModel.traverse(child => {
+                    if (child.isMesh) {
+                        child.material.color.setHex(color);
+                        
+                        // Adjust scale based on pressure points
+                        const heelPressure = state.analysisResults.pressurePoints
+                            .find(p => p.area.toLowerCase().includes('heel'))?.severity || 0;
+                        
+                        const archPressure = state.analysisResults.pressurePoints
+                            .find(p => p.area.toLowerCase().includes('arch'))?.severity || 0;
+                        
+                        if (child.name.toLowerCase().includes('heel')) {
+                            child.scale.y = 1 + (heelPressure * 0.05);
+                        }
+                        
+                        if (child.name.toLowerCase().includes('arch')) {
+                            child.scale.y = 1 + (archPressure * 0.03);
+                        }
+                    }
+                });
+            }
+            
+            // Render analysis results
+            function renderResults() {
+                if (!state.analysisResults) return;
                 
                 let html = `
-                    <div class="diagnosis-result">
-                        <div class="diagnosis-header">Differential Diagnosis (Ranked by Likelihood):</div>
-                        <div class="diagnosis-list">
+                    <div class="result-item">
+                        <div class="result-label">Foot Type</div>
+                        <div class="result-value">${state.analysisResults.footType}</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-label">Pressure Points</div>
+                        <div class="result-value">
+                            <ul style="margin-top: 5px;">
                 `;
                 
-                analysis.forEach((item, index) => {
+                state.analysisResults.pressurePoints.forEach(point => {
                     html += `
-                        <div class="diagnosis-item">
-                            <strong>${index + 1}. ${item.label}</strong> (${Math.round(item.score * 100)}% confidence)
+                        <li>${point.area}: ${point.severity}/10 (${point.riskLevel} risk)</li>
+                    `;
+                });
+                
+                html += `
+                            </ul>
                         </div>
+                    </div>
+                    
+                    <div class="recommendations">
+                        <div class="result-label">Recommended Customizations</div>
+                        <div class="result-value">
+                `;
+                
+                state.analysisResults.recommendations.forEach(rec => {
+                    html += `
+                        <div class="recommendation">${rec}</div>
                     `;
                 });
                 
                 html += `
                         </div>
-                        <div class="diagnosis-confidence">
-                            Processing Mode: ${mode.mode} | 
-                            Overall Analysis Confidence: ${Math.round(analysis[0]?.score * 100)}%
-                        </div>
-                    </div>
-                    
-                    <div class="clinical-summary">
-                        <strong>Clinical Summary:</strong>
-                        <p><u>Subjective:</u> ${soapData.subjective || 'Not provided'}</p>
-                        <p><u>Objective:</u> ${soapData.objective || 'Not provided'}</p>
-                        <p><u>Assessment:</u> ${soapData.assessment || 'Not provided'}</p>
-                    </div>
-                    
-                    <div class="workup-recommendations">
-                        <strong>Recommended Workup:</strong>
-                        <ul>
-                            <li>Complete blood count with differential</li>
-                            <li>Comprehensive metabolic panel</li>
-                            <li>Inflammatory markers (CRP, ESR)</li>
-                            ${analysis[0].label.includes('Cardiac') ? '<li>Cardiac enzymes, EKG</li>' : ''}
-                            ${analysis[0].label.includes('Pulmonary') ? '<li>Chest X-ray, oxygen saturation</li>' : ''}
-                            ${analysis[0].label.includes('Neurologic') ? '<li>CT head, neurological exam</li>' : ''}
-                            <li>Additional testing as clinically indicated</li>
-                        </ul>
-                    </div>
-                    
-                    <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
-                        <i>Disclaimer: This AI-generated diagnosis is for clinical decision support only. Final diagnosis and treatment decisions should be made by a qualified healthcare provider.</i>
                     </div>
                 `;
                 
-                return {
-                    response: html,
-                    confidence: analysis[0]?.score || 0.85,
-                    processingMode: mode.mode
+                elements.resultsContent.innerHTML = html;
+            }
+            
+            // Save scan
+            async function saveScan() {
+                if (!validateBeforeAction()) return;
+                
+                try {
+                    setLoading(true);
+                    showNotification('Saving scan...', 'info');
+                    
+                    // Simulate API call
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    showNotification('Scan saved successfully!', 'success');
+                } catch (error) {
+                    console.error('Failed to save scan:', error);
+                    showNotification('Failed to save scan', 'error');
+                } finally {
+                    setLoading(false);
+                }
+            }
+            
+           
+ // Create order
+            async function createOrder() {
+                if (!validateBeforeAction()) return;
+                
+                try {
+                    setLoading(true);
+                    showNotification('Creating order...', 'info');
+                    
+                    // Simulate API call
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
+                    showNotification('Order created successfully!', 'success');
+                } catch (error) {
+                    console.error('Failed to create order:', error);
+                    showNotification('Failed to create order', 'error');
+                } finally {
+                    setLoading(false);
+                }
+            }
+            
+            // Validate before actions
+            function validateBeforeAction() {
+                if (!state.scanImage) {
+                    showNotification('Please upload a scan image first', 'warning');
+                    return false;
+                }
+                
+                if (!state.analysisResults) {
+                    showNotification('Please analyze the scan first', 'warning');
+                    return false;
+                }
+                
+                return true;
+            }
+            
+            // Set loading state
+            function setLoading(isLoading) {
+                state.loading = isLoading;
+                
+                // Update buttons
+                const buttons = [
+                    elements.analyzeBtn,
+                    elements.saveScanBtn,
+                    elements.createOrderBtn,
+                    elements.addPainPointBtn
+                ];
+                
+                buttons.forEach(btn => {
+                    btn.disabled = isLoading;
+                    
+                    if (isLoading && btn === elements.analyzeBtn) {
+                        btn.innerHTML = '<span class="loading"></span> Analyzing...';
+                    } else if (isLoading && btn === elements.saveScanBtn) {
+                        btn.innerHTML = '<span class="loading"></span> Saving...';
+                    } else if (isLoading && btn === elements.createOrderBtn) {
+                        btn.innerHTML = '<span class="loading"></span> Creating...';
+                    } else {
+                        btn.innerHTML = btn.textContent;
+                    }
+                });
+            }
+            
+            // Update action buttons state
+            function updateActionButtons() {
+                elements.saveScanBtn.disabled = !state.analysisResults;
+                elements.createOrderBtn.disabled = !state.analysisResults;
+            }
+            
+            // Show notification
+            function showNotification(message, type = 'info') {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.textContent = message;
+                elements.notificationContainer.appendChild(notification);
+                
+                // Auto-dismiss
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    setTimeout(() => notification.remove(), 300);
+                }, 5000);
+            }
+            
+            // Public API
+            return {
+                init,
+                addPainPoint,
+                removePainPoint,
+                updatePainPoint,
+                showNotification
+            };
+        })();
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Make SoleTailorAI available globally for inline handlers
+            window.SoleTailorAI = SoleTailorAI;
+            SoleTailorAI.init();
+        });
+
+        // Load Three.js dynamically
+        function loadThreeJS() {
+            return new Promise((resolve, reject) => {
+                if (window.THREE) return resolve();
+                
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+                script.onload = () => {
+                    // Load GLTFLoader and OrbitControls
+                    const loaderScript = document.createElement('script');
+                    loaderScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.min.js';
+                    
+                    const controlsScript = document.createElement('script');
+                    controlsScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js';
+                    
+                    document.head.appendChild(loaderScript);
+                    document.head.appendChild(controlsScript);
+                    
+                    resolve();
                 };
-            }
-            
-            determineProcessingMode(soapData) {
-                const textLength = (soapData.subjective?.length || 0) + 
-                                  (soapData.objective?.length || 0) + 
-                                  (soapData.assessment?.length || 0);
-                
-                if (textLength < 100) {
-                    return { mode: "Wait Mode (Insufficient Data)" };
-                } else if (textLength > 500) {
-                    return { mode: "Peace Mode (Comprehensive Data)" };
-                } else {
-                    return { mode: "Mixed Mode (Moderate Data)" };
-                }
-            }
-            
-            updatePatientList() {
-                const patientList = document.getElementById('patientList');
-                patientList.innerHTML = '';
-                
-                Object.keys(this.patients).forEach(id => {
-                    const patient = this.patients[id];
-                    const li = document.createElement('li');
-                    li.style.padding = '8px';
-                    li.style.borderBottom = '1px solid #eee';
-                    li.style.cursor = 'pointer';
-                    li.dataset.id = id;
-                    li.textContent = `${patient.name} (${patient.age}${patient.gender})`;
-                    
-                    if (patient.aiHistory && patient.aiHistory.length > 0) {
-                        const tag = document.createElement('span');
-                        tag.className = 'patient-tag';
-                        tag.textContent = 'AI';
-                        li.appendChild(tag);
-                    }
-                    
-                    li.addEventListener('click', () => this.showPatientDetails(id));
-                    patientList.appendChild(li);
-                });
-            }
-            
-            setupScreenShare() {
-                const startBtn = document.getElementById('startShareBtn');
-                const stopBtn = document.getElementById('stopShareBtn');
-                const remoteVideo = document.getElementById('remoteScreen');
-                
-                startBtn.addEventListener('click', async () => {
-                    try {
-                        this.stream = await navigator.mediaDevices.getDisplayMedia({
-                            video: true,
-                            audio: false
-                        });
-                        
-                        remoteVideo.srcObject = this.stream;
-                        startBtn.disabled = true;
-                        stopBtn.disabled = false;
-                        
-                        this.stream.getTracks()[0].onended = () => {
-                            stopBtn.click();
-                        };
-                    } catch (err) {
-                        console.error('Screen sharing failed:', err);
-                    }
-                });
-                
-                stopBtn.addEventListener('click', () => {
-                    if (this.stream) {
-                        this.stream.getTracks().forEach(track => track.stop());
-                        remoteVideo.srcObject = null;
-                        startBtn.disabled = false;
-                        stopBtn.disabled = true;
-                    }
-                });
-                
-                // Setup annotation tools
-                const canvas = document.getElementById('annotationCanvas');
-                const ctx = canvas.getContext('2d');
-                let isDrawing = false;
-                let currentTool = 'draw';
-                
-                document.getElementById('drawBtn').addEventListener('click', () => {
-                    currentTool = 'draw';
-                });
-                
-                document.getElementById('highlightBtn').addEventListener('click', () => {
-                    currentTool = 'highlight';
-                });
-                
-                document.getElementById('zoomBtn').addEventListener('click', () => {
-                    currentTool = 'zoom';
-                });
-                
-                document.getElementById('clearCanvasBtn').addEventListener('click', () => {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                });
-                
-                canvas.addEventListener('mousedown', startDrawing);
-                canvas.addEventListener('mousemove', draw);
-                canvas.addEventListener('mouseup', stopDrawing);
-                canvas.addEventListener('mouseout', stopDrawing);
-                
-                function startDrawing(e) {
-                    isDrawing = true;
-                    draw(e);
-                }
-                
-                function draw(e) {
-                    if (!isDrawing) return;
-                    
-                    ctx.lineWidth = currentTool === 'highlight' ? 10 : 5;
-                    ctx.lineCap = 'round';
-                    ctx.strokeStyle = currentTool === 'highlight' ? 'rgba(255, 255, 0, 0.5)' : '#FF0000';
-                    
-                    ctx.lineTo(e.offsetX, e.offsetY);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(e.offsetX, e.offsetY);
-                }
-                
-                function stopDrawing() {
-                    isDrawing = false;
-                    ctx.beginPath();
-                }
-            }
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
         }
 
-        // Initialize the application
-        document.addEventListener('DOMContentLoaded', async () => {
-            const medos = new MedOS();
-            await medos.init();
+        // Start loading Three.js immediately
+        loadThreeJS().catch(error => {
+            console.error('Failed to load Three.js:', error);
+            document.getElementById('3d-viewer').innerHTML = '<p>Failed to load 3D viewer. Please refresh the page.</p>';
         });
     </script>
 </body>
