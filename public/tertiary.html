@@ -450,7 +450,26 @@
 </head>
 <body>
     <div class="app-container">
-       
+           <!-- Sidebar -->
+        <div class="sidebar">
+            <h2>MedOS</h2>
+            <div class="module-list">
+                <div class="module-card active" data-tab="jurisdiction">
+                    <h4><i class="fas fa-globe"></i> Jurisdiction</h4>
+                </div>
+                <div class="module-card" data-tab="ehr">
+                    <h4><i class="fas fa-hospital"></i> EHR System</h4>
+                </div>
+                <div class="module-card" data-tab="consultation">
+                    <h4><i class="fas fa-users"></i> Consultation</h4>
+                </div>
+                <div class="module-card" data-tab="diagnostic">
+                    <h4><i class="fas fa-robot"></i> AI Diagnostic</h4>
+                </div>
+                <div class="module-card" data-tab="screenshare">
+                    <h4><i class="fas fa-desktop"></i> Screen Sharing</h4>
+                </div>
+            </div>
             
             <div style="margin-top: 30px;">
                 <h4>Access Status</h4>
@@ -462,16 +481,7 @@
             </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <div class="tab-container">
-                <div class="tab active" data-tab="jurisdiction">Jurisdiction</div>
-                <div class="tab" data-tab="ehr">EHR System</div>
-                <div class="tab" data-tab="consultation">Consultation</div>
-                <div class="tab" data-tab="diagnostic">AI Diagnostic</div>
-                <div class="tab" data-tab="screenshare">Screen Sharing</div>
-            </div>
-
+        
             <!-- Jurisdiction Verification -->
             <div class="tab-content active" id="jurisdiction">
                 <h2>Telehealth Jurisdiction Verification</h2>
