@@ -360,201 +360,96 @@
             border-radius: 4px;
             border: 1px solid #ddd;
         }
+        .jurisdiction-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .jurisdiction-icon {
+            font-size: 2em;
+            margin-right: 15px;
+        }
+        .jurisdiction-pending {
+            color: #ffc107;
+        }
+        .jurisdiction-verified {
+            color: #28a745;
+        }
+        .jurisdiction-denied {
+            color: #dc3545;
+        }
+        .jurisdiction-details {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .credential-item {
+            margin-bottom: 15px;
+        }
+        .credential-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .credential-status {
+            margin-left: 10px;
+        }
+        .status-missing {
+            background: #6c757d;
+            color: white;
+        }
+        .status-uploaded {
+            background: #17a2b8;
+            color: white;
+        }
+        .access-status {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .access-pending {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+        .access-granted {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        .room-card {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .qr-code-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        #jurisdictionQrCode {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 10px;
+        }
+        .telehealth-scopes {
+            margin: 20px 0;
+        }
+        .scope-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .scope-icon {
+            margin-right: 10px;
+            color: #28a745;
+        }
     </style>
 </head>
 <body>
     <div class="app-container">
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <h2>MedOS</h2>
-            <div class="module-list">
-                <div class="module-card active" data-tab="consultation">
-                    <h4><i class="fas fa-users"></i> Consultation Rooms</h4>
-                </div>
-                <div class="module-card" data-tab="diagnostic">
-                    <h4><i class="fas fa-robot"></i> AI Diagnostic</h4>
-                </div>
-                <div class="module-card" data-tab="screenshare">
-                    <h4><i class="fas fa-desktop"></i> Screen Sharing</h4>
-                </div>
-                <div class="module-card" data-tab="ehr">
-                    <h4><i class="fas fa-hospital"></i> EHR Simulator</h4>
-                </div>
-                <div class="module-card" data-tab="jurisdiction">
-                    <h4><i class="fas fa-globe"></i> Jurisdiction</h4>
-                </div>
-            </div>
-            
-            <div style="margin-top: 30px;">
-                <h4>Active Sessions</h4>
-                <ul id="active-sessions">
-                    <li>General Medicine (2 users)</li>
-                    <li>Cardiology (1 user)</li>
-                </ul>
-            </div>
-        </div>
-
-        
-
-            <!-- Consultation Rooms -->
-            <div class="tab-content active" id="consultation">
-                <h2>Consultation Rooms</h2>
-                <div class="card">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
-                        <div class="room-card">
-                            <h3>General Medicine</h3>
-                            <button class="btn btn-primary join-room" data-room="general">
-                                <i class="fas fa-door-open"></i> Join
-                            </button>
-                        </div>
-                        <div class="room-card">
-                            <h3>Cardiology</h3>
-                            <button class="btn btn-primary join-room" data-room="cardiology">
-                                <i class="fas fa-door-open"></i> Join
-                            </button>
-                        </div>
-                        <div class="room-card">
-                            <h3>Neurology</h3>
-                            <button class="btn btn-primary join-room" data-room="neurology">
-                                <i class="fas fa-door-open"></i> Join
-                            </button>
-                        </div>
-                        <div class="room-card">
-                            <h3>Pediatrics</h3>
-                            <button class="btn btn-primary join-room" data-room="pediatrics">
-                                <i class="fas fa-door-open"></i> Join
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- AI Diagnostic -->
-            <div class="tab-content" id="diagnostic">
-                <h2>AI Clinical Diagnostic</h2>
-                <div class="card">
-                    <div id="modelStatus" class="model-status model-loading">
-                        <i class="fas fa-spinner fa-spin"></i> Loading AI model...
-                    </div>
-                    
-                    <form id="diagnosticForm">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                            <div>
-                                <label for="modelType">AI Model:</label>
-                                <select id="modelType" class="btn" style="width: 100%;">
-                                    <option value="clinicalbert">ClinicalBERT</option>
-                                    <option value="bioclinicalbert">BioClinicalBERT</option>
-                                    <option value="pubmedbert">PubMedBERT</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="specialty">Specialty:</label>
-                                <select id="specialty" class="btn" style="width: 100%;">
-                                    <option value="general">General Medicine</option>
-                                    <option value="cardiology">Cardiology</option>
-                                    <option value="neurology">Neurology</option>
-                                    <option value="pulmonology">Pulmonology</option>
-                                    <option value="gastroenterology">Gastroenterology</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="patientName">Patient Name:</label>
-                            <input type="text" id="patientName" class="btn" style="width: 100%; padding: 10px;" placeholder="Enter patient name">
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="patientAge">Patient Age:</label>
-                            <input type="number" id="patientAge" class="btn" style="width: 100%; padding: 10px;" placeholder="Enter patient age">
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="patientGender">Patient Gender:</label>
-                            <select id="patientGender" class="btn" style="width: 100%;">
-                                <option value="M">Male</option>
-                                <option value="F">Female</option>
-                                <option value="O">Other</option>
-                            </select>
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="subjective">Subjective:</label>
-                            <textarea id="subjective" placeholder="Patient's symptoms, history, duration, severity..."></textarea>
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="objective">Objective:</label>
-                            <textarea id="objective" placeholder="Vital signs, physical exam findings, lab results, imaging..."></textarea>
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="assessment">Assessment:</label>
-                            <textarea id="assessment" placeholder="Clinical impressions, working diagnosis..."></textarea>
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <label for="plan">Plan:</label>
-                            <textarea id="plan" placeholder="Treatment recommendations, follow-up plans..."></textarea>
-                        </div>
-
-                        <button type="submit" class="btn btn-secondary" style="margin-top: 20px;" id="analyzeBtn" disabled>
-                            <i class="fas fa-play"></i> Generate Diagnosis
-                        </button>
-                    </form>
-
-                    <div id="diagnosticResults" style="margin-top: 30px; display: none;">
-                        <h3>AI Diagnosis Results <span id="processingModeBadge" class="processing-mode"></span></h3>
-                        <div class="suggestion-card">
-                            <div id="aiResultContent"></div>
-                            <button id="saveToEHRBtn" class="btn btn-primary" style="margin-top: 10px;">
-                                <i class="fas fa-clipboard"></i> Save to EHR
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Screen Sharing -->
-            <div class="tab-content" id="screenshare">
-                <h2>Clinical Screen Sharing</h2>
-                <div class="card">
-                    <div class="video-container">
-                        <video id="remoteScreen" autoplay playsinline></video>
-                        <div class="video-controls">
-                            <button id="startShareBtn" class="btn btn-primary">
-                                <i class="fas fa-share-square"></i> Share Screen
-                            </button>
-                            <button id="stopShareBtn" class="btn btn-danger" disabled>
-                                <i class="fas fa-stop"></i> Stop Sharing
-                            </button>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h3>Collaboration Tools</h3>
-                        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                            <button class="btn" id="drawBtn">
-                                <i class="fas fa-pencil-alt"></i> Draw
-                            </button>
-                            <button class="btn" id="highlightBtn">
-                                <i class="fas fa-highlighter"></i> Highlight
-                            </button>
-                            <button class="btn" id="zoomBtn">
-                                <i class="fas fa-search-plus"></i> Zoom
-                            </button>
-                            <button class="btn" id="clearCanvasBtn">
-                                <i class="fas fa-trash"></i> Clear
-                            </button>
-                        </div>
-
-                        <canvas id="annotationCanvas" width="800" height="400" style="border: 1px solid #ddd; margin-bottom: 20px;"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- EHR Simulator with Facial Recognition -->
-            <div class="app-container">
         <!-- Sidebar -->
         <div class="sidebar">
             <h2>MedOS</h2>
@@ -567,6 +462,12 @@
                 </div>
                 <div class="module-card" data-tab="consultation">
                     <h4><i class="fas fa-users"></i> Consultation</h4>
+                </div>
+                <div class="module-card" data-tab="diagnostic">
+                    <h4><i class="fas fa-robot"></i> AI Diagnostic</h4>
+                </div>
+                <div class="module-card" data-tab="screenshare">
+                    <h4><i class="fas fa-desktop"></i> Screen Sharing</h4>
                 </div>
             </div>
             
@@ -586,6 +487,8 @@
                 <div class="tab active" data-tab="jurisdiction">Jurisdiction</div>
                 <div class="tab" data-tab="ehr">EHR System</div>
                 <div class="tab" data-tab="consultation">Consultation</div>
+                <div class="tab" data-tab="diagnostic">AI Diagnostic</div>
+                <div class="tab" data-tab="screenshare">Screen Sharing</div>
             </div>
 
             <!-- Jurisdiction Verification -->
@@ -837,10 +740,138 @@
                     </div>
                 </div>
             </div>
+
+            <!-- AI Diagnostic -->
+            <div class="tab-content" id="diagnostic">
+                <h2>AI Clinical Diagnostic</h2>
+                <div class="card">
+                    <div id="modelStatus" class="model-status model-loading">
+                        <i class="fas fa-spinner fa-spin"></i> Loading AI model...
+                    </div>
+                    
+                    <form id="diagnosticForm">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <label for="modelType">AI Model:</label>
+                                <select id="modelType" class="btn" style="width: 100%;">
+                                    <option value="clinicalbert">ClinicalBERT</option>
+                                    <option value="bioclinicalbert">BioClinicalBERT</option>
+                                    <option value="pubmedbert">PubMedBERT</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="specialty">Specialty:</label>
+                                <select id="specialty" class="btn" style="width: 100%;">
+                                    <option value="general">General Medicine</option>
+                                    <option value="cardiology">Cardiology</option>
+                                    <option value="neurology">Neurology</option>
+                                    <option value="pulmonology">Pulmonology</option>
+                                    <option value="gastroenterology">Gastroenterology</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="patientName">Patient Name:</label>
+                            <input type="text" id="patientName" class="btn" style="width: 100%; padding: 10px;" placeholder="Enter patient name">
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="patientAge">Patient Age:</label>
+                            <input type="number" id="patientAge" class="btn" style="width: 100%; padding: 10px;" placeholder="Enter patient age">
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="patientGender">Patient Gender:</label>
+                            <select id="patientGender" class="btn" style="width: 100%;">
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                                <option value="O">Other</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="subjective">Subjective:</label>
+                            <textarea id="subjective" placeholder="Patient's symptoms, history, duration, severity..."></textarea>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="objective">Objective:</label>
+                            <textarea id="objective" placeholder="Vital signs, physical exam findings, lab results, imaging..."></textarea>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="assessment">Assessment:</label>
+                            <textarea id="assessment" placeholder="Clinical impressions, working diagnosis..."></textarea>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="plan">Plan:</label>
+                            <textarea id="plan" placeholder="Treatment recommendations, follow-up plans..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-secondary" style="margin-top: 20px;" id="analyzeBtn" disabled>
+                            <i class="fas fa-play"></i> Generate Diagnosis
+                        </button>
+                    </form>
+
+                    <div id="diagnosticResults" style="margin-top: 30px; display: none;">
+                        <h3>AI Diagnosis Results <span id="processingModeBadge" class="processing-mode"></span></h3>
+                        <div class="suggestion-card">
+                            <div id="aiResultContent"></div>
+                            <button id="saveToEHRBtn" class="btn btn-primary" style="margin-top: 10px;">
+                                <i class="fas fa-clipboard"></i> Save to EHR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen Sharing -->
+            <div class="tab-content" id="screenshare">
+                <h2>Clinical Screen Sharing</h2>
+                <div class="card">
+                    <div id="screenshareAccessStatus" class="access-status access-pending">
+                        <i class="fas fa-lock"></i> Please complete identity verification and jurisdictional clearance to access screen sharing
+                    </div>
+
+                    <div id="screenshareContent" style="display: none;">
+                        <div class="video-container">
+                            <video id="remoteScreen" autoplay playsinline></video>
+                            <div class="video-controls">
+                                <button id="startShareBtn" class="btn btn-primary">
+                                    <i class="fas fa-share-square"></i> Share Screen
+                                </button>
+                                <button id="stopShareBtn" class="btn btn-danger" disabled>
+                                    <i class="fas fa-stop"></i> Stop Sharing
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3>Collaboration Tools</h3>
+                            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                                <button class="btn" id="drawBtn">
+                                    <i class="fas fa-pencil-alt"></i> Draw
+                                </button>
+                                <button class="btn" id="highlightBtn">
+                                    <i class="fas fa-highlighter"></i> Highlight
+                                </button>
+                                <button class="btn" id="zoomBtn">
+                                    <i class="fas fa-search-plus"></i> Zoom
+                                </button>
+                                <button class="btn" id="clearCanvasBtn">
+                                    <i class="fas fa-trash"></i> Clear
+                                </button>
+                            </div>
+
+                            <canvas id="annotationCanvas" width="800" height="400" style="border: 1px solid #ddd; margin-bottom: 20px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-
-
 
     <script>
         // MedOS Core Application with Local AI Processing and Facial Recognition
