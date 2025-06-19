@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SoloTailor AI - Advanced Foot Scanning</title>
+    <title>SoloTailor AI - Complete 3D Shoe Customization</title>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
     <style>
@@ -51,64 +51,111 @@
             color: var(--gray);
         }
 
-        .scan-container {
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-            border-radius: 0.5rem;
-            overflow: hidden;
+        /* Customization Section */
+        .customization-section {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
         }
 
-        #camera-feed {
-            width: 100%;
-            display: block;
-        }
-
-        .scan-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
+        .customizer-container {
             display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            gap: 2rem;
         }
 
-        .scanning-animation {
-            width: 100%;
-            height: 4px;
-            background: rgba(255,255,255,0.3);
-            margin-top: 1rem;
+        @media (max-width: 768px) {
+            .customizer-container {
+                flex-direction: column;
+            }
+        }
+
+        .visualization-panel {
+            flex: 2;
             position: relative;
+        }
+
+        #shoe-canvas {
+            width: 100%;
+            height: 500px;
+            background: #f8fafc;
+            border-radius: 0.5rem;
+        }
+
+        .customization-panel {
+            flex: 1;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .range-slider {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        .range-value {
+            display: inline-block;
+            margin-left: 0.5rem;
+            font-weight: 600;
+        }
+
+        /* Final Product Section */
+        .final-product-section {
             display: none;
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
-        .scanning-progress {
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 0%;
-            background: var(--secondary);
-            transition: width 0.1s linear;
+        .final-view-container {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1.5rem;
         }
 
-        .foot-outline {
-            width: 70%;
-            height: 70%;
-            border: 3px dashed rgba(255,255,255,0.8);
-            border-radius: 20% 20% 50% 50%;
+        @media (max-width: 768px) {
+            .final-view-container {
+                flex-direction: column;
+            }
         }
 
-        .scan-instructions {
-            text-align: center;
-            margin: 1rem 0 2rem;
+        #final-shoe-canvas {
+            flex: 1;
+            height: 500px;
+            background: #f8fafc;
+            border-radius: 0.5rem;
         }
 
+        .final-details {
+            flex: 1;
+        }
+
+        .detail-card {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Common styles */
         .btn {
             padding: 1rem 2rem;
             border: none;
@@ -134,16 +181,35 @@
             border: 2px solid var(--primary);
         }
 
-        .processing-screen {
-            text-align: center;
-            padding: 2rem;
-            display: none;
+        /* Model Controls */
+        .model-controls {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            z-index: 10;
+            display: flex;
+            gap: 0.5rem;
         }
 
+        .model-controls button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        /* Loading spinner */
         .spinner {
             width: 40px;
             height: 40px;
-            margin: 1rem auto;
+            margin: 2rem auto;
             border: 4px solid rgba(0, 0, 0, 0.1);
             border-radius: 50%;
             border-top-color: var(--primary);
@@ -153,187 +219,487 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-
-        .scan-complete {
-            text-align: center;
-            padding: 2rem;
-            display: none;
-        }
-
-        .scan-complete svg {
-            width: 48px;
-            height: 48px;
-            color: var(--secondary);
-            margin-bottom: 1rem;
-        }
-
-        .hidden {
-            display: none;
-        }
     </style>
 </head>
 <body>
     <div class="app-container">
         <header>
             <h1>SoloTailor AI</h1>
-            <p>Advanced 3D foot scanning technology</p>
+            <p>Complete 3D footwear customization</p>
         </header>
 
-        <div class="scan-container">
-            <video id="camera-feed" autoplay playsinline></video>
-            <div class="scan-overlay">
-                <div class="foot-outline"></div>
-                <div class="scanning-animation">
-                    <div class="scanning-progress"></div>
+        <!-- Customization Section -->
+        <section class="customization-section" id="customization-section">
+            <h2>Design Your Custom Shoe</h2>
+            <div class="customizer-container">
+                <div class="visualization-panel">
+                    <canvas id="shoe-canvas"></canvas>
+                    <div class="model-controls">
+                        <button id="rotate-left" title="Rotate Left">↩</button>
+                        <button id="rotate-right" title="Rotate Right">↪</button>
+                        <button id="reset-view" title="Reset View">⟲</button>
+                    </div>
+                </div>
+                
+                <div class="customization-panel">
+                    <div class="form-group">
+                        <label for="shoe-style">Style</label>
+                        <select id="shoe-style" class="form-control">
+                            <option value="sneaker">Sneaker</option>
+                            <option value="runner">Running Shoe</option>
+                            <option value="dress">Dress Shoe</option>
+                            <option value="boot">Boot</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="shoe-color">Color</label>
+                        <input type="color" id="shoe-color" value="#333333" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="shoe-material">Material</label>
+                        <select id="shoe-material" class="form-control">
+                            <option value="leather">Leather</option>
+                            <option value="knit">Knit</option>
+                            <option value="mesh">Mesh</option>
+                            <option value="suede">Suede</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="sole-thickness">Sole Thickness: <span id="sole-thickness-value">2.0cm</span></label>
+                        <input type="range" id="sole-thickness" min="0.5" max="3" step="0.1" value="2.0" class="range-slider">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="heel-height">Heel Height: <span id="heel-height-value">0cm</span></label>
+                        <input type="range" id="heel-height" min="0" max="8" step="0.5" value="0" class="range-slider">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lace-color">Lace Color</label>
+                        <input type="color" id="lace-color" value="#ffffff" class="form-control">
+                    </div>
+
+                    <button id="view-final" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">View Final Product</button>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="scan-instructions">
-            <p>Position your foot within the outline and hold still</p>
-            <button id="start-scan" class="btn btn-primary">Start Scanning</button>
-        </div>
-
-        <div class="processing-screen">
-            <div class="spinner"></div>
-            <h3>Processing Your Scan</h3>
-            <p>Creating your 3D foot model...</p>
-            <div id="processing-details" style="margin-top: 1rem;"></div>
-        </div>
-
-        <div class="scan-complete">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 16.17L4.83 12L3.41 13.41L9 19L21 7L19.59 5.59L9 16.17Z" fill="currentColor"/>
-            </svg>
-            <h3>Scan Complete!</h3>
-            <p>Your 3D foot model has been successfully created</p>
-            <button id="continue-btn" class="btn btn-primary" style="margin-top: 1rem;">Continue to Customization</button>
-        </div>
-
-        <div id="customization-section" class="hidden">
-            <!-- Customization UI would go here -->
-        </div>
+        <!-- Final Product Section -->
+        <section class="final-product-section" id="final-product-section">
+            <h2>Your Custom Shoe Design</h2>
+            <div class="final-view-container">
+                <canvas id="final-shoe-canvas"></canvas>
+                <div class="final-details">
+                    <div class="detail-card">
+                        <h3>Design Specifications</h3>
+                        <div id="design-specs">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="detail-card">
+                        <h3>Fit Analysis</h3>
+                        <div id="fit-analysis">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    <button id="place-order" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Place Order</button>
+                </div>
+            </div>
+        </section>
+    </div>
 
     <script>
-        // Camera and scanning variables
-        let mediaStream;
-        let scanInterval;
-        let progress = 0;
-        let processingStages = [
-            "Capturing foot contours",
-            "Analyzing arch structure",
-            "Mapping pressure points",
-            "Generating 3D model",
-            "Calculating measurements"
-        ];
+        // Global variables
+        let scene, camera, renderer, shoeMesh, controls;
+        let finalScene, finalCamera, finalRenderer, finalControls;
+        let currentRotation = 0;
+        const rotationSpeed = 0.02;
 
-        // Initialize camera
-        async function initCamera() {
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        facingMode: 'environment',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    } 
-                });
-                const videoElement = document.getElementById('camera-feed');
-                videoElement.srcObject = mediaStream;
-            } catch (err) {
-                console.error("Camera error:", err);
-                alert("Could not access camera. Please ensure you've granted camera permissions.");
-                // Fallback to image upload
-                document.querySelector('.scan-instructions').innerHTML = `
-                    <p>Camera access denied. Please upload photos instead:</p>
-                    <input type="file" id="foot-upload" accept="image/*" multiple style="display: none;">
-                    <button class="btn btn-primary" onclick="document.getElementById('foot-upload').click()">Upload Foot Photos</button>
-                `;
+        // Initialize 3D shoe viewer
+        function initShoeViewer() {
+            const canvas = document.getElementById('shoe-canvas');
+            
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf8fafc);
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            camera.position.z = 5;
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ 
+                canvas, 
+                antialias: true,
+                alpha: true
+            });
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.shadowMap.enabled = true;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 5, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+            directionalLight2.position.set(-5, 5, -5);
+            scene.add(directionalLight2);
+            
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 3;
+            controls.maxDistance = 10;
+            
+            // Create initial shoe model
+            createShoeModel();
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
             }
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            });
         }
 
-        // Start the scanning process
-        function startScanning() {
-            const startBtn = document.getElementById('start-scan');
-            startBtn.textContent = 'Scanning...';
-            startBtn.disabled = true;
+        // Create shoe model with enhanced details
+        function createShoeModel() {
+            if (shoeMesh) scene.remove(shoeMesh);
             
-            // Show scanning animation
-            const scanningAnim = document.querySelector('.scanning-animation');
-            const progressBar = document.querySelector('.scanning-progress');
-            scanningAnim.style.display = 'block';
+            const style = document.getElementById('shoe-style').value;
+            const color = document.getElementById('shoe-color').value;
+            const materialType = document.getElementById('shoe-material').value;
+            const soleThickness = parseFloat(document.getElementById('sole-thickness').value);
+            const heelHeight = parseFloat(document.getElementById('heel-height').value);
+            const laceColor = document.getElementById('lace-color').value;
             
-            // Simulate scanning progress
-            progress = 0;
-            scanInterval = setInterval(() => {
-                progress += 1;
-                progressBar.style.width = `${progress}%`;
+            // Create shoe group to hold all parts
+            const shoeGroup = new THREE.Group();
+            
+            // Base shoe parameters
+            const shoeWidth = 2.5;
+            const shoeLength = 4;
+            let shoeHeight = 1.2;
+            let toeShape = 0.5;
+            
+            // Adjust parameters based on style
+            switch(style) {
+                case 'runner':
+                    shoeHeight = 1.3;
+                    toeShape = 0.7;
+                    break;
+                case 'dress':
+                    shoeHeight = 1.0;
+                    toeShape = 0.3;
+                    break;
+                case 'boot':
+                    shoeHeight = 1.8;
+                    toeShape = 0.6;
+                    break;
+            }
+            
+            // Create shoe material based on selection
+            let shoeMaterial;
+            switch(materialType) {
+                case 'leather':
+                    shoeMaterial = new THREE.MeshStandardMaterial({ 
+                        color: color,
+                        roughness: 0.4,
+                        metalness: 0.3
+                    });
+                    break;
+                case 'knit':
+                    shoeMaterial = new THREE.MeshStandardMaterial({ 
+                        color: color,
+                        roughness: 0.8,
+                        metalness: 0
+                    });
+                    break;
+                case 'mesh':
+                    shoeMaterial = new THREE.MeshStandardMaterial({ 
+                        color: color,
+                        roughness: 0.6,
+                        metalness: 0,
+                        transparent: true,
+                        opacity: 0.85
+                    });
+                    break;
+                case 'suede':
+                    shoeMaterial = new THREE.MeshStandardMaterial({ 
+                        color: color,
+                        roughness: 0.9,
+                        metalness: 0.1
+                    });
+                    break;
+            }
+            
+            // Create shoe upper (main body)
+            const upperGeometry = new THREE.BoxGeometry(shoeWidth, shoeHeight, shoeLength);
+            const upper = new THREE.Mesh(upperGeometry, shoeMaterial);
+            upper.position.y = shoeHeight/2 + (heelHeight * 0.2);
+            shoeGroup.add(upper);
+            
+            // Create sole
+            const soleGeometry = new THREE.BoxGeometry(shoeWidth + 0.2, soleThickness * 0.3, shoeLength + 0.2);
+            const soleMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x333333,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            const sole = new THREE.Mesh(soleGeometry, soleMaterial);
+            sole.position.y = soleThickness * 0.15;
+            shoeGroup.add(sole);
+            
+            // Create heel if needed
+            if (heelHeight > 0) {
+                const heelGeometry = new THREE.BoxGeometry(shoeWidth * 0.4, heelHeight * 0.3, shoeLength * 0.3);
+                const heelMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x333333,
+                    roughness: 0.6,
+                    metalness: 0.2
+                });
+                const heel = new THREE.Mesh(heelGeometry, heelMaterial);
+                heel.position.y = heelHeight * 0.15;
+                heel.position.z = -shoeLength * 0.3;
+                shoeGroup.add(heel);
+            }
+            
+            // Create laces if not boots
+            if (style !== 'boot') {
+                const laceGeometry = new THREE.BoxGeometry(shoeWidth * 0.8, 0.05, 0.05);
+                const laceMaterial = new THREE.MeshStandardMaterial({ 
+                    color: laceColor,
+                    roughness: 0.5
+                });
                 
-                if (progress >= 100) {
-                    completeScan();
+                // Create multiple lace segments
+                for (let i = 0; i < 5; i++) {
+                    const lace = new THREE.Mesh(laceGeometry, laceMaterial);
+                    lace.position.y = shoeHeight * 0.7 + (heelHeight * 0.2);
+                    lace.position.z = -shoeLength * 0.2 + (i * shoeLength * 0.1);
+                    lace.rotation.z = Math.PI / 4;
+                    shoeGroup.add(lace);
                 }
-            }, 50);
+            }
+            
+            // Add shoe to scene
+            shoeMesh = shoeGroup;
+            scene.add(shoeMesh);
         }
 
-        // Complete the scanning process
-        function completeScan() {
-            clearInterval(scanInterval);
+        // Initialize final product viewer
+        function initFinalViewer() {
+            const canvas = document.getElementById('final-shoe-canvas');
             
-            // Hide camera and show processing
-            document.getElementById('camera-feed').style.display = 'none';
-            document.querySelector('.scan-overlay').style.display = 'none';
-            document.querySelector('.scan-instructions').style.display = 'none';
+            // Scene setup
+            finalScene = new THREE.Scene();
+            finalScene.background = new THREE.Color(0xf8fafc);
             
-            // Show processing screen
-            const processingScreen = document.querySelector('.processing-screen');
-            processingScreen.style.display = 'block';
+            // Camera setup
+            finalCamera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            finalCamera.position.z = 6;
             
-            // Simulate processing stages
-            let currentStage = 0;
-            const detailsElement = document.getElementById('processing-details');
+            // Renderer setup
+            finalRenderer = new THREE.WebGLRenderer({ 
+                canvas, 
+                antialias: true,
+                alpha: true
+            });
+            finalRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            finalRenderer.shadowMap.enabled = true;
             
-            const processingInterval = setInterval(() => {
-                detailsElement.innerHTML += `<p>✓ ${processingStages[currentStage]}</p>`;
-                currentStage++;
-                
-                if (currentStage >= processingStages.length) {
-                    clearInterval(processingInterval);
-                    showScanComplete();
-                }
-            }, 1500);
+            // Lighting - studio setup
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            finalScene.add(ambientLight);
+            
+            const keyLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            keyLight.position.set(5, 5, 5);
+            keyLight.castShadow = true;
+            finalScene.add(keyLight);
+            
+            const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+            fillLight.position.set(-5, 3, -5);
+            finalScene.add(fillLight);
+            
+            const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            backLight.position.set(0, 5, -10);
+            finalScene.add(backLight);
+            
+            // Controls
+            finalControls = new THREE.OrbitControls(finalCamera, finalRenderer.domElement);
+            finalControls.enableDamping = true;
+            finalControls.dampingFactor = 0.05;
+            finalControls.minDistance = 4;
+            finalControls.maxDistance = 15;
+            
+            // Create environment
+            createFinalPresentation();
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                finalControls.update();
+                finalRenderer.render(finalScene, finalCamera);
+            }
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                finalCamera.aspect = canvas.clientWidth / canvas.clientHeight;
+                finalCamera.updateProjectionMatrix();
+                finalRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            });
         }
 
-        // Show scan complete screen
-        function showScanComplete() {
-            document.querySelector('.processing-screen').style.display = 'none';
-            document.querySelector('.scan-complete').style.display = 'block';
-        }
-
-        // Continue to customization
-        function continueToCustomization() {
-            document.querySelector('.scan-complete').style.display = 'none';
-            document.getElementById('customization-section').classList.remove('hidden');
+        // Create final presentation scene
+        function createFinalPresentation() {
+            // Clear previous shoe if exists
+            while(finalScene.children.length > 0){ 
+                finalScene.remove(finalScene.children[0]); 
+            }
             
-            // In a real app, we would initialize the 3D customization view here
-            alert("Now we would show the 3D customization interface with your scanned foot model");
+            // Clone the current shoe model
+            const finalShoe = shoeMesh.clone();
+            
+            // Position shoe
+            finalShoe.position.y = 1;
+            
+            // Add to scene
+            finalScene.add(finalShoe);
+            
+            // Create simple floor
+            const floorGeometry = new THREE.PlaneGeometry(20, 20);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xeeeeee,
+                roughness: 0.2,
+                metalness: 0
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            finalScene.add(floor);
+            
+            // Add subtle shadow under shoe
+            const shadowGeometry = new THREE.CircleGeometry(1.5, 32);
+            const shadowMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x000000,
+                transparent: true,
+                opacity: 0.2
+            });
+            const shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
+            shadow.rotation.x = -Math.PI / 2;
+            shadow.position.y = 0.01;
+            finalScene.add(shadow);
+            
+            // Update design specs
+            updateDesignSpecs();
         }
 
-        // Clean up camera
-        function stopCamera() {
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
+        // Update design specifications
+        function updateDesignSpecs() {
+            const style = document.getElementById('shoe-style').options[document.getElementById('shoe-style').selectedIndex].text;
+            const material = document.getElementById('shoe-material').options[document.getElementById('shoe-material').selectedIndex].text;
+            const color = document.getElementById('shoe-color').value;
+            const soleThickness = document.getElementById('sole-thickness').value;
+            const heelHeight = document.getElementById('heel-height').value;
+            const laceColor = document.getElementById('lace-color').value;
+            
+            document.getElementById('design-specs').innerHTML = `
+                <p><strong>Style:</strong> ${style}</p>
+                <p><strong>Material:</strong> ${material}</p>
+                <p><strong>Color:</strong> <span style="display: inline-block; width: 15px; height: 15px; background: ${color}; border: 1px solid #ddd;"></span> ${color.toUpperCase()}</p>
+                <p><strong>Sole Thickness:</strong> ${soleThickness}cm</p>
+                <p><strong>Heel Height:</strong> ${heelHeight}cm</p>
+                <p><strong>Lace Color:</strong> <span style="display: inline-block; width: 15px; height: 15px; background: ${laceColor}; border: 1px solid #ddd;"></span> ${laceColor.toUpperCase()}</p>
+            `;
+            
+            document.getElementById('fit-analysis').innerHTML = `
+                <p><strong>Arch Support:</strong> High (based on your scan)</p>
+                <p><strong>Toe Box:</strong> Wide (customized for comfort)</p>
+                <p><strong>Cushioning:</strong> Adaptive foam technology</p>
+            `;
+        }
+
+        // Show final product view
+        function showFinalProduct() {
+            document.getElementById('customization-section').style.display = 'none';
+            document.getElementById('final-product-section').style.display = 'block';
+            
+            // Initialize final viewer if not already done
+            if (!finalScene) {
+                initFinalViewer();
+            } else {
+                // Otherwise just update the display
+                createFinalPresentation();
             }
         }
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
-            initCamera();
+            // Initialize 3D viewer
+            initShoeViewer();
             
-            document.getElementById('start-scan').addEventListener('click', startScanning);
-            document.getElementById('continue-btn').addEventListener('click', continueToCustomization);
+            // Customization controls
+            document.getElementById('shoe-style').addEventListener('change', createShoeModel);
+            document.getElementById('shoe-color').addEventListener('input', createShoeModel);
+            document.getElementById('shoe-material').addEventListener('change', createShoeModel);
+            document.getElementById('sole-thickness').addEventListener('input', function() {
+                document.getElementById('sole-thickness-value').textContent = `${this.value}cm`;
+                createShoeModel();
+            });
+            document.getElementById('heel-height').addEventListener('input', function() {
+                document.getElementById('heel-height-value').textContent = `${this.value}cm`;
+                createShoeModel();
+            });
+            document.getElementById('lace-color').addEventListener('input', createShoeModel);
+            
+            // Model controls
+            document.getElementById('rotate-left').addEventListener('click', () => {
+                currentRotation -= rotationSpeed;
+                shoeMesh.rotation.y = currentRotation;
+            });
+            
+            document.getElementById('rotate-right').addEventListener('click', () => {
+                currentRotation += rotationSpeed;
+                shoeMesh.rotation.y = currentRotation;
+            });
+            
+            document.getElementById('reset-view').addEventListener('click', () => {
+                controls.reset();
+                currentRotation = 0;
+                shoeMesh.rotation.y = 0;
+                camera.position.z = 5;
+            });
+            
+            // View final product button
+            document.getElementById('view-final').addEventListener('click', showFinalProduct);
+            
+            // Place order button
+            document.getElementById('place-order').addEventListener('click', function() {
+                this.textContent = 'Processing Order...';
+                this.disabled = true;
+                
+                setTimeout(() => {
+                    alert('Order placed successfully! You will receive a confirmation email shortly.');
+                }, 1500);
+            });
         });
-
-        // Clean up when leaving page
-        window.addEventListener('beforeunload', stopCamera);
     </script>
 </body>
 </html>
