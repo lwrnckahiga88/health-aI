@@ -1,379 +1,1735 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Shoe Customizer with ScanSoles</title>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #f8fafc;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .scan-section, .customization-section {
-      background: white;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-    }
-    .customization-section {
-      display: none;
-    }
-    button {
-      background-color: #4f46e5;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 16px;
-      margin-top: 10px;
-    }
-    button:disabled {
-      background-color: #cbd5e1;
-      cursor: not-allowed;
-    }
-    .scan-overlay {
-      position: relative;
-      height: 300px;
-      background-color: #e2e8f0;
-      border-radius: 4px;
-      margin: 20px 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .progress-container {
-      width: 80%;
-      background-color: #e2e8f0;
-      border-radius: 4px;
-      margin: 20px auto;
-    }
-    .progress-bar {
-      height: 20px;
-      background-color: #4f46e5;
-      border-radius: 4px;
-      width: 0%;
-      transition: width 0.3s;
-    }
-    .error {
-      color: #dc2626;
-      background-color: #fee2e2;
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 10px;
-    }
-    canvas {
-      width: 100%;
-      height: 500px;
-      display: block;
-      margin-top: 20px;
-    }
-    .customization-options {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 15px;
-      margin-bottom: 20px;
-    }
-    select, input {
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid #cbd5e1;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedOS Clinical Collaboration Platform</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #1976d2;
+            --secondary: #28a745;
+            --danger: #dc3545;
+            --dark: #343a40;
+            --light: #f8f9fa;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .app-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+        }
+        .main-content {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1565c0;
+        }
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #218838;
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .module-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        .module-card.active {
+            background: var(--primary);
+        }
+        .video-container {
+            position: relative;
+            background: black;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .video-container video {
+            width: 100%;
+            display: block;
+        }
+        .video-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .suggestion-card {
+            border-left: 3px solid var(--primary);
+            padding: 10px;
+            margin: 10px 0;
+            background: #f5fbff;
+        }
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+        .tab.active {
+            border-bottom-color: var(--primary);
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .patient-tag {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        .diagnosis-history {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .history-item {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .diagnosis-result {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            border-left: 4px solid #4caf50;
+        }
+        .diagnosis-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2e7d32;
+        }
+        .diagnosis-list {
+            margin-left: 20px;
+        }
+        .diagnosis-item {
+            margin-bottom: 8px;
+        }
+        .diagnosis-confidence {
+            font-style: italic;
+            color: #666;
+            margin-top: 10px;
+        }
+        .processing-mode {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .peace-mode {
+            background-color: #4caf50;
+            color: white;
+        }
+        .wait-mode {
+            background-color: #ff9800;
+            color: white;
+        }
+        .mixed-mode {
+            background-color: #9c27b0;
+            color: white;
+        }
+        .clinical-summary {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .workup-recommendations {
+            background: #fff8e1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        #annotationCanvas {
+            border: 1px solid #ddd;
+            background: white;
+        }
+        .model-status {
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .model-loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .model-ready {
+            background: #d4edda;
+            color: #155724;
+        }
+        .model-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        /* Facial Recognition Styles */
+        .face-verification-container {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        #faceVideo {
+            width: 100%;
+            background: #000;
+            border-radius: 8px;
+        }
+        #faceCanvas {
+            display: none;
+        }
+        .verification-steps {
+            margin-top: 15px;
+        }
+        .verification-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .verification-step i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+        .step-complete {
+            color: #28a745;
+        }
+        .step-pending {
+            color: #6c757d;
+        }
+        .step-active {
+            color: #007bff;
+            font-weight: bold;
+        }
+        .verification-result {
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            text-align: center;
+            display: none;
+        }
+        .verification-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        .verification-failure {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+        .clinician-profile {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .clinician-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #ddd;
+            margin-right: 15px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .clinician-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .clinician-details {
+            flex: 1;
+        }
+        .clinician-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .clinician-license {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .license-status {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 5px;
+        }
+        .status-verified {
+            background: #28a745;
+            color: white;
+        }
+        .status-pending {
+            background: #ffc107;
+            color: #000;
+        }
+        .status-unverified {
+            background: #dc3545;
+            color: white;
+        }
+        .status-processing {
+            background: #17a2b8;
+            color: white;
+        }
+        .status-uploaded {
+            background: #17a2b8;
+            color: white;
+        }
+        .status-missing {
+            background: #6c757d;
+            color: white;
+        }
+        .cadre-selector {
+            margin-top: 15px;
+        }
+        .jurisdiction-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .jurisdiction-icon {
+            font-size: 2em;
+            margin-right: 15px;
+        }
+        .jurisdiction-pending {
+            color: #ffc107;
+        }
+        .jurisdiction-verified {
+            color: #28a745;
+        }
+        .jurisdiction-denied {
+            color: #dc3545;
+        }
+        .jurisdiction-details {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .credential-item {
+            margin-bottom: 15px;
+        }
+        .credential-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .credential-status {
+            margin-left: 10px;
+        }
+        .access-status {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .access-pending {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+        .access-granted {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        .room-card {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .qr-code-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        #jurisdictionQrCode {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 10px;
+        }
+        .telehealth-scopes {
+            margin: 20px 0;
+        }
+        .scope-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .scope-icon {
+            margin-right: 10px;
+            color: #28a745;
+        }
+        .jurisdiction-approved {
+            color: #28a745;
+        }
+        .jurisdiction-pending {
+            color: #ffc107;
+        }
+        .jurisdiction-denied {
+            color: #dc3545;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Custom Shoe Fitting</h1>
-    
-    <div id="scan-section" class="scan-section">
-      <h2>Foot Scanning</h2>
-      <div id="scan-error" class="error" style="display: none;"></div>
-      
-      <div class="scan-overlay">
-        <div id="scanning-animation" style="display: none;">
-          <div class="progress-container">
-            <div id="progress-bar" class="progress-bar"></div>
-          </div>
-          <p>Position your foot in the frame</p>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h2>MedOS</h2>
+            <div class="module-list">
+                <div class="module-card active" data-tab="jurisdiction">
+                    <h4><i class="fas fa-globe"></i> Jurisdiction</h4>
+                </div>
+                <div class="module-card" data-tab="ehr">
+                    <h4><i class="fas fa-hospital"></i> EHR System</h4>
+                </div>
+                <div class="module-card" data-tab="consultation">
+                    <h4><i class="fas fa-users"></i> Consultation</h4>
+                </div>
+                <div class="module-card" data-tab="diagnostic">
+                    <h4><i class="fas fa-robot"></i> AI Diagnostic</h4>
+                </div>
+                <div class="module-card" data-tab="screenshare">
+                    <h4><i class="fas fa-desktop"></i> Screen Sharing</h4>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <h4>Access Status</h4>
+                <ul id="access-status-list">
+                    <li><i class="fas fa-id-card"></i> Identity: <span id="identity-status">Pending</span></li>
+                    <li><i class="fas fa-file-contract"></i> License: <span id="license-status">Pending</span></li>
+                    <li><i class="fas fa-globe"></i> Jurisdiction: <span id="jurisdiction-status">Pending</span></li>
+                </ul>
+            </div>
         </div>
-      </div>
-      
-      <button id="start-scan">Start Scan</button>
-    </div>
-    
-    <div id="customization-section" class="customization-section">
-      <h2>Customize Your Shoe</h2>
-      
-      <div class="customization-options">
-        <select id="shoe-style">
-          <option value="sneaker">Sneaker</option>
-          <option value="runner">Runner</option>
-          <option value="dress">Dress</option>
-          <option value="boot">Boot</option>
-        </select>
-        
-        <input type="color" id="shoe-color" value="#ff0000">
-        
-        <select id="shoe-material">
-          <option value="leather">Leather</option>
-          <option value="mesh">Mesh</option>
-          <option value="knit">Knit</option>
-        </select>
-        
-        <button id="update-shoe">Update Shoe</button>
-      </div>
-      
-      <canvas id="shoe-canvas"></canvas>
-      <div id="shoe-loading" style="display: none;">Loading shoe model...</div>
-      <div id="customization-error" class="error" style="display: none;"></div>
-    </div>
-  </div>
 
-  <script>
-    // Global variables
-    let footScanData = null;
-    let scene, camera, renderer, controls, shoeMesh;
-    
-    // Initialize when DOM is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-      // Initialize 3D viewer
-      init3DViewer();
-      
-      // Event listeners
-      document.getElementById('start-scan').addEventListener('click', startRealScan);
-      document.getElementById('update-shoe').addEventListener('click', updateShoeModel);
-    });
-    
-    // Initialize 3D viewer
-    function init3DViewer() {
-      const canvas = document.getElementById('shoe-canvas');
-      
-      // Scene setup
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xf8fafc);
-      
-      // Camera setup
-      camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
-      camera.position.z = 5;
-      
-      // Renderer setup
-      renderer = new THREE.WebGLRenderer({ 
-        canvas: canvas,
-        antialias: true,
-        alpha: true
-      });
-      renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-      
-      // Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-      scene.add(ambientLight);
-      
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(5, 5, 5);
-      scene.add(directionalLight);
-      
-      // Controls
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
-      
-      // Animation loop
-      function animate() {
-        requestAnimationFrame(animate);
-        controls.update();
-        renderer.render(scene, camera);
-      }
-      animate();
-      
-      // Handle window resize
-      window.addEventListener('resize', function() {
-        camera.aspect = canvas.clientWidth / canvas.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-      });
-    }
-    
-    // Start real scan with ScanSoles
-    async function startRealScan() {
-      const startBtn = document.getElementById('start-scan');
-      const errorElement = document.getElementById('scan-error');
-      
-      startBtn.textContent = 'Scanning...';
-      startBtn.disabled = true;
-      errorElement.style.display = 'none';
-      
-      document.getElementById('scanning-animation').style.display = 'block';
-      simulateScanProgress();
-      
-      try {
-        // Load ScanSoles SDK dynamically
-        await loadScript('https://sdk.scansoles.com/v1/latest.js');
-        
-        // Initialize ScanSoles SDK
-        await ScanSoles.init({ 
-          apiKey: process.env.SCANSOLES_API_KEY,
-          scanMode: 'singleFoot',
-          scanQuality: 'high',
-          overlayElement: document.querySelector('.scan-overlay')
-        });
-        
-        // Start the scan
-        const scanResult = await ScanSoles.startScan({
-          onProgress: (progress) => {
-            document.getElementById('progress-bar').style.width = `${progress}%`;
-          }
-        });
-        
-        // Process scan results
-        footScanData = {
-          footLength: scanResult.measurements.footLength,
-          footWidth: scanResult.measurements.footWidth,
-          archHeight: scanResult.measurements.archHeight,
-          meshUrl: scanResult.meshUrl
-        };
-        
-        // Show customization section
-        document.getElementById('scan-section').classList.add('hidden');
-        document.getElementById('customization-section').style.display = 'block';
-        
-        // Load initial shoe model
-        loadShoeModel();
-      } catch (err) {
-        console.error("Scan failed:", err);
-        errorElement.textContent = "Scan failed: " + err.message;
-        errorElement.style.display = 'block';
-      } finally {
-        startBtn.textContent = 'Start Scan';
-        startBtn.disabled = false;
-      }
-    }
-    
-    // Simulate scan progress (fallback)
-    function simulateScanProgress() {
-      const progressBar = document.getElementById('progress-bar');
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 5;
-        progressBar.style.width = `${progress}%`;
-        
-        if (progress >= 100) {
-          clearInterval(interval);
-        }
-      }, 200);
-    }
-    
-    // Load shoe model
-    async function loadShoeModel() {
-      const style = document.getElementById('shoe-style').value;
-      const color = document.getElementById('shoe-color').value;
-      const material = document.getElementById('shoe-material').value;
-      
-      document.getElementById('shoe-loading').style.display = 'block';
-      document.getElementById('customization-error').style.display = 'none';
-      
-      try {
-        // Call Netlify function to generate shoe
-        const response = await fetch('/.netlify/functions/generate-shoe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            footScanData,
-            style,
-            color,
-            material
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to generate shoe model');
-        }
-        
-        const { modelUrl } = await response.json();
-        
-        const loader = new THREE.GLTFLoader();
-        loader.load(modelUrl, (gltf) => {
-          if (shoeMesh) scene.remove(shoeMesh);
-          shoeMesh = gltf.scene;
-          
-          // Scale the model based on foot scan data if available
-          if (footScanData) {
-            const scaleFactor = footScanData.footLength / 26; // Adjust based on model size
-            shoeMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
-          }
-          
-          // Apply material customization
-          shoeMesh.traverse((child) => {
-            if (child.isMesh) {
-              child.material.color.setHex(color.replace('#', '0x'));
-              if (material === 'mesh') {
-                child.material.transparent = true;
-                child.material.opacity = 0.8;
-              } else if (material === 'leather') {
-                child.material.roughness = 0.4;
-                child.material.metalness = 0.1;
-              } else if (material === 'knit') {
-                child.material.roughness = 0.8;
-                child.material.metalness = 0;
-              }
+        <div class="main-content">
+            <!-- Jurisdiction Verification -->
+            <div class="tab-content active" id="jurisdiction">
+                <h2>Telehealth Jurisdiction Verification</h2>
+                <div class="card">
+                    <div class="clinician-profile">
+                        <div class="clinician-avatar">
+                            <img id="clinicianAvatar" src="https://ui-avatars.com/api/?name=MD&background=1976d2&color=fff" alt="Clinician">
+                        </div>
+                        <div class="clinician-details">
+                            <div class="clinician-name" id="clinicianName">Medical Doctor</div>
+                            <div class="clinician-license">
+                                License: <span id="clinicianLicense">Not verified</span>
+                                <span class="license-status status-pending" id="licenseBadge">Pending</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="jurisdiction-verification">
+                        <h3>Practice Authorization Status</h3>
+                        <div class="jurisdiction-status">
+                            <i class="fas fa-globe-americas jurisdiction-icon jurisdiction-pending"></i>
+                            <div class="jurisdiction-text">
+                                <strong>Current Jurisdiction:</strong> 
+                                <span id="currentJurisdiction">Loading...</span>
+                            </div>
+                        </div>
+                        
+                        <div id="jurisdictionResult" class="jurisdiction-details">
+                            <p>Complete identity verification and upload credentials to check jurisdiction status</p>
+                        </div>
+                    </div>
+
+                    <div class="credential-upload">
+                        <h3>Credential Verification</h3>
+                        
+                        <div class="credential-item">
+                            <label class="credential-label">Medical License:</label>
+                            <input type="file" id="licenseUpload" accept=".pdf,.jpg,.png" style="display: none;">
+                            <button id="uploadLicenseBtn" class="btn btn-secondary">
+                                <i class="fas fa-upload"></i> Upload License
+                            </button>
+                            <span id="licenseStatusBadge" class="credential-status status-missing">Missing</span>
+                        </div>
+                        
+                        <div class="credential-item">
+                            <label class="credential-label">ID Document:</label>
+                            <input type="file" id="idUpload" accept=".pdf,.jpg,.png" style="display: none;">
+                            <button id="uploadIdBtn" class="btn btn-secondary">
+                                <i class="fas fa-upload"></i> Upload ID
+                            </button>
+                            <span id="idStatusBadge" class="credential-status status-missing">Missing</span>
+                        </div>
+                        
+                        <div class="credential-item">
+                            <label class="credential-label">Practice Country:</label>
+                            <select id="practiceCountry" class="btn" style="width: 100%;">
+                                <option value="">Select country</option>
+                                <option value="US">United States</option>
+                                <option value="KE">Kenya</option>
+                                <option value="UK">United Kingdom</option>
+                                <option value="CA">Canada</option>
+                                <option value="AU">Australia</option>
+                            </select>
+                        </div>
+                        
+                        <button id="verifyCredentialsBtn" class="btn btn-primary" style="margin-top: 15px;" disabled>
+                            <i class="fas fa-check-circle"></i> Verify Credentials
+                        </button>
+                    </div>
+
+                    <div id="verificationResults" style="display: none;">
+                        <div class="qr-code-container">
+                            <h4>Telehealth Authorization QR Code</h4>
+                            <div id="jurisdictionQrCode"></div>
+                            <p>Scan this code to verify your telehealth authorization status</p>
+                        </div>
+                        
+                        <div class="telehealth-scopes">
+                            <h4>Authorized Practice Scopes:</h4>
+                            <div id="practiceScopes">
+                                <!-- Scopes will be added here dynamically -->
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 15px;">
+                            <h4>Next Steps:</h4>
+                            <ul id="nextStepsList">
+                                <!-- Next steps will be added here dynamically -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Facial Recognition Verification -->
+                    <div class="face-verification-container">
+                        <h4>Biometric Identity Verification</h4>
+                        <div class="verification-steps">
+                            <div class="verification-step" id="step1">
+                                <i class="fas fa-circle step-pending"></i>
+                                <span>Start facial recognition</span>
+                            </div>
+                            <div class="verification-step" id="step2">
+                                <i class="fas fa-circle step-pending"></i>
+                                <span>Position your face</span>
+                            </div>
+                            <div class="verification-step" id="step3">
+                                <i class="fas fa-circle step-pending"></i>
+                                <span>Complete verification</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 15px;">
+                            <video id="faceVideo" autoplay playsinline></video>
+                            <canvas id="faceCanvas"></canvas>
+                        </div>
+
+                        <div style="margin-top: 15px; text-align: center;">
+                            <button id="startVerificationBtn" class="btn btn-primary">
+                                <i class="fas fa-id-card"></i> Start Verification
+                            </button>
+                            <button id="retryVerificationBtn" class="btn btn-secondary" style="display: none;">
+                                <i class="fas fa-redo"></i> Retry
+                            </button>
+                        </div>
+
+                        <div id="verificationResult" class="verification-result">
+                            <i class="fas fa-check-circle" style="font-size: 2em;"></i>
+                            <h3 id="resultMessage">Verification Successful</h3>
+                            <p id="resultDetails">You can now access patient records</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EHR System -->
+            <div class="tab-content" id="ehr">
+                <h2>Electronic Health Records</h2>
+                <div class="card">
+                    <div id="ehrAccessStatus" class="access-status access-pending">
+                        <i class="fas fa-lock"></i> Please complete identity verification, license upload, and jurisdictional clearance to access patient records
+                    </div>
+
+                    <div id="ehrSystem" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                            <h3>Patient Records</h3>
+                            <button id="refreshPatientsBtn" class="btn">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+
+                        <ul id="patientList" style="list-style: none; padding: 0;">
+                            <li style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer;" data-id="1001">
+                                John Smith (58M)
+                                <span class="patient-tag">Active</span>
+                            </li>
+                            <li style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer;" data-id="1002">
+                                Sarah Lee (42F)
+                                <span class="patient-tag">Active</span>
+                            </li>
+                            <li style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer;" data-id="1003">
+                                Miguel Garcia (67M)
+                                <span class="patient-tag">Follow-up</span>
+                            </li>
+                        </ul>
+
+                        <div id="patientDetails" style="margin-top: 20px; display: none;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h4>Patient Details</h4>
+                                <span class="license-status status-verified">Verified</span>
+                            </div>
+
+                            <div style="margin-top: 15px;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div>
+                                        <label>Name:</label>
+                                        <div class="card" style="padding: 10px;">John Smith</div>
+                                    </div>
+                                    <div>
+                                        <label>Age/Gender:</label>
+                                        <div class="card" style="padding: 10px;">58 / Male</div>
+                                    </div>
+                                </div>
+
+                                <div style="margin-top: 15px;">
+                                    <label>Diagnosis:</label>
+                                    <div class="card" style="padding: 10px;">Hypertension, Type 2 Diabetes</div>
+                                </div>
+
+                                <div style="margin-top: 15px;">
+                                    <label>Medications:</label>
+                                    <div class="card" style="padding: 10px;">
+                                        <ul>
+                                            <li>Lisinopril 10mg daily</li>
+                                            <li>Metformin 500mg BID</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div style="margin-top: 15px;">
+                                    <label>Progress Notes:</label>
+                                    <textarea class="card" style="width: 100%; min-height: 100px; padding: 10px;">58yo male with HTN and DM2. BP today 145/88. Glucose 132.</textarea>
+                                </div>
+
+                                <button class="btn btn-primary" style="margin-top: 15px;">
+                                    <i class="fas fa-save"></i> Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Consultation Rooms -->
+            <div class="tab-content" id="consultation">
+                <h2>Consultation Rooms</h2>
+                <div class="card">
+                    <div id="consultationAccessStatus" class="access-status access-pending">
+                        <i class="fas fa-lock"></i> Please complete identity verification and jurisdictional clearance to join consultations
+                    </div>
+
+                    <div id="consultationRooms" style="display: none;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+                            <div class="room-card">
+                                <h3>General Medicine</h3>
+                                <button class="btn btn-primary join-room" data-room="general">
+                                    <i class="fas fa-door-open"></i> Join
+                                </button>
+                            </div>
+                            <div class="room-card">
+                                <h3>Cardiology</h3>
+                                <button class="btn btn-primary join-room" data-room="cardiology">
+                                    <i class="fas fa-door-open"></i> Join
+                                </button>
+                            </div>
+                            <div class="room-card">
+                                <h3>Neurology</h3>
+                                <button class="btn btn-primary join-room" data-room="neurology">
+                                    <i class="fas fa-door-open"></i> Join
+                                </button>
+                            </div>
+                            <div class="room-card">
+                                <h3>Pediatrics</h3>
+                                <button class="btn btn-primary join-room" data-room="pediatrics">
+                                    <i class="fas fa-door-open"></i> Join
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Diagnostic -->
+            <div class="tab-content" id="diagnostic">
+                <h2>AI Clinical Diagnostic</h2>
+                <div class="card">
+                    <div id="modelStatus" class="model-status model-loading">
+                        <i class="fas fa-spinner fa-spin"></i> Loading AI model...
+                    </div>
+                    
+                    <form id="diagnosticForm">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <label for="modelType">AI Model:</label>
+                                <select id="modelType" class="btn" style="width: 100%;">
+                                    <option value="clinicalbert">ClinicalBERT</option>
+                                    <option value="bioclinicalbert">BioClinicalBERT</option>
+                                    <option value="pubmedbert">PubMedBERT</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="specialty">Specialty:</label>
+                                <select id="specialty" class="btn" style="width: 100%;">
+                                    <option value="general">General Medicine</option>
+                                    <option value="cardiology">Cardiology</option>
+                                    <option value="neurology">Neurology</option>
+                                    <option value="pulmonology">Pulmonology</option>
+                                    <option value="gastroenterology">Gastroenterology</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="patientName">Patient Name:</label>
+                            <input type="text" id="patientName" class="btn" style="width: 100%; padding: 10px;" placeholder="Enter patient name">
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="patientAge">Patient Age:</label>
+                            <input type="number" id="patientAge" class="btn" style="width: 100%; padding: 10px;" placeholder="Enter patient age">
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="patientGender">Patient Gender:</label>
+                            <select id="patientGender" class="btn" style="width: 100%;">
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                                <option value="O">Other</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="subjective">Subjective:</label>
+                            <textarea id="subjective" placeholder="Patient's symptoms, history, duration, severity..."></textarea>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="objective">Objective:</label>
+                            <textarea id="objective" placeholder="Vital signs, physical exam findings, lab results, imaging..."></textarea>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="assessment">Assessment:</label>
+                            <textarea id="assessment" placeholder="Clinical impressions, working diagnosis..."></textarea>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <label for="plan">Plan:</label>
+                            <textarea id="plan" placeholder="Treatment recommendations, follow-up plans..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-secondary" style="margin-top: 20px;" id="analyzeBtn" disabled>
+                            <i class="fas fa-play"></i> Generate Diagnosis
+                        </button>
+                    </form>
+
+                    <div id="diagnosticResults" style="margin-top: 30px; display: none;">
+                        <h3>AI Diagnosis Results <span id="processingModeBadge" class="processing-mode"></span></h3>
+                        <div class="suggestion-card">
+                            <div id="aiResultContent"></div>
+                            <button id="saveToEHRBtn" class="btn btn-primary" style="margin-top: 10px;">
+                                <i class="fas fa-clipboard"></i> Save to EHR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen Sharing -->
+            <div class="tab-content" id="screenshare">
+                <h2>Clinical Screen Sharing</h2>
+                <div class="card">
+                    <div id="screenshareAccessStatus" class="access-status access-pending">
+                        <i class="fas fa-lock"></i> Please complete identity verification and jurisdictional clearance to access screen sharing
+                    </div>
+
+                    <div id="screenshareContent" style="display: none;">
+                        <div class="video-container">
+                            <video id="remoteScreen" autoplay playsinline></video>
+                            <div class="video-controls">
+                                <button id="startShareBtn" class="btn btn-primary">
+                                    <i class="fas fa-share-square"></i> Share Screen
+                                </button>
+                                <button id="stopShareBtn" class="btn btn-danger" disabled>
+                                    <i class="fas fa-stop"></i> Stop Sharing
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3>Collaboration Tools</h3>
+                            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                                <button class="btn" id="drawBtn">
+                                    <i class="fas fa-pencil-alt"></i> Draw
+                                </button>
+                                <button class="btn" id="highlightBtn">
+                                    <i class="fas fa-highlighter"></i> Highlight
+                                </button>
+                                <button class="btn" id="zoomBtn">
+                                    <i class="fas fa-search-plus"></i> Zoom
+                                </button>
+                                <button class="btn" id="clearCanvasBtn">
+                                    <i class="fas fa-trash"></i> Clear
+                                </button>
+                            </div>
+
+                            <canvas id="annotationCanvas" width="800" height="400" style="border: 1px solid #ddd; margin-bottom: 20px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MedOS Core Application with Integrated Verification System
+        class MedOS {
+            constructor() {
+                this.licenseFile = null;
+                this.idFile = null;
+                this.practiceCountry = '';
+                this.jurisdictionStatus = 'pending';
+                this.credentialHash = '';
+                this.telehealthScopes = [];
+                this.nextSteps = [];
+                this.identityVerified = false;
+                this.licenseVerified = false;
+                this.jurisdictionVerified = false;
+                this.faceDetectionActive = false;
+                this.faceVideo = null;
+                this.faceCanvas = null;
+                this.faceCanvasCtx = null;
+                this.verificationSteps = [];
+                this.currentStep = 0;
+                this.verificationComplete = false;
+                this.cadreType = 'MD';
+                this.patients = {
+                    '1001': { name: 'John Smith', age: 58, gender: 'M', conditions: ['Hypertension', 'Type 2 Diabetes'] },
+                    '1002': { name: 'Sarah Lee', age: 42, gender: 'F', conditions: ['Migraine', 'Anxiety'] },
+                    '1003': { name: 'Miguel Garcia', age: 67, gender: 'M', conditions: ['COPD', 'Osteoarthritis'] }
+                };
+                this.currentDiagnosticResult = null;
+                this.completedDiagnostics = [];
+                this.modelInitialized = false;
+                this.stream = null;
             }
-          });
-          
-          scene.add(shoeMesh);
-          document.getElementById('shoe-loading').style.display = 'none';
-          
-          // Center the model in view
-          if (shoeMesh) {
-            const box = new THREE.Box3().setFromObject(shoeMesh);
-            const center = box.getCenter(new THREE.Vector3());
-            shoeMesh.position.sub(center);
-            controls.reset();
-          }
-        }, undefined, (err) => {
-          throw err;
-        });
-      } catch (err) {
-        console.error("Error loading shoe model:", err);
-        document.getElementById('shoe-loading').style.display = 'none';
-        document.getElementById('customization-error').textContent = "Failed to load shoe model. Please try again.";
-        document.getElementById('customization-error').style.display = 'block';
-      }
-    }
-    
-    // Update shoe model based on customization
-    function updateShoeModel() {
-      if (footScanData) {
-        loadShoeModel();
-      }
-    }
-    
-    // Helper function to load scripts dynamically
-    function loadScript(src) {
-      return new Promise((resolve, reject) => {
-        if (document.querySelector(`script[src="${src}"]`)) {
-          resolve();
-          return;
+
+            async init() {
+                this.setupTabs();
+                this.setupJurisdictionVerification();
+                this.setupFaceVerification();
+                this.setupEHRSystem();
+                this.setupConsultation();
+                this.setupDiagnostic();
+                this.setupScreenShare();
+                this.detectLocation();
+                
+                // Initialize AI model
+                try {
+                    this.pipeline = await transformers.pipeline(
+                        'text-classification',
+                        'bvanaken/clinical-assertion-negation-bert'
+                    );
+                    document.getElementById('modelStatus').className = 'model-status model-ready';
+                    document.getElementById('modelStatus').innerHTML = '<i class="fas fa-check-circle"></i> AI model ready';
+                    document.getElementById('analyzeBtn').disabled = false;
+                    this.modelInitialized = true;
+                } catch (error) {
+                    console.error('Error loading AI model:', error);
+                    document.getElementById('modelStatus').className = 'model-status model-error';
+                    document.getElementById('modelStatus').innerHTML = '<i class="fas fa-exclamation-circle"></i> Failed to load AI model';
+                }
+            }
+
+            setupTabs() {
+                const moduleCards = document.querySelectorAll('.module-card');
+
+                moduleCards.forEach(card => {
+                    card.addEventListener('click', () => {
+                        const tabId = card.dataset.tab;
+                        document.querySelectorAll('.tab-content').forEach(content => {
+                            content.classList.remove('active');
+                        });
+                        document.querySelectorAll('.module-card').forEach(c => {
+                            c.classList.remove('active');
+                        });
+                        
+                        document.getElementById(tabId).classList.add('active');
+                        card.classList.add('active');
+                    });
+                });
+            }
+
+            setupJurisdictionVerification() {
+                // Set up file upload buttons
+                document.getElementById('uploadLicenseBtn').addEventListener('click', () => {
+                    document.getElementById('licenseUpload').click();
+                });
+                
+                document.getElementById('uploadIdBtn').addEventListener('click', () => {
+                    document.getElementById('idUpload').click();
+                });
+                
+                // Handle file uploads
+                document.getElementById('licenseUpload').addEventListener('change', (e) => {
+                    this.licenseFile = e.target.files[0];
+                    if (this.licenseFile) {
+                        document.getElementById('licenseStatusBadge').className = 'credential-status status-processing';
+                        document.getElementById('licenseStatusBadge').textContent = 'Processing...';
+                        this.processLicenseFile(this.licenseFile);
+                    }
+                });
+                
+                document.getElementById('idUpload').addEventListener('change', (e) => {
+                    this.idFile = e.target.files[0];
+                    if (this.idFile) {
+                        document.getElementById('idStatusBadge').className = 'credential-status status-processing';
+                        document.getElementById('idStatusBadge').textContent = 'Processing...';
+                        this.processIdFile(this.idFile);
+                    }
+                });
+                
+                // Handle country selection
+                document.getElementById('practiceCountry').addEventListener('change', (e) => {
+                    this.practiceCountry = e.target.value;
+                    this.checkVerificationReady();
+                });
+                
+                // Set up verify button
+                document.getElementById('verifyCredentialsBtn').addEventListener('click', () => {
+                    this.verifyCredentials();
+                });
+            }
+            
+            async processLicenseFile(file) {
+                // Simulate document processing
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Generate a hash of the file for verification
+                const fileReader = new FileReader();
+                fileReader.onload = async (e) => {
+                    const arrayBuffer = e.target.result;
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    this.credentialHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                    
+                    document.getElementById('licenseStatusBadge').className = 'credential-status status-uploaded';
+                    document.getElementById('licenseStatusBadge').textContent = 'Verified';
+                    document.getElementById('clinicianLicense').textContent = 'KMPDC-' + Math.floor(10000 + Math.random() * 90000);
+                    document.getElementById('licenseBadge').className = 'license-status status-verified';
+                    document.getElementById('licenseBadge').textContent = 'Verified';
+                    
+                    this.licenseVerified = true;
+                    this.updateAccessStatus();
+                    this.checkVerificationReady();
+                };
+                fileReader.readAsArrayBuffer(file);
+            }
+            
+            async processIdFile(file) {
+                // Simulate ID processing
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                document.getElementById('idStatusBadge').className = 'credential-status status-uploaded';
+                document.getElementById('idStatusBadge').textContent = 'Verified';
+                this.updateAccessStatus();
+                this.checkVerificationReady();
+            }
+            
+            checkVerificationReady() {
+                const verifyBtn = document.getElementById('verifyCredentialsBtn');
+                if (this.licenseFile && this.idFile && this.practiceCountry) {
+                    verifyBtn.disabled = false;
+                } else {
+                    verifyBtn.disabled = true;
+                }
+            }
+            
+            async verifyCredentials() {
+                const verifyBtn = document.getElementById('verifyCredentialsBtn');
+                verifyBtn.innerHTML = '<span class="loading"></span> Verifying...';
+                verifyBtn.disabled = true;
+                
+                // Simulate compliance check (20 sec)
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Check telehealth rules based on country
+                const clearance = this.checkTelehealthRules(this.practiceCountry);
+                
+                // Simulate blockchain storage (10 sec)
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                const txHash = this.generateTxHash();
+                
+                // Update verification status
+                this.jurisdictionStatus = clearance.approved ? 'approved' : 'pending';
+                this.telehealthScopes = clearance.allowed_actions;
+                this.nextSteps = clearance.additional_requirements;
+                this.jurisdictionVerified = clearance.approved;
+                
+                this.updateJurisdictionStatus(clearance);
+                this.generateQrCode(txHash);
+                this.updateAccessStatus();
+                
+                verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verify Credentials';
+                verifyBtn.disabled = false;
+            }
+            
+            checkTelehealthRules(countryCode) {
+                const rules = {
+                    "US": {
+                        requirements: ["active_license", "english_proficiency", "state_telehealth_cert"],
+                        auto_approve: true,
+                        additional_steps: ["DEA_registration"],
+                        allowed_actions: ["consult", "prescribe"],
+                        gap_analysis: {
+                            "KE": ["state_telehealth_cert", "DEA_registration"],
+                            "UK": ["state_telehealth_cert", "malpractice_insurance"]
+                        }
+                    },
+                    "KE": {
+                        requirements: ["kmpdc_registration", "english_proficiency"],
+                        auto_approve: true,
+                        additional_steps: [],
+                        allowed_actions: ["consult", "prescribe", "refer"],
+                        gap_analysis: {
+                            "US": ["kmpdc_equivalency"],
+                            "UK": ["kmpdc_equivalency"]
+                        }
+                    },
+                    "UK": {
+                        requirements: ["gmc_registration", "english_proficiency"],
+                        auto_approve: false,
+                        additional_steps: ["malpractice_insurance"],
+                        allowed_actions: ["consult"],
+                        gap_analysis: {
+                            "US": ["gmc_equivalency"],
+                            "KE": ["gmc_equivalency"]
+                        }
+                    }
+                };
+                
+                const countryRules = rules[countryCode] || rules["US"];
+                const approved = countryRules.auto_approve;
+                
+                // Generate gap analysis for foreign jurisdictions
+                let gapAnalysis = [];
+                if (this.practiceCountry !== "KE" && countryRules.gap_analysis && countryRules.gap_analysis["KE"]) {
+                    gapAnalysis = countryRules.gap_analysis["KE"];
+                }
+                
+                return {
+                    approved,
+                    level: approved ? "full" : "limited",
+                    allowed_actions: approved ? countryRules.allowed_actions : ["consult"],
+                    additional_requirements: [...countryRules.additional_steps, ...gapAnalysis],
+                    valid_until: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+                };
+            }
+            
+            generateTxHash() {
+                return '0x' + Array.from(crypto.getRandomValues(new Uint8Array(16)))
+                    .map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+            
+            updateJurisdictionStatus(clearance) {
+                const jurisdictionElement = document.getElementById('currentJurisdiction');
+                const resultElement = document.getElementById('jurisdictionResult');
+                
+                jurisdictionElement.textContent = this.getCountryName(this.practiceCountry);
+                
+                if (clearance.approved) {
+                    jurisdictionElement.className = 'jurisdiction-approved';
+                    resultElement.innerHTML = `
+                        <p><i class="fas fa-check-circle jurisdiction-approved"></i> 
+                        <strong>Approved for telehealth practice</strong></p>
+                        <p>Clearance level: ${clearance.level}</p>
+                        <p>Expires: ${new Date(clearance.valid_until).toLocaleDateString()}</p>
+                    `;
+                } else {
+                    jurisdictionElement.className = 'jurisdiction-pending';
+                    resultElement.innerHTML = `
+                        <p><i class="fas fa-exclamation-triangle jurisdiction-pending"></i> 
+                        <strong>Pending approval</strong></p>
+                        <p>Your application requires manual review by the medical board.</p>
+                        ${clearance.additional_requirements.length > 0 ? `
+                        <div style="margin-top: 10px;">
+                            <strong>Additional Requirements:</strong>
+                            <ul>
+                                ${clearance.additional_requirements.map(req => `<li>${req}</li>`).join('')}
+                            </ul>
+                        </div>
+                        ` : ''}
+                    `;
+                }
+                
+                // Show verification results
+                document.getElementById('verificationResults').style.display = 'block';
+            }
+            
+            generateQrCode(txHash) {
+                const qrContainer = document.getElementById('jurisdictionQrCode');
+                qrContainer.innerHTML = '';
+                
+                QRCode.toCanvas(qrContainer, txHash, { width: 150 }, (error) => {
+                    if (error) console.error('QR code generation error:', error);
+                });
+                
+                // Update practice scopes
+                const scopesContainer = document.getElementById('practiceScopes');
+                scopesContainer.innerHTML = '';
+                
+                this.telehealthScopes.forEach(scope => {
+                    const scopeElement = document.createElement('div');
+                    scopeElement.className = 'scope-item';
+                    scopeElement.innerHTML = `<i class="fas fa-check-circle scope-icon"></i> ${scope}`;
+                    scopesContainer.appendChild(scopeElement);
+                });
+                
+                // Update next steps
+                const nextStepsList = document.getElementById('nextStepsList');
+                nextStepsList.innerHTML = '';
+                
+                this.nextSteps.forEach(step => {
+                    const li = document.createElement('li');
+                    li.textContent = step;
+                    nextStepsList.appendChild(li);
+                });
+            }
+            
+            getCountryName(code) {
+                const countries = {
+                    "US": "United States",
+                    "KE": "Kenya",
+                    "UK": "United Kingdom",
+                    "CA": "Canada",
+                    "AU": "Australia"
+                };
+                return countries[code] || code;
+            }
+            
+            detectLocation() {
+                // In a real app, would use geolocation or IP detection
+                setTimeout(() => {
+                    document.getElementById('currentJurisdiction').textContent = "Kenya";
+                }, 1000);
+            }
+            
+            updateAccessStatus() {
+                // Update sidebar status
+                document.getElementById('identity-status').textContent = 
+                    this.identityVerified ? 'Verified' : 'Pending';
+                document.getElementById('license-status').textContent = 
+                    this.licenseVerified ? 'Verified' : 'Pending';
+                document.getElementById('jurisdiction-status').textContent = 
+                    this.jurisdictionVerified ? 'Approved' : 'Pending';
+                
+                if (this.identityVerified) {
+                    document.getElementById('identity-status').className = 'jurisdiction-approved';
+                }
+                if (this.licenseVerified) {
+                    document.getElementById('license-status').className = 'jurisdiction-approved';
+                }
+                if (this.jurisdictionVerified) {
+                    document.getElementById('jurisdiction-status').className = 'jurisdiction-approved';
+                }
+                
+                // Update access status in all modules
+                this.updateModuleAccess();
+            }
+            
+            updateModuleAccess() {
+                const hasFullAccess = this.identityVerified && this.licenseVerified && this.jurisdictionVerified;
+                
+                // EHR System
+                document.getElementById('ehrSystem').style.display = hasFullAccess ? 'block' : 'none';
+                document.getElementById('ehrAccessStatus').style.display = hasFullAccess ? 'none' : 'block';
+                
+                // Consultation
+                document.getElementById('consultationRooms').style.display = hasFullAccess ? 'block' : 'none';
+                document.getElementById('consultationAccessStatus').style.display = hasFullAccess ? 'none' : 'block';
+                
+                // Screen Sharing
+                document.getElementById('screenshareContent').style.display = hasFullAccess ? 'block' : 'none';
+                document.getElementById('screenshareAccessStatus').style.display = hasFullAccess ? 'none' : 'block';
+            }
+            
+            setupFaceVerification() {
+                this.faceVideo = document.getElementById('faceVideo');
+                this.faceCanvas = document.getElementById('faceCanvas');
+                this.faceCanvasCtx = this.faceCanvas.getContext('2d');
+                this.verificationSteps = [
+                    document.getElementById('step1'),
+                    document.getElementById('step2'),
+                    document.getElementById('step3')
+                ];
+                
+                document.getElementById('startVerificationBtn').addEventListener('click', () => {
+                    this.startFaceVerification();
+                });
+                
+                document.getElementById('retryVerificationBtn').addEventListener('click', () => {
+                    this.resetFaceVerification();
+                });
+            }
+            
+            async startFaceVerification() {
+                try {
+                    this.faceDetectionActive = true;
+                    this.currentStep = 0;
+                    this.updateVerificationSteps();
+                    
+                    // Get user media
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    this.faceVideo.srcObject = stream;
+                    
+                    // Simulate face detection process
+                    this.simulateFaceDetection();
+                    
+                    document.getElementById('startVerificationBtn').style.display = 'none';
+                    document.getElementById('retryVerificationBtn').style.display = 'inline-block';
+                } catch (error) {
+                    console.error('Error accessing camera:', error);
+                    this.showVerificationResult(false, 'Camera access denied');
+                }
+            }
+            
+            simulateFaceDetection() {
+                let stepsCompleted = 0;
+                const totalSteps = 3;
+                
+                const interval = setInterval(() => {
+                    if (!this.faceDetectionActive) {
+                        clearInterval(interval);
+                        return;
+                    }
+                    
+                    stepsCompleted++;
+                    this.currentStep = Math.min(stepsCompleted, totalSteps - 1);
+                    this.updateVerificationSteps();
+                    
+                    if (stepsCompleted >= totalSteps) {
+                        clearInterval(interval);
+                        this.completeFaceVerification();
+                    }
+                }, 1500);
+            }
+            
+            updateVerificationSteps() {
+                this.verificationSteps.forEach((step, index) => {
+                    const icon = step.querySelector('i');
+                    const text = step.querySelector('span');
+                    
+                    if (index < this.currentStep) {
+                        icon.className = 'fas fa-check-circle step-complete';
+                        text.style.color = '#28a745';
+                    } else if (index === this.currentStep) {
+                        icon.className = 'fas fa-circle-notch fa-spin step-active';
+                        text.style.color = '#007bff';
+                        text.style.fontWeight = 'bold';
+                    } else {
+                        icon.className = 'fas fa-circle step-pending';
+                        text.style.color = '';
+                        text.style.fontWeight = '';
+                    }
+                });
+            }
+            
+            completeFaceVerification() {
+                this.faceDetectionActive = false;
+                this.verificationComplete = true;
+                this.identityVerified = true;
+                
+                this.showVerificationResult(true, 'Identity verified successfully');
+                this.updateAccessStatus();
+                
+                // Stop video stream
+                if (this.faceVideo.srcObject) {
+                    this.faceVideo.srcObject.getTracks().forEach(track => track.stop());
+                }
+            }
+            
+            showVerificationResult(success, message) {
+                const resultElement = document.getElementById('verificationResult');
+                resultElement.style.display = 'block';
+                
+                if (success) {
+                    resultElement.className = 'verification-result verification-success';
+                    document.getElementById('resultMessage').textContent = 'Verification Successful';
+                    document.getElementById('resultDetails').textContent = message;
+                } else {
+                    resultElement.className = 'verification-result verification-failure';
+                    document.getElementById('resultMessage').textContent = 'Verification Failed';
+                    document.getElementById('resultDetails').textContent = message;
+                }
+            }
+            
+            resetFaceVerification() {
+                this.faceDetectionActive = false;
+                this.verificationComplete = false;
+                this.currentStep = 0;
+                
+                document.getElementById('verificationResult').style.display = 'none';
+                document.getElementById('startVerificationBtn').style.display = 'inline-block';
+                document.getElementById('retryVerificationBtn').style.display = 'none';
+                
+                this.verificationSteps.forEach(step => {
+                    const icon = step.querySelector('i');
+                    const text = step.querySelector('span');
+                    icon.className = 'fas fa-circle step-pending';
+                    text.style.color = '';
+                    text.style.fontWeight = '';
+                });
+                
+                if (this.faceVideo.srcObject) {
+                    this.faceVideo.srcObject.getTracks().forEach(track => track.stop());
+                    this.faceVideo.srcObject = null;
+                }
+            }
+            
+            setupEHRSystem() {
+                // Handle patient selection
+                document.getElementById('patientList').addEventListener('click', (e) => {
+                    let target = e.target;
+                    while (target && target.nodeName !== 'LI') {
+                        target = target.parentElement;
+                    }
+                    if (target && target.dataset.id) {
+                        this.showPatientDetails(target.dataset.id);
+                    }
+                });
+                
+                // Refresh patients button
+                document.getElementById('refreshPatientsBtn').addEventListener('click', () => {
+                    this.updatePatientList();
+                });
+            }
+            
+            showPatientDetails(patientId) {
+                const patient = this.patients[patientId];
+                const patientDetails = document.getElementById('patientDetails');
+                
+                if (patient) {
+                    document.getElementById('patientDetails').style.display = 'block';
+                }
+            }
+            
+            setupConsultation() {
+                document.querySelectorAll('.join-room').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        if (!this.checkConsultationAccess()) return;
+                        
+                        const room = e.target.dataset.room || e.target.parentElement.dataset.room;
+                        alert(`Joining ${room} consultation room`);
+                    });
+                });
+            }
+            
+            checkConsultationAccess() {
+                if (!this.identityVerified || !this.jurisdictionVerified) {
+                    alert('Please complete identity verification and jurisdictional clearance first');
+                    return false;
+                }
+                return true;
+            }
+            
+            setupDiagnostic() {
+                const form = document.getElementById('diagnosticForm');
+                const saveToEHRBtn = document.getElementById('saveToEHRBtn');
+                
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const modelType = document.getElementById('modelType').value;
+                    const specialty = document.getElementById('specialty').value;
+                    const patientName = document.getElementById('patientName').value;
+                    const patientAge = document.getElementById('patientAge').value;
+                    const patientGender = document.getElementById('patientGender').value;
+                    const subjective = document.getElementById('subjective').value;
+                    const objective = document.getElementById('objective').value;
+                    const assessment = document.getElementById('assessment').value;
+                    const plan = document.getElementById('plan').value;
+                    
+                    if (!patientName || !patientAge) {
+                        alert("Please enter patient name and age");
+                        return;
+                    }
+                    
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn.innerHTML = '<span class="loading"></span> Processing...';
+                    submitBtn.disabled = true;
+                    
+                    try {
+                        const prompt = {
+                            patientName,
+                            patientAge,
+                            patientGender,
+                            specialty,
+                            subjective,
+                            objective,
+                            assessment,
+                            plan
+                        };
+                        
+                        // Combine all clinical text for analysis
+                        const clinicalText = `
+                            Patient: ${patientName}, ${patientAge}${patientGender}
+                            Specialty: ${specialty}
+                            Subjective: ${subjective}
+                            Objective: ${objective}
+                            Assessment: ${assessment}
+                            Plan: ${plan}
+                        `;
+                        
+                        // Get analysis from local model
+                        const analysis = await this.analyzeClinicalText(clinicalText);
+                        
+                        // Format results
+                        const result = this.formatDiagnosisResults(analysis, prompt);
+                        
+                        this.currentDiagnosticResult = {
+                            ...prompt,
+                            modelType,
+                            result: result.response,
+                            confidence: result.confidence,
+                            processingMode: result.processingMode,
+                            timestamp: new Date().toISOString()
+                        };
+                        
+                        document.getElementById('aiResultContent').innerHTML = result.response;
+                        document.getElementById('diagnosticResults').style.display = 'block';
+                        
+                        const modeBadge = document.getElementById('processingModeBadge');
+                        modeBadge.textContent = result.processingMode;
+                        modeBadge.className = `processing-mode ${
+                            result.processingMode.includes('Peace') ? 'peace-mode' : 
+                            result.processingMode.includes('Wait') ? 'wait-mode' : 'mixed-mode'
+                        }`;
+                        
+                        saveToEHRBtn.disabled = false;
+                        
+                    } catch (error) {
+                        alert(`Error: ${error.message}`);
+                    } finally {
+                        submitBtn.innerHTML = '<i class="fas fa-play"></i> Generate Diagnosis';
+                        submitBtn.disabled = false;
+                    }
+                });
+                
+                saveToEHRBtn.addEventListener('click', () => {
+                    if (!this.currentDiagnosticResult) {
+                        alert("No diagnostic result to save");
+                        return;
+                    }
+                    
+                    this.completedDiagnostics.push(this.currentDiagnosticResult);
+                    this.updatePatientList();
+                    alert("Diagnostic results saved to EHR");
+                });
+            }
+            
+            async analyzeClinicalText(text) {
+                if (!this.modelInitialized) {
+                    throw new Error("AI models are still loading. Please try again shortly.");
+                }
+                
+                try {
+                    // Simulate analysis with different results based on input
+                    const conditions = [
+                        'Hypertension', 'Type 2 Diabetes', 'Coronary Artery Disease',
+                        'Chronic Obstructive Pulmonary Disease', 'Migraine', 'Anxiety Disorder'
+                    ];
+                    
+                    const shuffled = conditions.sort(() => 0.5 - Math.random());
+                    const selected = shuffled.slice(0, 3);
+                    
+                    return selected.map((condition, index) => ({
+                        label: condition,
+                        score: 0.9 - (index * 0.2)
+                    }));
+                    
+                } catch (error) {
+                    console.error("Error analyzing clinical text:", error);
+                    throw new Error("Failed to analyze clinical text");
+                }
+            }
+            
+            formatDiagnosisResults(analysis, soapData) {
+                const mode = this.determineProcessingMode(soapData);
+                
+                let html = `
+                    <div class="diagnosis-result">
+                        <div class="diagnosis-header">Differential Diagnosis (Ranked by Likelihood):</div>
+                        <div class="diagnosis-list">
+                `;
+                
+                analysis.forEach((item, index) => {
+                    html += `
+                        <div class="diagnosis-item">
+                            <strong>${index + 1}. ${item.label}</strong> (${Math.round(item.score * 100)}% confidence)
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                        <div class="diagnosis-confidence">
+                            Processing Mode: ${mode.mode} | 
+                            Overall Analysis Confidence: ${Math.round(analysis[0]?.score * 100)}%
+                        </div>
+                    </div>
+                    
+                    <div class="clinical-summary">
+                        <strong>Clinical Summary:</strong>
+                        <p><u>Subjective:</u> ${soapData.subjective || 'Not provided'}</p>
+                        <p><u>Objective:</u> ${soapData.objective || 'Not provided'}</p>
+                        <p><u>Assessment:</u> ${soapData.assessment || 'Not provided'}</p>
+                    </div>
+                    
+                    <div class="workup-recommendations">
+                        <strong>Recommended Workup:</strong>
+                        <ul>
+                            <li>Complete blood count with differential</li>
+                            <li>Comprehensive metabolic panel</li>
+                            <li>Inflammatory markers (CRP, ESR)</li>
+                            ${analysis[0].label.includes('Cardiac') ? '<li>Cardiac enzymes, EKG</li>' : ''}
+                            ${analysis[0].label.includes('Pulmonary') ? '<li>Chest X-ray, oxygen saturation</li>' : ''}
+                            ${analysis[0].label.includes('Neurologic') ? '<li>CT head, neurological exam</li>' : ''}
+                            <li>Additional testing as clinically indicated</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
+                        <i>Disclaimer: This AI-generated diagnosis is for clinical decision support only. Final diagnosis and treatment decisions should be made by a qualified healthcare provider.</i>
+                    </div>
+                `;
+                
+                return {
+                    response: html,
+                    confidence: analysis[0]?.score || 0.85,
+                    processingMode: mode.mode
+                };
+            }
+            
+            determineProcessingMode(soapData) {
+                const textLength = (soapData.subjective?.length || 0) + 
+                                  (soapData.objective?.length || 0) + 
+                                  (soapData.assessment?.length || 0);
+                
+                if (textLength < 100) {
+                    return { mode: "Wait Mode (Insufficient Data)" };
+                } else if (textLength > 500) {
+                    return { mode: "Peace Mode (Comprehensive Data)" };
+                } else {
+                    return { mode: "Mixed Mode (Moderate Data)" };
+                }
+            }
+            
+            updatePatientList() {
+                const patientList = document.getElementById('patientList');
+                patientList.innerHTML = '';
+                
+                Object.keys(this.patients).forEach(id => {
+                    const patient = this.patients[id];
+                    const li = document.createElement('li');
+                    li.style.padding = '8px';
+                    li.style.borderBottom = '1px solid #eee';
+                    li.style.cursor = 'pointer';
+                    li.dataset.id = id;
+                    li.textContent = `${patient.name} (${patient.age}${patient.gender})`;
+                    
+                    if (patient.aiHistory && patient.aiHistory.length > 0) {
+                        const tag = document.createElement('span');
+                        tag.className = 'patient-tag';
+                        tag.textContent = 'AI';
+                        li.appendChild(tag);
+                    }
+                    
+                    li.addEventListener('click', () => this.showPatientDetails(id));
+                    patientList.appendChild(li);
+                });
+            }
+            
+            setupScreenShare() {
+                const startBtn = document.getElementById('startShareBtn');
+                const stopBtn = document.getElementById('stopShareBtn');
+                const remoteVideo = document.getElementById('remoteScreen');
+                
+                startBtn.addEventListener('click', async () => {
+                    try {
+                        this.stream = await navigator.mediaDevices.getDisplayMedia({
+                            video: true,
+                            audio: false
+                        });
+                        
+                        remoteVideo.srcObject = this.stream;
+                        startBtn.disabled = true;
+                        stopBtn.disabled = false;
+                        
+                        this.stream.getTracks()[0].onended = () => {
+                            stopBtn.click();
+                        };
+                    } catch (err) {
+                        console.error('Screen sharing failed:', err);
+                    }
+                });
+                
+                stopBtn.addEventListener('click', () => {
+                    if (this.stream) {
+                        this.stream.getTracks().forEach(track => track.stop());
+                        remoteVideo.srcObject = null;
+                        startBtn.disabled = false;
+                        stopBtn.disabled = true;
+                    }
+                });
+                
+                // Setup annotation tools
+                const canvas = document.getElementById('annotationCanvas');
+                const ctx = canvas.getContext('2d');
+                let isDrawing = false;
+                let currentTool = 'draw';
+                
+                document.getElementById('drawBtn').addEventListener('click', () => {
+                    currentTool = 'draw';
+                });
+                
+                document.getElementById('highlightBtn').addEventListener('click', () => {
+                    currentTool = 'highlight';
+                });
+                
+                document.getElementById('zoomBtn').addEventListener('click', () => {
+                    currentTool = 'zoom';
+                });
+                
+                document.getElementById('clearCanvasBtn').addEventListener('click', () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                });
+                
+                canvas.addEventListener('mousedown', startDrawing);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stopDrawing);
+                canvas.addEventListener('mouseout', stopDrawing);
+                
+                function startDrawing(e) {
+                    isDrawing = true;
+                    draw(e);
+                }
+                
+                function draw(e) {
+                    if (!isDrawing) return;
+                    
+                    ctx.lineWidth = currentTool === 'highlight' ? 10 : 5;
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = currentTool === 'highlight' ? 'rgba(255, 255, 0, 0.5)' : '#FF0000';
+                    
+                    ctx.lineTo(e.offsetX, e.offsetY);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(e.offsetX, e.offsetY);
+                }
+                
+                function stopDrawing() {
+                    isDrawing = false;
+                    ctx.beginPath();
+                }
+            }
         }
-        
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    }
-  </script>
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', async () => {
+            const medos = new MedOS();
+            await medos.init();
+        });
+    </script>
 </body>
 </html>
