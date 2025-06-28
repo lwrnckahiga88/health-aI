@@ -1,11 +1,11 @@
 {
-  "short_name": "ShoeCustomizer",
+  "short_name": "JuA.kalI health ",
   "icons": [
     {
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable",
-      "src": "./assets/icons/icon-512x512.png"
+      "src": "./assets/kahiga1.png"
     },
     {
       "sizes": "192x192",
@@ -45,12 +45,12 @@
     "3d",
     "fashion"
   ],
-  "name": "3D Shoe Customizer",
-  "description": "3D Shoe Customizer PWA - Design your perfect custom shoes",
+  "name": "juA.kalI health",
+  "description": "Get holistic healthcare at your convinience",
   "shortcuts": [
     {
-      "short_name": "New",
-      "description": "Start a new shoe design",
+      "short_name": "juA.kalI",
+      "description": "Digital wellness made physical",
       "url": "/?action=new",
       "icons": [
         {
