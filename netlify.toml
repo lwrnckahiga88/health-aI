@@ -1,5 +1,5 @@
 [build]
-  command = "npm cache clean --force && npm install && npm run build"
+  command = "npm install --production=false && npm run build"
   publish = "dist"
   
 [build.environment]
