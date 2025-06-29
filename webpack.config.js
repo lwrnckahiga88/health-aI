@@ -111,7 +111,7 @@ module.exports = {
       ios: true,
       icons: [
         {
-          src: path.resolve('public/assets/icons/icon-512x512.png'),
+          src: path.resolve('public/assets/icons/kastone1.png'),
           sizes: [96, 128, 192, 256, 384, 512],
           destination: path.join('assets', 'icons')
         }
