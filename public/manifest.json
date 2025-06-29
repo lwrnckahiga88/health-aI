@@ -5,7 +5,7 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable",
-      "src": "./assets/icon-512x512.png"
+      "public": "./assets/kastone1.png"
     },
     {
       "sizes": "192x192",
