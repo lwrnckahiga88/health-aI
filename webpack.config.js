@@ -5,7 +5,7 @@ const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin'
 const WorkboxWebpackPlugin = require('workbox-webpack-plugin');
 const WebpackPwaManifest = require('webpack-pwa-manifest');
 const webpack = require('webpack');
-const TerserPlugin = require('terser-webpack-plugin'); // Changed this line
+// Removed TerserPlugin import - using webpack's default minimizer
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
@@ -188,18 +188,7 @@ module.exports = {
   },
   optimization: {
     minimize: !isDevelopment,
-    minimizer: [
-      // Replaced ESBuildMinifyPlugin with TerserPlugin
-      new TerserPlugin({
-        terserOptions: {
-          compress: {
-            drop_console: true,
-          },
-          mangle: true,
-        },
-        parallel: true,
-      })
-    ],
+    // Removed custom minimizer - webpack 5 uses TerserPlugin by default
     splitChunks: {
       chunks: 'all',
       cacheGroups: {
