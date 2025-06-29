@@ -1,9 +1,9 @@
 [build]
-  command = "npm install --legacy-peer-deps && npm run build"
+  command = "npm install webpack webpack-cli --legacy-peer-deps && npm run build"
   publish = "dist"
   
 [build.environment]
-  NODE_VERSION = "18"  # Using Node 18 as specified in your Webpack config
+  NODE_VERSION = "18"
   NPM_VERSION = "9"
   NODE_ENV = "production"
 
