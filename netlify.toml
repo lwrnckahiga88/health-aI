@@ -1,5 +1,5 @@
 [build]
-  command = "npm install && npm install webpack webpack-cli --legacy-peer-deps && npx webpack --mode production"
+  command = "npm ci && npm install webpack webpack-cli --legacy-peer-deps --yes && npx webpack --mode production"
   publish = "dist"
   
 [build.environment]
