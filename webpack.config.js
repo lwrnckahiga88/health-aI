@@ -5,6 +5,7 @@ const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin'
 const WorkboxWebpackPlugin = require('workbox-webpack-plugin');
 const WebpackPwaManifest = require('webpack-pwa-manifest');
 const webpack = require('webpack');
+const { ESBuildMinifyPlugin } = require('esbuild-loader');
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
@@ -27,7 +28,9 @@ module.exports = {
       "os": require.resolve("os-browserify/browser"),
       "vm": require.resolve("vm-browserify"),
       "process": require.resolve("process/browser"),
-      "fs": false
+      "fs": false,
+      "worker_threads": false, // Explicitly disable worker threads
+      "child_process": false
     }
   },
   module: {
@@ -158,6 +161,10 @@ module.exports = {
       process: 'process/browser',
       Buffer: ['buffer', 'Buffer']
     }),
+    new webpack.IgnorePlugin({
+      resourceRegExp: /^worker_threads$/,
+      contextRegExp: /jest-worker/
+    }),
     isDevelopment && new ReactRefreshWebpackPlugin()
   ].filter(Boolean),
   devServer: {
@@ -180,6 +187,16 @@ module.exports = {
     }
   },
   optimization: {
+    minimize: !isDevelopment,
+    minimizer: [
+      new ESBuildMinifyPlugin({
+        target: 'es2015',
+        css: true,
+        legalComments: 'none',
+        minify: true,
+        sourcemap: false
+      })
+    ],
     splitChunks: {
       chunks: 'all',
       cacheGroups: {
