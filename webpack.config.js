@@ -5,7 +5,7 @@ const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin'
 const WorkboxWebpackPlugin = require('workbox-webpack-plugin');
 const WebpackPwaManifest = require('webpack-pwa-manifest');
 const webpack = require('webpack');
-const { ESBuildMinifyPlugin } = require('esbuild-loader');
+const TerserPlugin = require('terser-webpack-plugin'); // Changed this line
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
@@ -29,7 +29,7 @@ module.exports = {
       "vm": require.resolve("vm-browserify"),
       "process": require.resolve("process/browser"),
       "fs": false,
-      "worker_threads": false, // Explicitly disable worker threads
+      "worker_threads": false,
       "child_process": false
     }
   },
@@ -70,8 +70,8 @@ module.exports = {
                   : '[hash:base64:5]'
               }
             }
-          },
-          'postcss-loader'
+          }
+          // Removed postcss-loader since it's not installed
         ]
       },
       {
@@ -132,7 +132,7 @@ module.exports = {
             cacheName: 'images',
             expiration: {
               maxEntries: 50,
-              maxAgeSeconds: 30 * 24 * 60 * 60 // 30 Days
+              maxAgeSeconds: 30 * 24 * 60 * 60
             }
           }
         },
@@ -151,7 +151,7 @@ module.exports = {
             networkTimeoutSeconds: 10,
             expiration: {
               maxEntries: 50,
-              maxAgeSeconds: 60 * 60 // 1 Hour
+              maxAgeSeconds: 60 * 60
             }
           }
         }
@@ -189,12 +189,15 @@ module.exports = {
   optimization: {
     minimize: !isDevelopment,
     minimizer: [
-      new ESBuildMinifyPlugin({
-        target: 'es2015',
-        css: true,
-        legalComments: 'none',
-        minify: true,
-        sourcemap: false
+      // Replaced ESBuildMinifyPlugin with TerserPlugin
+      new TerserPlugin({
+        terserOptions: {
+          compress: {
+            drop_console: true,
+          },
+          mangle: true,
+        },
+        parallel: true,
       })
     ],
     splitChunks: {
