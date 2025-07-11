@@ -1,3 +1,4 @@
+    // Updated webpack.config.js with additional fallbacks
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
@@ -16,12 +17,11 @@ module.exports = {
     filename: 'static/js/[name].[contenthash].js',
     publicPath: '/',
     assetModuleFilename: 'assets/[hash][ext][query]',
-    clean: true // This replaces CleanWebpackPlugin in webpack 5
+    clean: true
   },
   resolve: {
     extensions: ['.js', '.jsx'],
     fallback: {
-      "https": require.resolve("https-browserify"),
       "http": require.resolve("stream-http"),
       "querystring": require.resolve("querystring-es3"),
       "module": false,
@@ -38,7 +38,16 @@ module.exports = {
       "url": require.resolve("url/"),
       "util": require.resolve("util/"),
       "assert": require.resolve("assert/"),
-      "events": require.resolve("events/")
+      "events": require.resolve("events/"),
+      "https": require.resolve("https-browserify"),
+      "net": false,
+      "tls": false,
+      "zlib": require.resolve("browserify-zlib"),
+      "constants": require.resolve("constants-browserify"), // Add this line to fix the error
+      // Additional fallbacks for SWC/Terser issues
+      "tty": false,
+      "inspector": false,
+      "pnpapi": false
     }
   },
   module: {
@@ -88,10 +97,15 @@ module.exports = {
       {
         test: /\.(woff|woff2|eot|ttf|otf)$/i,
         type: 'asset/resource'
+      },
+      // Handle .node files
+      {
+        test: /\.node$/,
+        use: 'ignore-loader'
       }
     ]
   },
-  plugins: [ 
+  plugins: [
     new HtmlWebpackPlugin({
       template: './public/index.html',
       favicon: './public/favicon.ico',
@@ -115,9 +129,10 @@ module.exports = {
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
     }),
+    // Enhanced IgnorePlugin to handle SWC and esbuild issues
     new webpack.IgnorePlugin({
-      resourceRegExp: /^worker_threads$/,
-      contextRegExp: /jest-worker/
+      resourceRegExp: /^(worker_threads|inspector|@swc\/wasm|webpack-plugin-serve)$/,
+      contextRegExp: /(jest-worker|@swc\/core|@pmmmwh\/react-refresh-webpack-plugin)/
     }),
     new WebpackPwaManifest({
       name: '3D Shoe Customizer',
@@ -181,7 +196,7 @@ module.exports = {
       directory: path.join(__dirname, 'public'),
     },
     compress: true,
-    port: 3000,
+    port: 3001,
     hot: true,
     historyApiFallback: true,
     client: {
@@ -219,5 +234,10 @@ module.exports = {
     hints: false,
     maxEntrypointSize: 512000,
     maxAssetSize: 512000
+  },
+  // Add externals to prevent bundling of problematic modules
+  externals: {
+    '@swc/core': 'commonjs @swc/core',
+    'esbuild': 'commonjs esbuild'
   }
-};
+}; 
