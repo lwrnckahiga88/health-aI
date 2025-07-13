@@ -26,6 +26,7 @@ module.exports = {
       "querystring": require.resolve("querystring-es3"),
       "module": false,
       "fs": false,
+      "fs/promises": false,
       "stream": require.resolve("stream-browserify"),
       "buffer": require.resolve("buffer"),
       "crypto": require.resolve("crypto-browserify"),
@@ -135,9 +136,9 @@ module.exports = {
       contextRegExp: /(jest-worker|@swc\/core|@pmmmwh\/react-refresh-webpack-plugin)/
     }),
     new WebpackPwaManifest({
-      name: '3D Shoe Customizer',
-      short_name: 'ShoeCustomizer',
-      description: 'Customize 3D shoes in your browser',
+      name: 'Health-AI',
+      short_name: 'HEALTH',
+      description: 'TELEHEALTH',
       background_color: '#ffffff',
       theme_color: '#4f46e5',
       crossorigin: 'use-credentials',

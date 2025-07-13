@@ -56,6 +56,12 @@ module.exports = {
       crypto: require.resolve('crypto-browserify'),
       stream: require.resolve('stream-browserify'),
       fs: false, // Prevents errors for `fs` (not needed in browser)
+      path: require.resolve("path-browserify"),
+      util: require.resolve("util/"),
+      url: require.resolve("url/"),
+      querystring: require.resolve("querystring-es3"),
+      
+      buffer: require.resolve("buffer/")
     },
   },
   devServer: {
@@ -68,6 +74,8 @@ module.exports = {
   },
 };
 
+
+ 
 
 
 
