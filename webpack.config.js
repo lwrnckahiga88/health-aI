@@ -1,4 +1,3 @@
-    // Updated webpack.config.js with additional fallbacks
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
@@ -6,6 +5,7 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const WorkboxWebpackPlugin = require('workbox-webpack-plugin');
 const WebpackPwaManifest = require('webpack-pwa-manifest');
 const webpack = require('webpack');
+const NodePolyfillPlugin = require('node-polyfill-webpack-plugin'); // ✅ NEW
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
@@ -22,33 +22,30 @@ module.exports = {
   resolve: {
     extensions: ['.js', '.jsx'],
     fallback: {
-      "http": require.resolve("stream-http"),
-      "querystring": require.resolve("querystring-es3"),
-      "module": false,
-      "fs": false,
-      "fs/promises": false,
-      "stream": require.resolve("stream-browserify"),
-      "buffer": require.resolve("buffer"),
-      "crypto": require.resolve("crypto-browserify"),
-      "path": require.resolve("path-browserify"),
-      "os": require.resolve("os-browserify/browser"),
-      "vm": require.resolve("vm-browserify"),
-      "process": require.resolve("process/browser"),
-      "worker_threads": false,
-      "child_process": false,
-      "url": require.resolve("url/"),
-      "util": require.resolve("util/"),
-      "assert": require.resolve("assert/"),
-      "events": require.resolve("events/"),
-      "https": require.resolve("https-browserify"),
-      "net": false,
-      "tls": false,
-      "zlib": require.resolve("browserify-zlib"),
-      "constants": require.resolve("constants-browserify"), // Add this line to fix the error
-      // Additional fallbacks for SWC/Terser issues
-      "tty": false,
-      "inspector": false,
-      "pnpapi": false
+      http: require.resolve('stream-http'),
+      https: require.resolve('https-browserify'),
+      stream: require.resolve('stream-browserify'),
+      crypto: require.resolve('crypto-browserify'),
+      path: require.resolve('path-browserify'),
+      buffer: require.resolve('buffer'),
+      os: require.resolve('os-browserify/browser'),
+      url: require.resolve('url/'),
+      util: require.resolve('util/'),
+      assert: require.resolve('assert/'),
+      events: require.resolve('events/'),
+      zlib: require.resolve('browserify-zlib'),
+      constants: require.resolve('constants-browserify'),
+      querystring: require.resolve('querystring-es3'),
+      process: require.resolve('process/browser'),
+      fs: false,
+      'fs/promises': false,
+      module: false,
+      net: false,
+      tls: false,
+      worker_threads: false,
+      tty: false,
+      inspector: false,
+      pnpapi: false
     }
   },
   module: {
@@ -60,9 +57,9 @@ module.exports = {
           loader: 'babel-loader',
           options: {
             presets: [
-              ['@babel/preset-env', { 
+              ['@babel/preset-env', {
                 useBuiltIns: 'usage',
-                corejs: 3 
+                corejs: 3
               }],
               '@babel/preset-react'
             ],
@@ -83,8 +80,8 @@ module.exports = {
               importLoaders: 1,
               modules: {
                 auto: true,
-                localIdentName: isDevelopment 
-                  ? '[path][name]__[local]--[hash:base64:5]' 
+                localIdentName: isDevelopment
+                  ? '[path][name]__[local]--[hash:base64:5]'
                   : '[hash:base64:5]'
               }
             }
@@ -99,7 +96,6 @@ module.exports = {
         test: /\.(woff|woff2|eot|ttf|otf)$/i,
         type: 'asset/resource'
       },
-      // Handle .node files
       {
         test: /\.node$/,
         use: 'ignore-loader'
@@ -130,7 +126,7 @@ module.exports = {
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
     }),
-    // Enhanced IgnorePlugin to handle SWC and esbuild issues
+    new NodePolyfillPlugin(), // ✅ ADDED HERE
     new webpack.IgnorePlugin({
       resourceRegExp: /^(worker_threads|inspector|@swc\/wasm|webpack-plugin-serve)$/,
       contextRegExp: /(jest-worker|@swc\/core|@pmmmwh\/react-refresh-webpack-plugin)/
@@ -194,7 +190,7 @@ module.exports = {
   ].filter(Boolean),
   devServer: {
     static: {
-      directory: path.join(__dirname, 'public'),
+      directory: path.join(__dirname, 'public')
     },
     compress: true,
     port: 3001,
@@ -203,7 +199,7 @@ module.exports = {
     client: {
       overlay: {
         errors: true,
-        warnings: false,
+        warnings: false
       },
       progress: true
     },
@@ -236,9 +232,8 @@ module.exports = {
     maxEntrypointSize: 512000,
     maxAssetSize: 512000
   },
-  // Add externals to prevent bundling of problematic modules
   externals: {
     '@swc/core': 'commonjs @swc/core',
-    'esbuild': 'commonjs esbuild'
+    esbuild: 'commonjs esbuild'
   }
-}; 
+};
