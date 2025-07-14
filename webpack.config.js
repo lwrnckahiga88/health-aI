@@ -22,12 +22,9 @@ module.exports = {
   resolve: {
     extensions: ['.js', '.jsx'],
     fallback: {
-      // Network related
       http: require.resolve('stream-http'),
       https: require.resolve('https-browserify'),
       url: require.resolve('url/'),
-      
-      // Core Node.js modules
       stream: require.resolve('stream-browserify'),
       crypto: require.resolve('crypto-browserify'),
       path: require.resolve('path-browserify'),
@@ -40,8 +37,8 @@ module.exports = {
       constants: require.resolve('constants-browserify'),
       querystring: require.resolve('querystring-es3'),
       process: require.resolve('process/browser'),
-      
-      // Node.js specific modules that should be disabled
+
+      // Node.js-only modules disabled
       fs: false,
       'fs/promises': false,
       'node:fs/promises': false,
@@ -52,20 +49,16 @@ module.exports = {
       tty: false,
       inspector: false,
       pnpapi: false,
-      
-      // ✅ Add these specific failing modules
       async_hooks: false,
       child_process: false,
-      'async_hooks': false,
-      'child_process': false,
-      
-      // ✅ Core-js compat issues
+
+      // Core-js-compat-related
       'core-js-compat/data': false,
       'core-js-compat/entries': false,
       'core-js-compat/modules': false,
       'core-js-compat/modules-by-versions': false,
-      './modules-by-versions': false,
-      './modules': false
+      './modules': false,
+      './modules-by-versions': false
     }
   },
   module: {
@@ -80,7 +73,6 @@ module.exports = {
               ['@babel/preset-env', {
                 useBuiltIns: 'usage',
                 corejs: 3,
-                // ✅ Add this to prevent core-js-compat issues
                 exclude: ['transform-typeof-symbol']
               }],
               '@babel/preset-react'
@@ -149,13 +141,10 @@ module.exports = {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
     }),
     new NodePolyfillPlugin(),
-    
-    // ✅ Enhanced ignore plugin to handle more problematic modules
     new webpack.IgnorePlugin({
-      resourceRegExp: /^(worker_threads|inspector|@swc\/wasm|webpack-plugin-serve|async_hooks|child_process|core-js-compat\/(data|entries|modules|modules-by-versions))$/,
+      resourceRegExp: /(worker_threads|inspector|@swc\/wasm|webpack-plugin-serve|async_hooks|child_process|core-js-compat(\/.*)?|\.\/modules(-by-versions)?)/,
       contextRegExp: /(jest-worker|@swc\/core|@pmmmwh\/react-refresh-webpack-plugin|@rollup\/plugin-terser|babel-plugin-polyfill-corejs3|workbox-build)/
     }),
-    
     new WebpackPwaManifest({
       name: 'Health-AI',
       short_name: 'HEALTH',
@@ -174,13 +163,10 @@ module.exports = {
         }
       ]
     }),
-    
-    // ✅ Modified WorkboxWebpackPlugin configuration
     !isDevelopment && new WorkboxWebpackPlugin.GenerateSW({
       clientsClaim: true,
       skipWaiting: true,
       maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
-      // ✅ Add these options to prevent Node.js module issues
       exclude: [/\.map$/, /manifest$/, /\.htaccess$/],
       swDest: 'sw.js',
       runtimeCaching: [
@@ -216,7 +202,6 @@ module.exports = {
         }
       ]
     }),
-    
     isDevelopment && new ReactRefreshWebpackPlugin()
   ].filter(Boolean),
   devServer: {
@@ -265,6 +250,7 @@ module.exports = {
   },
   externals: {
     '@swc/core': 'commonjs @swc/core',
-    esbuild: 'commonjs esbuild'
+    esbuild: 'commonjs esbuild',
+    '@rollup/plugin-terser': 'commonjs @rollup/plugin-terser'
   }
 };
