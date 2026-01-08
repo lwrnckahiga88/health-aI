@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HealthNav Emergency PWA</title>
+
+<style>
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  background: #0f172a;
+  color: #e5e7eb;
+}
+header {
+  background: #020617;
+  padding: 1rem;
+  text-align: center;
+}
+section {
+  padding: 1rem;
+}
+.card {
+  background: #020617;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+button {
+  background: #16a34a;
+  border: none;
+  padding: 1rem;
+  width: 100%;
+  color: white;
+  font-size: 1rem;
+  border-radius: 10px;
+  margin-top: 0.5rem;
+}
+button.secondary {
+  background: #2563eb;
+}
+input {
+  width: 100%;
+  padding: 0.8rem;
+  margin-top: 0.5rem;
+  border-radius: 8px;
+  border: none;
+}
+small {
+  color: #9ca3af;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2>🚑 HealthNav Emergency</h2>
+  <small>Offline-First | Lock v1</small>
+</header>
+
+<section>
+
+<div class="card">
+  <h3>Emergency Request</h3>
+  <input id="name" placeholder="Patient Name">
+  <input id="phone" placeholder="Phone Number">
+  <input id="location" placeholder="Location / Landmark">
+  <button onclick="submitEmergency()">Request Ambulance</button>
+</div>
+
+<div class="card">
+  <h3>Payment</h3>
+  <input id="amount" value="1000">
+  <button class="secondary" onclick="stkPush()">Pay via M-PESA</button>
+</div>
+
+<div class="card">
+  <h3>Status Log</h3>
+  <pre id="log"></pre>
+</div>
+
+</section>
+
+<script>
+/* =========================
+   INLINE BACKEND (OFFLINE)
+   ========================= */
+
+const log = msg => {
+  document.getElementById("log").textContent += msg + "\n";
+};
+
+/* Local ledger (offline-safe) */
+const ledger = JSON.parse(localStorage.getItem("ledger") || "[]");
+
+function submitEmergency() {
+  const data = {
+    id: crypto.randomUUID(),
+    name: name.value,
+    phone: phone.value,
+    location: location.value,
+    time: new Date().toISOString(),
+    status: "REQUESTED"
+  };
+  ledger.push(data);
+  localStorage.setItem("ledger", JSON.stringify(ledger));
+  log("🚑 Emergency logged locally");
+  log(JSON.stringify(data, null, 2));
+
+  /* === WHATSAPP HOOK (SERVER REQUIRED) ===
+     POST /whatsapp/send
+     { phone, message }
+  */
+  log("📲 WhatsApp notify: PENDING SERVER");
+}
+
+function stkPush() {
+  const amount = amountInput = document.getElementById("amount").value;
+
+  log("💰 STK Push initiated (SIMULATED)");
+  log(`KES ${amount}`);
+
+  /* === MPESA STK PUSH (SERVER REQUIRED) ===
+     POST /mpesa/stkpush
+     { phone, amount }
+  */
+
+  setTimeout(() => {
+    log("✅ Payment confirmed (offline simulation)");
+  }, 1500);
+}
+
+/* =========================
+   MANIFEST (INLINE)
+   ========================= */
+const manifest = {
+  name: "HealthNav Emergency",
+  short_name: "HealthNav",
+  start_url: ".",
+  display: "standalone",
+  background_color: "#020617",
+  theme_color: "#16a34a",
+  icons: [{
+    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQ...",
+    sizes: "192x192",
+    type: "image/png"
+  }]
+};
+
+const manifestBlob = new Blob(
+  [JSON.stringify(manifest)],
+  { type: "application/json" }
+);
+const manifestURL = URL.createObjectURL(manifestBlob);
+const link = document.createElement("link");
+link.rel = "manifest";
+link.href = manifestURL;
+document.head.appendChild(link);
+
+/* =========================
+   SERVICE WORKER (INLINE)
+   ========================= */
+const swCode = `
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open('healthnav-v1').then(cache =>
+      cache.addAll(['./'])
+    )
+  );
+});
+
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request).then(res =>
+      res || fetch(e.request)
+    )
+  );
+});
+`;
+
+const swBlob = new Blob([swCode], { type: "text/javascript" });
+const swURL = URL.createObjectURL(swBlob);
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register(swURL)
+    .then(() => log("🧠 Service Worker active"))
+    .catch(err => log("SW error: " + err));
+}
+</script>
+
+</body>
+</html>
