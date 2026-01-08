@@ -9,6 +9,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* Base Styles */
         :root {
             --primary-color: #2c3e50;
             --secondary-color: #3498db;
@@ -18,12 +19,18 @@
             --success-color: #27ae60;
             --warning-color: #f39c12;
             --biocode-primary: #4CAF50;
+            --genetics-purple: #6a5acd;
+            --monitoring-pink: #e91e63;
+            --documents-teal: #00acc1;
         }
 
         body {
             background-color: #f5f7fa;
             color: #333;
             line-height: 1.6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
         }
 
         .app-container {
@@ -37,6 +44,7 @@
             color: white;
             padding: 2rem;
             text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
         .main-content {
@@ -47,59 +55,183 @@
             width: 100%;
         }
 
-        /* HemoAI Styles */
-        .upload-section {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        /* Navigation */
+        .module-nav {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .module-nav-btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 30px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            border: none;
+            color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .module-nav-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .module-nav-btn.hemoai {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #2980b9 100%);
+        }
+
+        .module-nav-btn.biocode {
+            background: linear-gradient(135deg, var(--biocode-primary) 0%, #3e8e41 100%);
+        }
+
+        .module-nav-btn.genetics {
+            background: linear-gradient(135deg, var(--genetics-purple) 0%, #5d4aaf 100%);
+        }
+
+        .module-nav-btn.monitoring {
+            background: linear-gradient(135deg, var(--monitoring-pink) 0%, #c2185b 100%);
+        }
+
+        .module-nav-btn.documents {
+            background: linear-gradient(135deg, var(--documents-teal) 0%, #00838f 100%);
+        }
+
+        /* Module Pages */
+        .module-page {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .module-page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Module: HemoAI */
+        .hemoai-page {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             padding: 2rem;
             margin-bottom: 2rem;
         }
 
-        .preview-container {
+        .hemoai-upload-section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .hemoai-preview-container {
             width: 100%;
             height: 300px;
             margin-bottom: 1.5rem;
-            border: 2px dashed #ddd;
+            border: 2px dashed var(--secondary-color);
             border-radius: 6px;
             display: flex;
             justify-content: center;
             align-items: center;
             overflow: hidden;
             position: relative;
+            transition: all 0.3s ease;
+            background-color: rgba(52, 152, 219, 0.05);
         }
 
-        .image-preview {
+        .hemoai-preview-container:hover {
+            border-color: var(--accent-color);
+            background-color: rgba(231, 76, 60, 0.05);
+        }
+
+        .hemoai-image-preview {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
+            border-radius: 4px;
         }
 
-        .upload-placeholder {
+        .hemoai-upload-placeholder {
             text-align: center;
             cursor: pointer;
             color: #777;
             padding: 1rem;
+            transition: all 0.3s ease;
         }
 
-        .report-content p {
-            margin-bottom: 0.5rem;
-            padding: 0.3rem 0;
+        .hemoai-upload-placeholder:hover {
+            color: var(--secondary-color);
         }
 
-        .report-title {
+        .hemoai-analyze-button {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #2980b9 100%);
+            border: none;
+            padding: 12px;
             font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .hemoai-analyze-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .hemoai-report-section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            margin-top: 2rem;
+            border-top: 4px solid var(--secondary-color);
+        }
+
+        .hemoai-report-title {
+            font-weight: 700;
             color: var(--primary-color);
-            font-size: 1.1rem;
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            padding-bottom: 0.5rem;
         }
 
-        .recommendation-title {
-            font-weight: 600;
-            color: var(--accent-color);
-            margin-top: 1rem !important;
+        .hemoai-report-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background-color: var(--secondary-color);
         }
 
-        .chat-messages {
+        .hemoai-report-content p {
+            margin-bottom: 0.8rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .hemoai-chat-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            margin-top: 2rem;
+            border-top: 4px solid var(--accent-color);
+        }
+
+        .hemoai-chat-messages {
             height: 300px;
             overflow-y: auto;
             border: 1px solid #ddd;
@@ -107,90 +239,352 @@
             padding: 1rem;
             margin-bottom: 1rem;
             background-color: #f9f9f9;
+            scrollbar-width: thin;
+            scrollbar-color: var(--secondary-color) #f1f1f1;
         }
 
-        .message {
-            margin-bottom: 1rem;
-            padding: 0.8rem;
+        .hemoai-chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .hemoai-chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .hemoai-chat-messages::-webkit-scrollbar-thumb {
+            background-color: var(--secondary-color);
             border-radius: 6px;
-            max-width: 80%;
         }
 
-        .message.user {
+        .hemoai-message {
+            margin-bottom: 1rem;
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            max-width: 80%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .hemoai-message.user {
             background-color: var(--light-color);
             margin-left: auto;
             border: 1px solid #ddd;
+            border-bottom-right-radius: 0;
         }
 
-        .message.assistant {
-            background-color: var(--secondary-color);
+        .hemoai-message.assistant {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #2980b9 100%);
             color: white;
             margin-right: auto;
+            border-bottom-left-radius: 0;
         }
 
-        /* BioCode Styles */
+        /* Module: BioCode */
+        .biocode-page {
+            background: linear-gradient(135deg, #f0fff0 0%, #e0f7e0 100%);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
         .biocode-card {
             border-left: 4px solid var(--biocode-primary);
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            height: 100%;
+            background: white;
+            padding: 1.5rem;
+        }
+
+        .biocode-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
         }
 
         .biocode-btn {
-            background-color: var(--biocode-primary);
-            border-color: var(--biocode-primary);
+            background: linear-gradient(135deg, var(--biocode-primary) 0%, #3e8e41 100%);
+            border: none;
+            padding: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            color: white;
         }
 
         .biocode-btn:hover {
-            background-color: #3e8e41;
-            border-color: #3e8e41;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
         }
 
-        #mutation-rate {
+        .biocode-sequence-display {
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 1rem;
+            font-family: 'Courier New', Courier, monospace;
+            overflow-x: auto;
+            white-space: nowrap;
+            border: 1px solid #dee2e6;
+        }
+
+        .biocode-slider {
+            -webkit-appearance: none;
             width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #d3d3d3;
+            outline: none;
         }
 
-        #risk-chart {
-            margin-top: 20px;
+        .biocode-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--biocode-primary);
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
         }
 
-        .hidden {
-            display: none;
+        /* Module: Genetics */
+        .genetics-page {
+            background: linear-gradient(135deg, #f0f8ff 0%, #e0f0ff 100%);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 2rem;
+            margin-bottom: 2rem;
         }
 
-        /* Tab styling */
-        .nav-tabs .nav-link {
-            color: var(--primary-color);
-            font-weight: 500;
-        }
-
-        .nav-tabs .nav-link.active {
-            color: var(--secondary-color);
-            font-weight: 600;
-            border-bottom: 3px solid var(--secondary-color);
-        }
-
-        /* Document Capture Styles */
-        .camera-preview {
-            background-color: #000;
+        .genetics-card {
+            border-left: 4px solid var(--genetics-purple);
             border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            height: 100%;
+            margin-bottom: 1.5rem;
+            background: white;
+            padding: 1.5rem;
         }
 
-        .document-preview {
+        .genetics-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(106, 90, 205, 0.15);
+        }
+
+        .genetics-sequence {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            border: 1px solid #dee2e6;
+            word-break: break-all;
+        }
+
+        .genetics-impact {
+            padding: 1rem;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+        }
+
+        .genetics-impact-pathogenic {
+            background-color: #ffebee;
+            border-left: 4px solid #f44336;
+        }
+
+        .genetics-impact-benign {
+            background-color: #e8f5e9;
+            border-left: 4px solid #4caf50;
+        }
+
+        .genetics-impact-uncertain {
+            background-color: #fff8e1;
+            border-left: 4px solid #ffc107;
+        }
+
+        .genetics-crispr {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+
+        .genetics-ipnft {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #9c27b0;
+        }
+
+        /* Module: Monitoring */
+        .monitoring-page {
+            background: linear-gradient(135deg, #fff0f5 0%, #ffe0eb 100%);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .monitoring-card {
+            border-left: 4px solid var(--monitoring-pink);
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            height: 100%;
+            margin-bottom: 1.5rem;
+            background: white;
+            padding: 1.5rem;
+        }
+
+        .monitoring-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(233, 30, 99, 0.15);
+        }
+
+        .monitoring-video {
+            width: 100%;
+            border-radius: 8px;
+            background-color: #000;
+        }
+
+        .monitoring-heart-rate {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--monitoring-pink);
+            margin-top: 1rem;
+        }
+
+        .monitoring-health-status {
+            font-size: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        .status-normal {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status-warning {
+            background-color: #fff8e1;
+            color: #ff8f00;
+        }
+
+        .status-critical {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        /* Module: Documents */
+        .documents-page {
+            background: linear-gradient(135deg, #e6f9ff 0%, #d1f2ff 100%);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .documents-card {
+            border-left: 4px solid var(--documents-teal);
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            background: white;
+            padding: 1.5rem;
+        }
+
+        .documents-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(0, 172, 193, 0.15);
+        }
+
+        .documents-camera-preview {
+            width: 100%;
+            border-radius: 8px;
+            background-color: #000;
+        }
+
+        .documents-preview {
             min-height: 200px;
-            border: 1px solid #ddd;
+            border: 1px solid #dee2e6;
             border-radius: 8px;
             padding: 1rem;
             background-color: #f8f9fa;
         }
 
-        .capture-buttons {
+        .documents-capture-buttons {
             display: flex;
             gap: 10px;
             margin-bottom: 1rem;
         }
 
+        .documents-btn {
+            flex: 1;
+            padding: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: white;
+            border: none;
+        }
+
+        .documents-btn-primary {
+            background: linear-gradient(135deg, var(--documents-teal) 0%, #00838f 100%);
+        }
+
+        .documents-btn-success {
+            background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%);
+        }
+
+        .documents-btn-info {
+            background: linear-gradient(135deg, #29b6f6 0%, #0288d1 100%);
+        }
+
+        .documents-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Responsive adjustments */
         @media (max-width: 768px) {
-            .capture-buttons {
+            .documents-capture-buttons {
                 flex-direction: column;
             }
+            
+            .hemoai-preview-container {
+                height: 250px;
+            }
+            
+            .hemoai-chat-messages {
+                height: 250px;
+            }
+
+            .module-nav {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .module-nav-btn {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+
+        /* Utility classes */
+        .hidden {
+            display: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
     </style>
 </head>
@@ -200,280 +594,248 @@
             <h1>Integrated BioMedical Services</h1>
             <p>Advanced medical analysis tools powered by AI and blockchain</p>
         </header>
-
         <div class="main-content">
-            <ul class="nav nav-tabs" id="servicesTab" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="hemo-tab" data-bs-toggle="tab" data-bs-target="#hemo" type="button" role="tab">HemoAI</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="biocode-tab" data-bs-toggle="tab" data-bs-target="#biocode" type="button" role="tab">BioCode</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="genetics-tab" data-bs-toggle="tab" data-bs-target="#genetics" type="button" role="tab">Genetics</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="monitoring-tab" data-bs-toggle="tab" data-bs-target="#monitoring" type="button" role="tab">Monitoring</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button" role="tab">Documents</button>
-                </li>
-            </ul>
+            <!-- Navigation -->
+            <div class="module-nav">
+                <button class="module-nav-btn hemoai" onclick="showModule('hemoai')">HemoAI</button>
+                <button class="module-nav-btn biocode" onclick="showModule('biocode')">BioCode</button>
+                <button class="module-nav-btn genetics" onclick="showModule('genetics')">Genetics</button>
+                <button class="module-nav-btn monitoring" onclick="showModule('monitoring')">Monitoring</button>
+                <button class="module-nav-btn documents" onclick="showModule('documents')">Documents</button>
+            </div>
 
-            <div class="tab-content" id="servicesTabContent">
-                <!-- HemoAI Tab -->
-                <div class="tab-pane fade show active" id="hemo" role="tabpanel">
-                    <div class="upload-section">
-                        <div class="preview-container" id="previewContainer">
-                            <div class="upload-placeholder" onclick="document.getElementById('fileInput').click()">
+            <!-- Module Pages -->
+            <div id="hemoai-page" class="module-page active">
+                <div class="hemoai-page">
+                    <div class="hemoai-upload-section">
+                        <div class="hemoai-preview-container" id="previewContainer">
+                            <div class="hemoai-upload-placeholder" onclick="document.getElementById('fileInput').click()">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                     <polyline points="17 8 12 3 7 8"></polyline>
                                     <line x1="12" y1="3" x2="12" y2="15"></line>
                                 </svg>
                                 <span>Click to upload blood sample image</span>
-                                <input type="file" id="fileInput" onchange="handleFileChange(event)" accept="image/*" style="display: none;">
+                                <input type="file" id="fileInput" accept="image/*" style="display: none;">
                             </div>
                         </div>
 
-                        <div class="input-group mb-3">
+                        <div class="mb-3">
                             <label for="phone" class="form-label">WhatsApp Number:</label>
-                            <input type="tel" class="form-control" id="phone" placeholder="+1234567890" oninput="updatePhoneNumber(this.value)">
+                            <input type="tel" class="form-control" id="phone" placeholder="+1234567890">
                         </div>
 
-                        <div class="input-group mb-3">
+                        <div class="mb-3">
                             <label for="userId" class="form-label">Patient ID (optional):</label>
-                            <input type="text" class="form-control" id="userId" placeholder="Unique identifier" oninput="updateUserId(this.value)">
+                            <input type="text" class="form-control" id="userId" placeholder="Unique identifier">
                         </div>
 
-                        <button id="analyzeButton" onclick="handleUpload()" disabled class="btn btn-primary analyze-button w-100">
+                        <button id="analyzeButton" class="btn hemoai-analyze-button w-100" disabled>
                             Analyze Sample
                         </button>
                     </div>
 
-                    <div id="reportSection" class="report-section hidden mt-4">
-                        <div class="card">
-                            <div class="card-body">
-                                <h2 class="card-title">Analysis Report</h2>
-                                <div class="report-content" id="reportContent"></div>
-                            </div>
-                        </div>
+                    <div id="reportSection" class="hemoai-report-section hidden mt-4">
+                        <h2 class="hemoai-report-title">Analysis Report</h2>
+                        <div class="hemoai-report-content" id="reportContent"></div>
+                    </div>
 
-                        <div class="card mt-4">
-                            <div class="card-body">
-                                <h3 class="card-title">Ask About Your Results</h3>
-                                <div class="chat-messages" id="chatMessages"></div>
-                                <div class="chat-input d-flex mt-3">
-                                    <input type="text" class="form-control" id="chatInput" placeholder="Ask about your results..." onkeypress="handleChatKeyPress(event)">
-                                    <button class="btn btn-primary ms-2" onclick="handleSendMessage()">Send</button>
-                                </div>
-                            </div>
+                    <div class="hemoai-chat-container mt-4">
+                        <h3 class="hemoai-report-title">Ask About Your Results</h3>
+                        <div class="hemoai-chat-messages" id="chatMessages"></div>
+                        <div class="chat-input d-flex mt-3">
+                            <input type="text" class="form-control" id="chatInput" placeholder="Ask about your results...">
+                            <button class="btn btn-primary ms-2" id="sendMessageBtn">Send</button>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- BioCode Tab -->
-                <div class="tab-pane fade" id="biocode" role="tabpanel">
+            <div id="biocode-page" class="module-page">
+                <div class="biocode-page">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="card biocode-card">
-                                <div class="card-body">
-                                    <h3 class="card-title">Mutation Simulation</h3>
-                                    <div class="mb-3">
-                                        <label for="dna-sequence" class="form-label">DNA Sequence (single line):</label>
-                                        <input type="text" class="form-control" id="dna-sequence" value="ATGCTAGCTAGGCTA" maxlength="50">
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label for="mutation-rate" class="form-label">Mutation Rate (%): <span id="mutation-rate-value">1%</span></label>
-                                        <input type="range" class="form-range" id="mutation-rate" min="0" max="100" value="1">
-                                    </div>
-                                    
-                                    <button class="btn biocode-btn w-100" onclick="simulateMutations()">Simulate Mutations</button>
-                                    
-                                    <h4 class="mt-3">Mutated Sequence:</h4>
-                                    <pre id="mutated-sequence" class="p-3 bg-light rounded"></pre>
+                            <div class="biocode-card">
+                                <h3 class="card-title">Mutation Simulation</h3>
+                                <div class="mb-3">
+                                    <label for="dna-sequence" class="form-label">DNA Sequence (single line):</label>
+                                    <input type="text" class="form-control" id="dna-sequence" value="ATGCTAGCTAGGCTA" maxlength="50">
                                 </div>
+                                
+                                <div class="mb-3">
+                                    <label for="mutation-rate" class="form-label">Mutation Rate (%): <span id="mutation-rate-value">1%</span></label>
+                                    <input type="range" class="form-range biocode-slider" id="mutation-rate" min="0" max="100" value="1">
+                                </div>
+                                
+                                <button class="btn biocode-btn w-100" id="simulateMutationsBtn">Simulate Mutations</button>
+                                
+                                <h4 class="mt-3">Mutated Sequence:</h4>
+                                <pre id="mutated-sequence" class="biocode-sequence-display"></pre>
                             </div>
                         </div>
                         
                         <div class="col-md-6">
-                            <div class="card biocode-card">
-                                <div class="card-body">
-                                    <h3 class="card-title">BioCode Design</h3>
-                                    <div class="mb-3">
-                                        <label for="binary-data" class="form-label">Binary Data (max 8 bits):</label>
-                                        <input type="text" class="form-control" id="binary-data" value="1010" pattern="[01]{1,8}" title="Up to 8 binary digits (0 or 1)">
-                                    </div>
-                                    
-                                    <button class="btn biocode-btn w-100" onclick="encodeBinary()">Encode to DNA</button>
-                                    
-                                    <h4 class="mt-3">Encoded Data:</h4>
-                                    <pre id="encoded-data" class="p-3 bg-light rounded"></pre>
-                                    
-                                    <h4>DNA Sequence:</h4>
-                                    <pre id="dna-codons" class="p-3 bg-light rounded"></pre>
+                            <div class="biocode-card">
+                                <h3 class="card-title">BioCode Design</h3>
+                                <div class="mb-3">
+                                    <label for="binary-data" class="form-label">Binary Data (max 8 bits):</label>
+                                    <input type="text" class="form-control" id="binary-data" value="1010" pattern="[01]{1,8}" title="Up to 8 binary digits (0 or 1)">
                                 </div>
+                                
+                                <button class="btn biocode-btn w-100" id="encodeBinaryBtn">Encode to DNA</button>
+                                
+                                <h4 class="mt-3">Encoded Data:</h4>
+                                <pre id="encoded-data" class="biocode-sequence-display"></pre>
+                                
+                                <h4>DNA Sequence:</h4>
+                                <pre id="dna-codons" class="biocode-sequence-display"></pre>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Genetics Tab -->
-                <div class="tab-pane fade" id="genetics" role="tabpanel">
+            <div id="genetics-page" class="module-page">
+                <div class="genetics-page">
                     <div class="row mt-4">
                         <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title">1. Select Genetic Disease</h5>
-                                    <select id="disease-selector" class="form-select">
-                                        <option value="">Select a disease</option>
-                                        <option value="Cystic Fibrosis">Cystic Fibrosis</option>
-                                        <option value="Sickle Cell Anemia">Sickle Cell Anemia</option>
-                                        <option value="Huntington's Disease">Huntington's Disease</option>
-                                        <option value="Tay-Sachs Disease">Tay-Sachs Disease</option>
-                                        <option value="Hemophilia">Hemophilia</option>
-                                        <option value="Duchenne Muscular Dystrophy">Duchenne Muscular Dystrophy</option>
-                                        <option value="Phenylketonuria (PKU)">Phenylketonuria (PKU)</option>
-                                        <option value="Thalassemia">Thalassemia</option>
-                                        <option value="Familial Hypercholesterolemia">Familial Hypercholesterolemia</option>
-                                        <option value="BRCA-related Cancer">BRCA-related Cancer</option>
-                                        <option value="Keloid Disorder">Keloid Disorder</option>
+                            <div class="genetics-card">
+                                <h5 class="card-title">1. Select Genetic Disease</h5>
+                                <select id="disease-selector" class="form-select">
+                                    <option value="">Select a disease</option>
+                                    <option value="Cystic Fibrosis">Cystic Fibrosis</option>
+                                    <option value="Sickle Cell Anemia">Sickle Cell Anemia</option>
+                                    <option value="Huntington's Disease">Huntington's Disease</option>
+                                    <option value="Tay-Sachs Disease">Tay-Sachs Disease</option>
+                                    <option value="Hemophilia">Hemophilia</option>
+                                    <option value="Duchenne Muscular Dystrophy">Duchenne Muscular Dystrophy</option>
+                                    <option value="Phenylketonuria (PKU)">Phenylketonuria (PKU)</option>
+                                    <option value="Thalassemia">Thalassemia</option>
+                                    <option value="Familial Hypercholesterolemia">Familial Hypercholesterolemia</option>
+                                    <option value="BRCA-related Cancer">BRCA-related Cancer</option>
+                                    <option value="Keloid Disorder">Keloid Disorder</option>
+                                </select>
+                                
+                                <div class="mt-3" id="gene-selection-container" style="display: none;">
+                                    <label class="form-label">Associated Gene:</label>
+                                    <select id="gene-selector" class="form-select">
+                                        <option value="">Select a gene</option>
                                     </select>
-                                    
-                                    <div class="mt-3" id="gene-selection-container" style="display: none;">
-                                        <label class="form-label">Associated Gene:</label>
-                                        <select id="gene-selector" class="form-select">
-                                            <option value="">Select a gene</option>
-                                        </select>
-                                        <div id="gene-sequence" class="mt-3" style="word-break: break-all;"></div>
-                                    </div>
+                                    <div id="gene-sequence" class="genetics-sequence mt-3"></div>
                                 </div>
                             </div>
                             
-                            <div class="card mt-4">
-                                <div class="card-body">
-                                    <h5 class="card-title">2. Simulate SNP</h5>
-                                    <form id="snp-form">
-                                        <div class="mb-3">
-                                            <label class="form-label">Position in Sequence</label>
-                                            <input type="number" id="snp-position" class="form-control" min="0" value="0">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">New Base (A/T/C/G)</label>
-                                            <select id="snp-mutation" class="form-select">
-                                                <option value="A">A</option>
-                                                <option value="T">T</option>
-                                                <option value="C">C</option>
-                                                <option value="G">G</option>
-                                            </select>
-                                        </div>
-                                        <button type="submit" class="btn btn-primary">Generate SNP</button>
-                                    </form>
-                                </div>
+                            <div class="genetics-card mt-4">
+                                <h5 class="card-title">2. Simulate SNP</h5>
+                                <form id="snp-form">
+                                    <div class="mb-3">
+                                        <label class="form-label">Position in Sequence</label>
+                                        <input type="number" id="snp-position" class="form-control" min="0" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">New Base (A/T/C/G)</label>
+                                        <select id="snp-mutation" class="form-select">
+                                            <option value="A">A</option>
+                                            <option value="T">T</option>
+                                            <option value="C">C</option>
+                                            <option value="G">G</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Generate SNP</button>
+                                </form>
                             </div>
                         </div>
                         
                         <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title">3. Functional Impact Prediction</h5>
-                                    <div id="functional-prediction">
-                                        <p class="text-muted">Please generate a SNP first</p>
-                                    </div>
+                            <div class="genetics-card">
+                                <h5 class="card-title">3. Functional Impact Prediction</h5>
+                                <div id="functional-prediction" class="genetics-impact">
+                                    <p class="text-muted">Please generate a SNP first</p>
                                 </div>
                             </div>
                             
-                            <div class="card mt-4">
-                                <div class="card-body">
-                                    <h5 class="card-title">4. CRISPR Design</h5>
-                                    <div id="crispr-design">
-                                        <p class="text-muted">CRISPR guide RNA will appear here after SNP generation</p>
-                                    </div>
+                            <div class="genetics-card mt-4">
+                                <h5 class="card-title">4. CRISPR Design</h5>
+                                <div id="crispr-design" class="genetics-crispr">
+                                    <p class="text-muted">CRISPR guide RNA will appear here after SNP generation</p>
                                 </div>
                             </div>
                             
-                            <div class="card mt-4">
-                                <div class="card-body">
-                                    <h5 class="card-title">5. IP-NFT Management</h5>
-                                    <div id="ipnft-status">
-                                        <p class="text-muted">Register your SNP discovery as an IP-NFT on blockchain</p>
-                                        <button id="register-ipnft" class="btn btn-success" disabled>Register IP-NFT</button>
-                                        <div id="ipnft-result" class="mt-2"></div>
-                                    </div>
+                            <div class="genetics-card mt-4">
+                                <h5 class="card-title">5. IP-NFT Management</h5>
+                                <div id="ipnft-status" class="genetics-ipnft">
+                                    <p class="text-muted">Register your SNP discovery as an IP-NFT on blockchain</p>
+                                    <button id="register-ipnft" class="btn btn-success" disabled>Register IP-NFT</button>
+                                    <div id="ipnft-result" class="mt-2"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Monitoring Tab -->
-                <div class="tab-pane fade" id="monitoring" role="tabpanel">
+            <div id="monitoring-page" class="module-page">
+                <div class="monitoring-page">
                     <div class="row mt-4">
                         <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title">Heart Rate Monitor</h5>
-                                    <video id="video" width="100%" autoplay muted></video>
-                                    <canvas id="canvas" style="display: none;"></canvas>
-                                    <div id="heart-rate" class="mt-2">Heart Rate: -- BPM</div>
-                                </div>
+                            <div class="monitoring-card">
+                                <h5 class="card-title">Heart Rate Monitor</h5>
+                                <video id="video" class="monitoring-video" autoplay muted></video>
+                                <canvas id="canvas" style="display: none;"></canvas>
+                                <div id="heart-rate" class="monitoring-heart-rate">Heart Rate: -- BPM</div>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title">Patient Health Data</h5>
-                                    <canvas id="health-chart"></canvas>
-                                    <div id="health-metrics" class="mt-3">
-                                        <p><strong>Last Reading:</strong> <span id="last-reading">No data</span></p>
-                                        <p><strong>Average BPM:</strong> <span id="avg-bpm">--</span></p>
-                                        <p><strong>Status:</strong> <span id="health-status" class="badge bg-secondary">Unknown</span></p>
-                                    </div>
+                            <div class="monitoring-card">
+                                <h5 class="card-title">Patient Health Data</h5>
+                                <canvas id="health-chart"></canvas>
+                                <div id="health-metrics" class="mt-3">
+                                    <p><strong>Last Reading:</strong> <span id="last-reading">No data</span></p>
+                                    <p><strong>Average BPM:</strong> <span id="avg-bpm">--</span></p>
+                                    <p><strong>Status:</strong> <span id="health-status" class="monitoring-health-status status-normal">Unknown</span></p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Documents Tab -->
-                <div class="tab-pane fade" id="documents" role="tabpanel">
+            <div id="documents-page" class="module-page">
+                <div class="documents-page">
                     <div class="row mt-4">
                         <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h2 class="card-title">Medical Document Capture</h2>
-                                    
-                                    <div class="form-group">
-                                        <label for="docType">Document Type</label>
-                                        <select class="form-control document-type-selector" id="docType">
-                                            <option value="birth">Birth Record</option>
-                                            <option value="death">Death Record</option>
-                                            <option value="medical">Medical Certificate</option>
-                                            <option value="prescription">Prescription</option>
-                                            <option value="lab">Lab Report</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="camera-container mt-3" id="cameraContainer">
-                                        <video class="camera-preview w-100" id="cameraPreview" autoplay></video>
-                                    </div>
-                                    
-                                    <div class="capture-buttons mt-3">
-                                        <button class="btn btn-primary" id="startCameraBtn" onclick="initCamera()">
-                                            <i class="fas fa-camera me-2"></i>Start Camera
-                                        </button>
-                                        <button class="btn btn-success" id="captureBtn" onclick="captureDocument()" disabled>
-                                            <i class="fas fa-camera-retro me-2"></i>Capture Document
-                                        </button>
-                                        <button class="btn btn-info" id="uploadBtn" onclick="uploadToBlockchain()" disabled>
-                                            <i class="fas fa-link me-2"></i>Store in Blockchain
-                                        </button>
-                                    </div>
-                                    
-                                    <div class="document-preview mt-3" id="documentPreview"></div>
-                                    <div id="blockchainStatus" class="mt-3"></div>
+                            <div class="documents-card">
+                                <h2 class="card-title">Medical Document Capture</h2>
+                                
+                                <div class="form-group">
+                                    <label for="docType">Document Type</label>
+                                    <select class="form-control document-type-selector" id="docType">
+                                        <option value="birth">Birth Record</option>
+                                        <option value="death">Death Record</option>
+                                        <option value="medical">Medical Certificate</option>
+                                        <option value="prescription">Prescription</option>
+                                        <option value="lab">Lab Report</option>
+                                    </select>
                                 </div>
+                                
+                                <div class="camera-container mt-3" id="cameraContainer">
+                                    <video class="documents-camera-preview w-100" id="cameraPreview" autoplay></video>
+                                </div>
+                                
+                                <div class="documents-capture-buttons mt-3">
+                                    <button class="btn documents-btn documents-btn-primary" id="startCameraBtn">
+                                        <i class="fas fa-camera me-2"></i>Start Camera
+                                    </button>
+                                    <button class="btn documents-btn documents-btn-success" id="captureBtn" disabled>
+                                        <i class="fas fa-camera-retro me-2"></i>Capture Document
+                                    </button>
+                                    <button class="btn documents-btn documents-btn-info" id="uploadBtn" disabled>
+                                        <i class="fas fa-link me-2"></i>Store in Blockchain
+                                    </button>
+                                </div>
+                                
+                                <div class="documents-preview mt-3" id="documentPreview"></div>
+                                <div id="blockchainStatus" class="mt-3"></div>
                             </div>
                         </div>
                     </div>
@@ -484,7 +846,7 @@
         <footer class="app-footer mt-4">
             <div class="container">
                 <p class="text-center text-muted">
-                    Integrated BioMedical Services - Combining AI, genetics, and blockchain for advanced healthcare
+                    
                 </p>
             </div>
         </footer>
@@ -498,697 +860,889 @@
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 
     <script>
-        // ========== HemoAI Functionality ==========
-        const hemoState = {
-            file: null,
-            preview: null,
-            phoneNumber: '',
-            userId: '',
-            isAnalyzing: false,
-            report: null,
-            chatMessage: '',
-            conversation: []
-        };
-
-        // DOM elements
-        const hemoElements = {
-            previewContainer: document.getElementById('previewContainer'),
-            analyzeButton: document.getElementById('analyzeButton'),
-            reportSection: document.getElementById('reportSection'),
-            reportContent: document.getElementById('reportContent'),
-            chatMessages: document.getElementById('chatMessages'),
-            chatInput: document.getElementById('chatInput')
-        };
-
-        // Event handlers
-        function handleFileChange(event) {
-            const file = event.target.files[0];
-            if (file) {
-                hemoState.file = file;
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    hemoState.preview = reader.result;
-                    renderPreview();
-                };
-                reader.readAsDataURL(file);
-                updateAnalyzeButton();
-            }
-        }
-
-        function updatePhoneNumber(value) {
-            hemoState.phoneNumber = value;
-            updateAnalyzeButton();
-        }
-
-        function updateUserId(value) {
-            hemoState.userId = value;
-        }
-
-        function updateAnalyzeButton() {
-            hemoElements.analyzeButton.disabled = !(hemoState.file && hemoState.phoneNumber);
-        }
-
-        function renderPreview() {
-            if (hemoState.preview) {
-                hemoElements.previewContainer.innerHTML = `
-                    <img src="${hemoState.preview}" alt="Preview" class="image-preview">
-                    <button onclick="clearImage()" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                        ×
-                    </button>
-                `;
-            } else {
-                hemoElements.previewContainer.innerHTML = `
-                    <div class="upload-placeholder" onclick="document.getElementById('fileInput').click()">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="17 8 12 3 7 8"></polyline>
-                            <line x1="12" y1="3" x2="12" y2="15"></line>
-                        </svg>
-                        <span>Click to upload blood sample image</span>
-                    </div>
-                    <input type="file" id="fileInput" onchange="handleFileChange(event)" accept="image/*" style="display: none;">
-                `;
-            }
-        }
-
-        function clearImage() {
-            hemoState.file = null;
-            hemoState.preview = null;
-            renderPreview();
-            updateAnalyzeButton();
-        }
-
-        async function handleUpload() {
-            if (!hemoState.file || !hemoState.phoneNumber) {
-                alert('Please select an image and provide your phone number');
-                return;
-            }
-
-            hemoState.isAnalyzing = true;
-            hemoState.report = null;
-            hemoElements.analyzeButton.disabled = true;
-            hemoElements.analyzeButton.textContent = 'Analyzing...';
-
-            // Simulate API call
-            setTimeout(() => {
-                checkForReport(hemoState.userId || hemoState.phoneNumber);
-            }, 3000);
-        }
-
-        function checkForReport(userIdentifier) {
-            // Simulate getting report from backend
-            hemoState.report = `🔬 Blood Analysis Report for ${userIdentifier}\n\n• Healthy RBCs: 850\n• WBCs: 45\n• Platelets: 210\n• Abnormal Findings:\n  - Leukemia Cells: 0\n  - Malaria Parasites: 0\n  - Sickle Cells: 12\n\n💡 Clinical Recommendations:\nMild sickle cell presence detected. Recommend:\n1. Hydration therapy\n2. Pain management plan\n3. Follow-up in 2 weeks`;
+        // ========== Module Navigation ==========
+        function showModule(moduleId) {
+            // Hide all modules
+            document.querySelectorAll('.module-page').forEach(page => {
+                page.classList.remove('active');
+            });
             
-            hemoState.conversation = [{ role: 'system', content: hemoState.report }];
-            renderReport();
-            
-            hemoState.isAnalyzing = false;
-            hemoElements.analyzeButton.disabled = false;
-            hemoElements.analyzeButton.textContent = 'Analyze Sample';
+            // Show selected module
+            document.getElementById(`${moduleId}-page`).classList.add('active');
         }
 
-        function renderReport() {
-            hemoElements.reportSection.classList.remove('hidden');
-            hemoElements.reportContent.innerHTML = hemoState.report
-                .split('\n')
-                .map(line => {
-                    if (line.includes('🔬')) {
-                        return `<p class="report-title">${line}</p>`;
-                    } else if (line.includes('💡')) {
-                        return `<p class="recommendation-title">${line}</p>`;
-                    }
-                    return `<p>${line}</p>`;
-                })
-                .join('');
-            
-            renderConversation();
-        }
-
-        function handleChatKeyPress(event) {
-            if (event.key === 'Enter') {
-                handleSendMessage();
-            }
-        }
-
-        function handleSendMessage() {
-            const message = hemoElements.chatInput.value.trim();
-            if (!message) return;
-
-            hemoState.chatMessage = message;
-            hemoElements.chatInput.value = '';
-            
-            // Add user message to conversation
-            hemoState.conversation.push({ role: 'user', content: message });
-            renderConversation();
-            
-            // Simulate AI response
-            setTimeout(() => {
-                const aiResponse = `Based on your report showing 12 sickle cells, I recommend:\n\n1. Increase fluid intake to 3L/day\n2. Take folic acid supplements\n3. Monitor for pain crises\n\nWould you like me to connect you with a hematologist?`;
-                hemoState.conversation.push({ role: 'assistant', content: aiResponse });
-                renderConversation();
-            }, 1000);
-        }
-
-        function renderConversation() {
-            hemoElements.chatMessages.innerHTML = hemoState.conversation
-                .map(msg => {
-                    const content = msg.content.split('\n').map(p => `<p>${p}</p>`).join('');
-                    return `<div class="message ${msg.role}">${content}</div>`;
-                })
-                .join('');
-            
-            // Scroll to bottom
-            hemoElements.chatMessages.scrollTop = hemoElements.chatMessages.scrollHeight;
-        }
-
-        // ========== BioCode Functionality ==========
-        // Mutation simulation
-        function simulateMutations() {
-            const sequence = document.getElementById('dna-sequence').value.toUpperCase();
-            const mutationRate = parseInt(document.getElementById('mutation-rate').value) / 100;
-            
-            if (!/^[ATCG]+$/.test(sequence)) {
-                alert("Please enter a valid DNA sequence (only A, T, C, G)");
-                return;
-            }
-
-            const mutatedSequence = sequence
-                .split('')
-                .map(nucleotide => Math.random() < mutationRate ? randomBase(nucleotide) : nucleotide)
-                .join('');
-            
-            document.getElementById('mutated-sequence').textContent = mutatedSequence;
-        }
-
-        // Random base generator (excludes input base)
-        function randomBase(exclude) {
-            const bases = ['A', 'T', 'C', 'G'].filter(base => base !== exclude);
-            return bases[Math.floor(Math.random() * bases.length)];
-        }
-
-        // Binary to DNA encoding
-        function encodeBinary() {
-            const binaryData = document.getElementById('binary-data').value;
-            
-            if (!/^[01]+$/.test(binaryData) || binaryData.length > 8) {
-                alert("Please enter valid binary data (max 8 bits, 0 or 1 only)");
-                return;
-            }
-
-            // Simple encoding scheme
-            const codonMap = {
-                '00': 'AAA',
-                '01': 'AAT',
-                '10': 'AAC',
-                '11': 'AAG',
-                '0': 'AA',
-                '1': 'AT'
+        // ========== HemoAI Module ==========
+        const hemoModule = (function() {
+            // State
+            const state = {
+                file: null,
+                preview: null,
+                phoneNumber: '',
+                userId: '',
+                isAnalyzing: false,
+                report: null,
+                chatMessage: '',
+                conversation: []
             };
 
-            let encoded = '';
-            for (let i = 0; i < binaryData.length; i += 2) {
-                const bits = binaryData.slice(i, i+2);
-                encoded += codonMap[bits] || codonMap[bits[0]];
-            }
+            // DOM elements
+            const elements = {
+                previewContainer: document.getElementById('previewContainer'),
+                analyzeButton: document.getElementById('analyzeButton'),
+                reportSection: document.getElementById('reportSection'),
+                reportContent: document.getElementById('reportContent'),
+                chatMessages: document.getElementById('chatMessages'),
+                chatInput: document.getElementById('chatInput'),
+                fileInput: document.getElementById('fileInput'),
+                phoneInput: document.getElementById('phone'),
+                userIdInput: document.getElementById('userId'),
+                sendMessageBtn: document.getElementById('sendMessageBtn')
+            };
 
-            document.getElementById('encoded-data').textContent = binaryData;
-            document.getElementById('dna-codons').textContent = encoded;
-        }
-
-        // Update mutation rate display
-        document.getElementById('mutation-rate').addEventListener('input', function() {
-            document.getElementById('mutation-rate-value').textContent = this.value + '%';
-        });
-
-        // ========== Genetics Functionality ==========
-        const diseaseGenes = {
-            'Cystic Fibrosis': ['CFTR'],
-            'Sickle Cell Anemia': ['HBB'],
-            'Huntington\'s Disease': ['HTT'],
-            'Tay-Sachs Disease': ['HEXA'],
-            'Hemophilia': ['F8', 'F9'],
-            'Duchenne Muscular Dystrophy': ['DMD'],
-            'Phenylketonuria (PKU)': ['PAH'],
-            'Thalassemia': ['HBA1', 'HBA2', 'HBB'],
-            'Familial Hypercholesterolemia': ['LDLR', 'APOB', 'PCSK9'],
-            'BRCA-related Cancer': ['BRCA1', 'BRCA2'],
-            'Keloid Disorder': ['TGFB3', 'ASH1L', 'NEDD4', 'FOXL2', 'SMAD3']
-        };
-
-        const geneSequences = {
-            'CFTR': 'ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
-            'HBB': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
-            'HTT': 'ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
-            'HEXA': 'ATGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
-            'F8': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
-            'F9': 'ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
-            'DMD': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
-            'PAH': 'ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
-            'HBA1': 'ATGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
-            'HBA2': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
-             'LDLR': 'ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
-            'APOB': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
-            'PCSK9': 'ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
-            'BRCA1': 'ATGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
-            'BRCA2': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
-            'TGFB3': 'ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
-            'ASH1L': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
-            'NEDD4': 'ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
-            'FOXL2': 'ATGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
-            'SMAD3': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG'
-        };
-
-        const geneFunctions = {
-            'CFTR': 'Encodes the cystic fibrosis transmembrane conductance regulator, a chloride channel',
-            'HBB': 'Encodes the beta subunit of hemoglobin, mutations cause sickle cell disease',
-            'HTT': 'Huntingtin protein, expanded CAG repeats cause Huntington\'s disease',
-            'HEXA': 'Hexosaminidase A enzyme, deficiency causes Tay-Sachs disease',
-            'F8': 'Coagulation factor VIII, deficiency causes Hemophilia A',
-            'F9': 'Coagulation factor IX, deficiency causes Hemophilia B',
-            'DMD': 'Dystrophin protein, mutations cause Duchenne muscular dystrophy',
-            'PAH': 'Phenylalanine hydroxylase, deficiency causes Phenylketonuria (PKU)',
-            'HBA1': 'Alpha-1 globin chain, mutations cause alpha-thalassemia',
-            'HBA2': 'Alpha-2 globin chain, mutations cause alpha-thalassemia',
-            'LDLR': 'Low-density lipoprotein receptor, mutations cause familial hypercholesterolemia',
-            'APOB': 'Apolipoprotein B, mutations cause familial hypercholesterolemia',
-            'PCSK9': 'Proprotein convertase subtilisin/kexin type 9, affects LDL receptor degradation',
-            'BRCA1': 'Breast cancer type 1 susceptibility protein',
-            'BRCA2': 'Breast cancer type 2 susceptibility protein',
-            'TGFB3': 'Encodes transforming growth factor beta 3, involved in tissue repair and fibrosis',
-            'ASH1L': 'Histone-lysine N-methyltransferase involved in chromatin regulation',
-            'NEDD4': 'E3 ubiquitin-protein ligase involved in protein degradation',
-            'FOXL2': 'Forkhead transcription factor important for ovarian development',
-            'SMAD3': 'Signal transducer and transcriptional modulator in TGF-beta pathway'
-        };
-
-        document.getElementById('disease-selector').addEventListener('change', function() {
-            const disease = this.value;
-            const geneSelector = document.getElementById('gene-selector');
-            const geneContainer = document.getElementById('gene-selection-container');
-            
-            if (disease) {
-                // Clear previous options
-                geneSelector.innerHTML = '<option value="">Select a gene</option>';
-                
-                // Add new options
-                diseaseGenes[disease].forEach(gene => {
-                    const option = document.createElement('option');
-                    option.value = gene;
-                    option.textContent = gene;
-                    geneSelector.appendChild(option);
-                });
-                
-                // Show gene selection
-                geneContainer.style.display = 'block';
-            } else {
-                // Hide gene selection
-                geneContainer.style.display = 'none';
-                document.getElementById('gene-sequence').textContent = '';
-            }
-        });
-
-        document.getElementById('gene-selector').addEventListener('change', function() {
-            const gene = this.value;
-            if (gene) {
-                document.getElementById('gene-sequence').textContent = geneSequences[gene];
-                document.getElementById('snp-position').max = geneSequences[gene].length - 1;
-            } else {
-                document.getElementById('gene-sequence').textContent = '';
-            }
-        });
-
-        document.getElementById('snp-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const gene = document.getElementById('gene-selector').value;
-            const position = parseInt(document.getElementById('snp-position').value);
-            const mutation = document.getElementById('snp-mutation').value;
-            
-            if (!gene) {
-                alert('Please select a gene first');
-                return;
-            }
-            
-            const sequence = geneSequences[gene];
-            if (position >= sequence.length) {
-                alert('Position is out of range for this gene');
-                return;
-            }
-            
-            const originalBase = sequence[position];
-            const mutatedSequence = sequence.substring(0, position) + mutation + sequence.substring(position + 1);
-            
-            // Display functional impact
-            const impact = predictFunctionalImpact(gene, position, originalBase, mutation);
-            document.getElementById('functional-prediction').innerHTML = `
-                <p><strong>Original Sequence:</strong> ${sequence}</p>
-                <p><strong>Mutated Sequence:</strong> ${mutatedSequence}</p>
-                <p><strong>Mutation:</strong> ${originalBase}${position+1}${mutation}</p>
-                <p><strong>Gene Function:</strong> ${geneFunctions[gene]}</p>
-                <p><strong>Predicted Impact:</strong> ${impact}</p>
-            `;
-            
-            // Generate CRISPR design
-            const crispr = designCRISPR(gene, position, mutation);
-            document.getElementById('crispr-design').innerHTML = `
-                <p><strong>Guide RNA:</strong> ${crispr.guideRNA}</p>
-                <p><strong>Target Sequence:</strong> ${crispr.targetSequence}</p>
-                <p><strong>Repair Template:</strong> ${crispr.repairTemplate}</p>
-            `;
-            
-            // Enable IP-NFT registration
-            document.getElementById('register-ipnft').disabled = false;
-        });
-
-        function predictFunctionalImpact(gene, position, original, mutation) {
-            // Simplified prediction algorithm
-            const impacts = [
-                "Likely benign - no significant functional impact expected",
-                "Possibly damaging - may affect protein function moderately",
-                "Probably damaging - likely to affect protein function significantly",
-                "Pathogenic - known disease-causing mutation"
-            ];
-            
-            const severity = (gene.length + position + original.charCodeAt(0) + mutation.charCodeAt(0)) % 4;
-            return impacts[severity];
-        }
-
-        function designCRISPR(gene, position, mutation) {
-            const sequence = geneSequences[gene];
-            const target = sequence.substring(Math.max(0, position-10), Math.min(sequence.length, position+10));
-            const pam = 'NGG';
-            
+            // Public methods
             return {
-                guideRNA: target + pam,
-                targetSequence: sequence.substring(position-5, position+5),
-                repairTemplate: sequence.substring(position-5, position) + mutation + sequence.substring(position+1, position+5)
-            };
-        }
+                init: function() {
+                    // Initialize event listeners
+                    elements.fileInput.addEventListener('change', this.handleFileChange.bind(this));
+                    elements.phoneInput.addEventListener('input', () => {
+                        this.updatePhoneNumber(elements.phoneInput.value);
+                    });
+                    elements.userIdInput.addEventListener('input', () => {
+                        this.updateUserId(elements.userIdInput.value);
+                    });
+                    elements.analyzeButton.addEventListener('click', this.handleUpload.bind(this));
+                    elements.chatInput.addEventListener('keypress', this.handleChatKeyPress.bind(this));
+                    elements.sendMessageBtn.addEventListener('click', this.handleSendMessage.bind(this));
+                },
 
-        document.getElementById('register-ipnft').addEventListener('click', function() {
-            const gene = document.getElementById('gene-selector').value;
-            const position = document.getElementById('snp-position').value;
-            const mutation = document.getElementById('snp-mutation').value;
-            
-            document.getElementById('ipnft-result').innerHTML = `
-                <div class="alert alert-info">
-                    <p>Registering IP-NFT for ${gene} mutation at position ${position} (${mutation})...</p>
-                    <p>Transaction hash: 0x${Math.random().toString(16).substr(2, 10)}...${Math.random().toString(16).substr(2, 4)}</p>
-                    <p>IP-NFT successfully minted!</p>
-                    <p>View on blockchain explorer: <a href="#" target="_blank">https://explorer.example.com/tx/0x123...abc</a></p>
-                </div>
-            `;
-            
-            this.disabled = true;
-        });
-
-        // ========== Monitoring Functionality ==========
-        
-        // Heart rate monitoring code
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const heartRateDisplay = document.getElementById('heart-rate');
-        const ctx = canvas.getContext('2d');
-
-        let redChannelData = [];
-        let heartRateInterval;
-        const FRAME_RATE = 30;
-        const SAMPLE_WINDOW = 10 * FRAME_RATE;
-
-        async function startVideo() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
-                });
-                video.srcObject = stream;
-                video.play();
-                processFrames();
-            } catch (err) {
-                console.error('Error accessing camera:', err);
-                alert('Please allow camera access for heart rate monitoring.');
-            }
-        }
-
-        function processFrames() {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            heartRateInterval = setInterval(() => {
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = ctx.getImageData(
-                    canvas.width / 2 - 10,
-                    canvas.height / 2 - 10,
-                    20,
-                    20
-                );
-                const redChannel = extractRedChannel(imageData.data);
-                const avgRed = redChannel.reduce((sum, val) => sum + val, 0) / redChannel.length;
-
-                redChannelData.push(avgRed);
-                if (redChannelData.length > SAMPLE_WINDOW) {
-                    redChannelData.shift();
-                }
-
-                if (redChannelData.length === SAMPLE_WINDOW) {
-                    const bpm = calculateHeartRate(redChannelData);
-                    heartRateDisplay.textContent = `Heart Rate: ${bpm} BPM`;
-                }
-            }, 1000 / FRAME_RATE);
-        }
-
-        function extractRedChannel(pixelData) {
-            const redChannel = [];
-            for (let i = 0; i < pixelData.length; i += 4) {
-                redChannel.push(pixelData[i]);
-            }
-            return redChannel;
-        }
-
-        function calculateHeartRate(data) {
-            // Simplified heart rate calculation
-            let maxIndex = 0;
-            let maxMagnitude = 0;
-            for (let i = 0; i < data.length; i++) {
-                if (data[i] > maxMagnitude) {
-                    maxMagnitude = data[i];
-                    maxIndex = i;
-                }
-            }
-            const frequency = maxIndex * (FRAME_RATE / data.length);
-            return Math.round(frequency * 60);
-        }
-
-        window.onload = startVideo;
-    
-			
-			
-			 // ========== Document Capture System ==========
-        let mediaStream = null;
-        let capturedDocument = null;
-        
-        // DOM elements
-        const docElements = {
-            cameraPreview: document.getElementById('cameraPreview'),
-            startCameraBtn: document.getElementById('startCameraBtn'),
-            captureBtn: document.getElementById('captureBtn'),
-            uploadBtn: document.getElementById('uploadBtn'),
-            documentPreview: document.getElementById('documentPreview'),
-            blockchainStatus: document.getElementById('blockchainStatus')
-        };
-
-        // Initialize camera
-        async function initCamera() {
-            try {
-                // Check for camera support
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error('Camera API not supported in this browser');
-                }
-                
-                // Request camera access
-                mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: 'environment',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    },
-                    audio: false
-                });
-                
-                // Display camera stream
-                docElements.cameraPreview.srcObject = mediaStream;
-                docElements.cameraPreview.style.display = 'block';
-                docElements.captureBtn.disabled = false;
-                docElements.startCameraBtn.disabled = true;
-                
-                // Handle camera errors
-                docElements.cameraPreview.onerror = () => {
-                    showError('Failed to load camera stream');
-                    stopCamera();
-                };
-                
-            } catch (error) {
-                showError(`Camera Error: ${error.message}`);
-                console.error('Camera initialization failed:', error);
-            }
-        }
-
-        // Capture document image
-        async function captureDocument() {
-            try {
-                if (!mediaStream) {
-                    throw new Error('Camera not initialized');
-                }
-                
-                const video = docElements.cameraPreview;
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                
-                // Draw video frame to canvas
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Create document object
-                capturedDocument = {
-                    type: document.getElementById('docType').value,
-                    timestamp: new Date().toISOString(),
-                    imageData: canvas.toDataURL('image/jpeg', 0.9),
-                    metadata: {
-                        resolution: `${canvas.width}x${canvas.height}`,
-                        device: navigator.userAgent
+                handleFileChange: function(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        state.file = file;
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            state.preview = reader.result;
+                            this.renderPreview();
+                        };
+                        reader.readAsDataURL(file);
+                        this.updateAnalyzeButton();
                     }
-                };
-                
-                // Display preview
-                docElements.documentPreview.innerHTML = `
-                    <img src="${capturedDocument.imageData}" alt="Captured Document" class="img-thumbnail">
-                    <p class="mt-2">Document ready for blockchain storage</p>
-                `;
-                
-                docElements.uploadBtn.disabled = false;
-                stopCamera();
-                
-            } catch (error) {
-                showError(`Capture Error: ${error.message}`);
-                console.error('Document capture failed:', error);
-            }
-        }
+                },
 
-        // Upload to blockchain via MindsDB
-        async function uploadToBlockchain() {
-            if (!capturedDocument) {
-                showError('No document captured');
-                return;
-            }
-            
-            try {
-                // Show loading state
-                docElements.uploadBtn.disabled = true;
-                docElements.blockchainStatus.innerHTML = `
-                    <div class="d-flex align-items-center text-primary">
-                        <div class="spinner-border spinner-border-sm me-2" role="status">
-                            <span class="visually-hidden">Loading...</span>
+                updatePhoneNumber: function(value) {
+                    state.phoneNumber = value;
+                    this.updateAnalyzeButton();
+                },
+
+                updateUserId: function(value) {
+                    state.userId = value;
+                },
+
+                updateAnalyzeButton: function() {
+                    elements.analyzeButton.disabled = !(state.file && state.phoneNumber);
+                },
+
+                renderPreview: function() {
+                    if (state.preview) {
+                        elements.previewContainer.innerHTML = `
+                            <img src="${state.preview}" alt="Preview" class="hemoai-image-preview">
+                            <button onclick="hemoModule.clearImage()" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                ×
+                            </button>
+                        `;
+                    } else {
+                        elements.previewContainer.innerHTML = `
+                            <div class="hemoai-upload-placeholder" onclick="document.getElementById('fileInput').click()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                                <span>Click to upload blood sample image</span>
+                            </div>
+                            <input type="file" id="fileInput" onchange="hemoModule.handleFileChange(event)" accept="image/*" style="display: none;">
+                        `;
+                    }
+                },
+
+                clearImage: function() {
+                    state.file = null;
+                    state.preview = null;
+                    this.renderPreview();
+                    this.updateAnalyzeButton();
+                },
+
+                handleUpload: function() {
+                    if (!state.file || !state.phoneNumber) {
+                        alert('Please select an image and provide your phone number');
+                        return;
+                    }
+
+                    state.isAnalyzing = true;
+                    state.report = null;
+                    elements.analyzeButton.disabled = true;
+                    elements.analyzeButton.textContent = 'Analyzing...';
+
+                    // Simulate API call
+                    setTimeout(() => {
+                        this.checkForReport(state.userId || state.phoneNumber);
+                    }, 3000);
+                },
+
+                checkForReport: function(userIdentifier) {
+                    // Simulate getting report from backend
+                    state.report = `🔬 Blood Analysis Report for ${userIdentifier}\n\n• Healthy RBCs: 850\n• WBCs: 45\n• Platelets: 210\n• Abnormal Findings:\n  - Leukemia Cells: 0\n  - Malaria Parasites: 0\n  - Sickle Cells: 12\n\n💡 Clinical Recommendations:\nMild sickle cell presence detected. Recommend:\n1. Hydration therapy\n2. Pain management plan\n3. Follow-up in 2 weeks`;
+                    
+                    state.conversation = [{ role: 'system', content: state.report }];
+                    this.renderReport();
+                    
+                    state.isAnalyzing = false;
+                    elements.analyzeButton.disabled = false;
+                    elements.analyzeButton.textContent = 'Analyze Sample';
+                },
+
+                renderReport: function() {
+                    elements.reportSection.classList.remove('hidden');
+                    elements.reportContent.innerHTML = state.report
+                        .split('\n')
+                        .map(line => {
+                            if (line.includes('🔬')) {
+                                return `<p class="report-title">${line}</p>`;
+                            } else if (line.includes('💡')) {
+                                return `<p class="recommendation-title">${line}</p>`;
+                            }
+                            return `<p>${line}</p>`;
+                        })
+                        .join('');
+                    
+                    this.renderConversation();
+                },
+
+                handleChatKeyPress: function(event) {
+                    if (event.key === 'Enter') {
+                        this.handleSendMessage();
+                    }
+                },
+
+                handleSendMessage: function() {
+                    const message = elements.chatInput.value.trim();
+                    if (!message) return;
+
+                    state.chatMessage = message;
+                    elements.chatInput.value = '';
+                    
+                    // Add user message to conversation
+                    state.conversation.push({ role: 'user', content: message });
+                    this.renderConversation();
+                    
+                    // Simulate AI response
+                    setTimeout(() => {
+                        const aiResponse = `Based on your report showing 12 sickle cells, I recommend:\n\n1. Increase fluid intake to 3L/day\n2. Take folic acid supplements\n3. Monitor for pain crises\n\nWould you like me to connect you with a hematologist?`;
+                        state.conversation.push({ role: 'assistant', content: aiResponse });
+                        this.renderConversation();
+                    }, 1000);
+                },
+
+                renderConversation: function() {
+                    elements.chatMessages.innerHTML = state.conversation
+                        .map(msg => {
+                            const content = msg.content.split('\n').map(p => `<p>${p}</p>`).join('');
+                            return `<div class="hemoai-message ${msg.role}">${content}</div>`;
+                        })
+                        .join('');
+                    
+                    // Scroll to bottom
+                    elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+                }
+            };
+        })();
+
+        // Initialize HemoAI module
+        hemoModule.init();
+
+        // ========== BioCode Module ==========
+        const bioCodeModule = (function() {
+            // DOM elements
+            const elements = {
+                dnaSequence: document.getElementById('dna-sequence'),
+                mutationRate: document.getElementById('mutation-rate'),
+                mutationRateValue: document.getElementById('mutation-rate-value'),
+                mutatedSequence: document.getElementById('mutated-sequence'),
+                binaryData: document.getElementById('binary-data'),
+                encodedData: document.getElementById('encoded-data'),
+                dnaCodons: document.getElementById('dna-codons'),
+                simulateMutationsBtn: document.getElementById('simulateMutationsBtn'),
+                encodeBinaryBtn: document.getElementById('encodeBinaryBtn')
+            };
+
+            // Public methods
+            return {
+                init: function() {
+                    // Mutation rate slider event
+                    elements.mutationRate.addEventListener('input', function() {
+                        elements.mutationRateValue.textContent = this.value + '%';
+                    });
+
+                    // Button events
+                    elements.simulateMutationsBtn.addEventListener('click', this.simulateMutations.bind(this));
+                    elements.encodeBinaryBtn.addEventListener('click', this.encodeBinary.bind(this));
+                },
+
+                simulateMutations: function() {
+                    const sequence = elements.dnaSequence.value.toUpperCase();
+                    const mutationRate = parseInt(elements.mutationRate.value) / 100;
+                    
+                    if (!/^[ATCG]+$/.test(sequence)) {
+                        alert("Please enter a valid DNA sequence (only A, T, C, G)");
+                        return;
+                    }
+
+                    const mutatedSequence = sequence
+                        .split('')
+                        .map(nucleotide => Math.random() < mutationRate ? this.randomBase(nucleotide) : nucleotide)
+                        .join('');
+                    
+                    elements.mutatedSequence.textContent = mutatedSequence;
+                },
+
+                randomBase: function(exclude) {
+                    const bases = ['A', 'T', 'C', 'G'].filter(base => base !== exclude);
+                    return bases[Math.floor(Math.random() * bases.length)];
+                },
+
+                encodeBinary: function() {
+                    const binaryData = elements.binaryData.value;
+                    
+                    if (!/^[01]+$/.test(binaryData) || binaryData.length > 8) {
+                        alert("Please enter valid binary data (max 8 bits, 0 or 1 only)");
+                        return;
+                    }
+
+                    // Simple encoding scheme
+                    const codonMap = {
+                        '00': 'AAA',
+                        '01': 'AAT',
+                        '10': 'AAC',
+                        '11': 'AAG',
+                        '0': 'AA',
+                        '1': 'AT'
+                    };
+
+                    let encoded = '';
+                    for (let i = 0; i < binaryData.length; i += 2) {
+                        const bits = binaryData.slice(i, i+2);
+                        encoded += codonMap[bits] || codonMap[bits[0]];
+                    }
+
+                    elements.encodedData.textContent = binaryData;
+                    elements.dnaCodons.textContent = encoded;
+                }
+            };
+        })();
+
+        // Initialize BioCode module
+        bioCodeModule.init();
+
+        // ========== Genetics Module ==========
+        const geneticsModule = (function() {
+            // Gene data
+            const diseaseGenes = {
+                'Cystic Fibrosis': ['CFTR'],
+                'Sickle Cell Anemia': ['HBB'],
+                'Huntington\'s Disease': ['HTT'],
+                'Tay-Sachs Disease': ['HEXA'],
+                'Hemophilia': ['F8', 'F9'],
+                'Duchenne Muscular Dystrophy': ['DMD'],
+                'Phenylketonuria (PKU)': ['PAH'],
+                'Thalassemia': ['HBA1', 'HBA2', 'HBB'],
+                'Familial Hypercholesterolemia': ['LDLR', 'APOB', 'PCSK9'],
+                'BRCA-related Cancer': ['BRCA1', 'BRCA2'],
+                'Keloid Disorder': ['TGFB3', 'ASH1L', 'NEDD4', 'FOXL2', 'SMAD3']
+            };
+
+            const geneSequences = {
+                'CFTR': 'ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+                'HBB': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+                'HTT': 'ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+                'HEXA': 'ATGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+                'F8': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+                'F9': 'ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+                'DMD': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+                'PAH': 'ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+                'HBA1': 'ATGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+                'HBA2': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+                'LDLR': 'ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+                'APOB': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+                'PCSK9': 'ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+                'BRCA1': 'ATGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+                'BRCA2': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+                'TGFB3': 'ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+                'ASH1L': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG',
+                'NEDD4': 'ATGCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+                'FOXL2': 'ATGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG',
+                'SMAD3': 'ATGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG'
+            };
+
+            const geneFunctions = {
+                'CFTR': 'Encodes the cystic fibrosis transmembrane conductance regulator, a chloride channel',
+                'HBB': 'Encodes the beta subunit of hemoglobin, mutations cause sickle cell disease',
+                'HTT': 'Huntingtin protein, expanded CAG repeats cause Huntington\'s disease',
+                'HEXA': 'Hexosaminidase A enzyme, deficiency causes Tay-Sachs disease',
+                'F8': 'Coagulation factor VIII, deficiency causes Hemophilia A',
+                'F9': 'Coagulation factor IX, deficiency causes Hemophilia B',
+                'DMD': 'Dystrophin protein, mutations cause Duchenne muscular dystrophy',
+                'PAH': 'Phenylalanine hydroxylase, deficiency causes Phenylketonuria (PKU)',
+                'HBA1': 'Alpha-1 globin chain, mutations cause alpha-thalassemia',
+                'HBA2': 'Alpha-2 globin chain, mutations cause alpha-thalassemia',
+                'LDLR': 'Low-density lipoprotein receptor, mutations cause familial hypercholesterolemia',
+                'APOB': 'Apolipoprotein B, mutations cause familial hypercholesterolemia',
+                'PCSK9': 'Proprotein convertase subtilisin/kexin type 9, affects LDL receptor degradation',
+                'BRCA1': 'Breast cancer type 1 susceptibility protein',
+                'BRCA2': 'Breast cancer type 2 susceptibility protein',
+                'TGFB3': 'Encodes transforming growth factor beta 3, involved in tissue repair and fibrosis',
+                'ASH1L': 'Histone-lysine N-methyltransferase involved in chromatin regulation',
+                'NEDD4': 'E3 ubiquitin-protein ligase involved in protein degradation',
+                'FOXL2': 'Forkhead transcription factor important for ovarian development',
+                'SMAD3': 'Signal transducer and transcriptional modulator in TGF-beta pathway'
+            };
+
+            // DOM elements
+            const elements = {
+                diseaseSelector: document.getElementById('disease-selector'),
+                geneSelector: document.getElementById('gene-selector'),
+                geneSelectionContainer: document.getElementById('gene-selection-container'),
+                geneSequence: document.getElementById('gene-sequence'),
+                snpForm: document.getElementById('snp-form'),
+                snpPosition: document.getElementById('snp-position'),
+                snpMutation: document.getElementById('snp-mutation'),
+                functionalPrediction: document.getElementById('functional-prediction'),
+                crisprDesign: document.getElementById('crispr-design'),
+                registerIpnft: document.getElementById('register-ipnft'),
+                ipnftResult: document.getElementById('ipnft-result')
+            };
+
+            // Public methods
+            return {
+                init: function() {
+                    // Disease selector change event
+                    elements.diseaseSelector.addEventListener('change', function() {
+                        const disease = this.value;
+                        
+                        if (disease) {
+                            // Clear previous options
+                            elements.geneSelector.innerHTML = '<option value="">Select a gene</option>';
+                            
+                            // Add new options
+                            diseaseGenes[disease].forEach(gene => {
+                                const option = document.createElement('option');
+                                option.value = gene;
+                                option.textContent = gene;
+                                elements.geneSelector.appendChild(option);
+                            });
+                            
+                            // Show gene selection
+                            elements.geneSelectionContainer.style.display = 'block';
+                        } else {
+                            // Hide gene selection
+                            elements.geneSelectionContainer.style.display = 'none';
+                            elements.geneSequence.textContent = '';
+                        }
+                    });
+
+                    // Gene selector change event
+                    elements.geneSelector.addEventListener('change', function() {
+                        const gene = this.value;
+                        if (gene) {
+                            elements.geneSequence.textContent = geneSequences[gene];
+                            elements.snpPosition.max = geneSequences[gene].length - 1;
+                        } else {
+                            elements.geneSequence.textContent = '';
+                        }
+                    });
+
+                    // SNP form submission
+                    elements.snpForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const gene = elements.geneSelector.value;
+                        const position = parseInt(elements.snpPosition.value);
+                        const mutation = elements.snpMutation.value;
+                        
+                        if (!gene) {
+                            alert('Please select a gene first');
+                            return;
+                        }
+                        
+                        const sequence = geneSequences[gene];
+                        if (position >= sequence.length) {
+                            alert('Position is out of range for this gene');
+                            return;
+                        }
+                        
+                        const originalBase = sequence[position];
+                        const mutatedSequence = sequence.substring(0, position) + mutation + sequence.substring(position + 1);
+                        
+                        // Display functional impact
+                        const impact = geneticsModule.predictFunctionalImpact(gene, position, originalBase, mutation);
+                        elements.functionalPrediction.innerHTML = `
+                            <p><strong>Original Sequence:</strong> ${sequence}</p>
+                            <p><strong>Mutated Sequence:</strong> ${mutatedSequence}</p>
+                            <p><strong>Mutation:</strong> ${originalBase}${position+1}${mutation}</p>
+                            <p><strong>Gene Function:</strong> ${geneFunctions[gene]}</p>
+                            <p><strong>Predicted Impact:</strong> ${impact}</p>
+                        `;
+                        
+                        // Generate CRISPR design
+                        const crispr = geneticsModule.designCRISPR(gene, position, mutation);
+                        elements.crisprDesign.innerHTML = `
+                            <p><strong>Guide RNA:</strong> ${crispr.guideRNA}</p>
+                            <p><strong>Target Sequence:</strong> ${crispr.targetSequence}</p>
+                            <p><strong>Repair Template:</strong> ${crispr.repairTemplate}</p>
+                        `;
+                        
+                        // Enable IP-NFT registration
+                        elements.registerIpnft.disabled = false;
+                    });
+
+                    // IP-NFT registration
+                    elements.registerIpnft.addEventListener('click', function() {
+                        const gene = elements.geneSelector.value;
+                        const position = elements.snpPosition.value;
+                        const mutation = elements.snpMutation.value;
+                        
+                        elements.ipnftResult.innerHTML = `
+                            <div class="alert alert-info">
+                                <p>Registering IP-NFT for ${gene} mutation at position ${position} (${mutation})...</p>
+                                <p>Transaction hash: 0x${Math.random().toString(16).substr(2, 10)}...${Math.random().toString(16).substr(2, 4)}</p>
+                                <p>IP-NFT successfully minted!</p>
+                                <p>View on blockchain explorer: <a href="#" target="_blank">https://explorer.example.com/tx/0x123...abc</a></p>
+                            </div>
+                        `;
+                        
+                        this.disabled = true;
+                    });
+                },
+
+                predictFunctionalImpact: function(gene, position, original, mutation) {
+                    // Simplified prediction algorithm
+                    const impacts = [
+                        "Likely benign - no significant functional impact expected",
+                        "Possibly damaging - may affect protein function moderately",
+                        "Probably damaging - likely to affect protein function significantly",
+                        "Pathogenic - known disease-causing mutation"
+                    ];
+                    
+                    const severity = (gene.length + position + original.charCodeAt(0) + mutation.charCodeAt(0)) % 4;
+                    return impacts[severity];
+                },
+
+                designCRISPR: function(gene, position, mutation) {
+                    const sequence = geneSequences[gene];
+                    const target = sequence.substring(Math.max(0, position-10), Math.min(sequence.length, position+10));
+                    const pam = 'NGG';
+                    
+                    return {
+                        guideRNA: target + pam,
+                        targetSequence: sequence.substring(position-5, position+5),
+                        repairTemplate: sequence.substring(position-5, position) + mutation + sequence.substring(position+1, position+5)
+                    };
+                }
+            };
+        })();
+
+        // Initialize Genetics module
+        geneticsModule.init();
+
+        // ========== Monitoring Module ==========
+        const monitoringModule = (function() {
+            // DOM elements
+            const elements = {
+                video: document.getElementById('video'),
+                canvas: document.getElementById('canvas'),
+                heartRateDisplay: document.getElementById('heart-rate'),
+                healthChart: document.getElementById('health-chart'),
+                lastReading: document.getElementById('last-reading'),
+                avgBpm: document.getElementById('avg-bpm'),
+                healthStatus: document.getElementById('health-status')
+            };
+
+            // State
+            const state = {
+                redChannelData: [],
+                heartRateInterval: null,
+                FRAME_RATE: 30,
+                SAMPLE_WINDOW: 10 * 30, // 10 seconds of data
+                heartRateHistory: [],
+                chart: null
+            };
+
+            // Public methods
+            return {
+                init: function() {
+                    this.startVideo();
+                    this.initChart();
+                },
+
+                startVideo: async function() {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: 'environment' }
+                        });
+                        elements.video.srcObject = stream;
+                        elements.video.play();
+                        this.processFrames();
+                    } catch (err) {
+                        console.error('Error accessing camera:', err);
+                        alert('Please allow camera access for heart rate monitoring.');
+                    }
+                },
+
+                processFrames: function() {
+                    elements.canvas.width = elements.video.videoWidth;
+                    elements.canvas.height = elements.video.videoHeight;
+                    const ctx = elements.canvas.getContext('2d');
+
+                    state.heartRateInterval = setInterval(() => {
+                        ctx.drawImage(elements.video, 0, 0, elements.canvas.width, elements.canvas.height);
+                        const imageData = ctx.getImageData(
+                            elements.canvas.width / 2 - 10,
+                            elements.canvas.height / 2 - 10,
+                            20,
+                            20
+                        );
+                        const redChannel = this.extractRedChannel(imageData.data);
+                        const avgRed = redChannel.reduce((sum, val) => sum + val, 0) / redChannel.length;
+
+                        state.redChannelData.push(avgRed);
+                        if (state.redChannelData.length > state.SAMPLE_WINDOW) {
+                            state.redChannelData.shift();
+                        }
+
+                        if (state.redChannelData.length === state.SAMPLE_WINDOW) {
+                            const bpm = this.calculateHeartRate(state.redChannelData);
+                            elements.heartRateDisplay.textContent = `Heart Rate: ${bpm} BPM`;
+                            
+                            // Update history and chart
+                            const now = new Date();
+                            state.heartRateHistory.push({
+                                time: now,
+                                bpm: bpm
+                            });
+                            
+                            // Keep only last 10 readings
+                            if (state.heartRateHistory.length > 10) {
+                                state.heartRateHistory.shift();
+                            }
+                            
+                            this.updateChart();
+                            this.updateHealthStatus(bpm);
+                        }
+                    }, 1000 / state.FRAME_RATE);
+                },
+
+                extractRedChannel: function(pixelData) {
+                    const redChannel = [];
+                    for (let i = 0; i < pixelData.length; i += 4) {
+                        redChannel.push(pixelData[i]);
+                    }
+                    return redChannel;
+                },
+
+                calculateHeartRate: function(data) {
+                    // Simplified heart rate calculation
+                    let maxIndex = 0;
+                    let maxMagnitude = 0;
+                    for (let i = 0; i < data.length; i++) {
+                        if (data[i] > maxMagnitude) {
+                            maxMagnitude = data[i];
+                            maxIndex = i;
+                        }
+                    }
+                    const frequency = maxIndex * (state.FRAME_RATE / data.length);
+                    return Math.round(frequency * 60);
+                },
+
+                initChart: function() {
+                    state.chart = new Chart(elements.healthChart, {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [{
+                                label: 'Heart Rate (BPM)',
+                                data: [],
+                                borderColor: '#e91e63',
+                                backgroundColor: 'rgba(233, 30, 99, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: false,
+                                    suggestedMin: 50,
+                                    suggestedMax: 120
+                                }
+                            }
+                        }
+                    });
+                },
+
+                updateChart: function() {
+                    const labels = state.heartRateHistory.map(reading => 
+                        reading.time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})
+                    );
+                    const data = state.heartRateHistory.map(reading => reading.bpm);
+                    
+                    state.chart.data.labels = labels;
+                    state.chart.data.datasets[0].data = data;
+                    state.chart.update();
+                    
+                    // Update stats
+                    const avg = Math.round(data.reduce((sum, val) => sum + val, 0) / data.length);
+                    elements.avgBpm.textContent = avg;
+                    elements.lastReading.textContent = `${data[data.length-1]} BPM at ${labels[labels.length-1]}`;
+                },
+
+                updateHealthStatus: function(bpm) {
+                    if (bpm < 60 || bpm > 100) {
+                        elements.healthStatus.textContent = 'Critical';
+                        elements.healthStatus.className = 'monitoring-health-status status-critical';
+                    } else if (bpm < 70 || bpm > 90) {
+                        elements.healthStatus.textContent = 'Warning';
+                        elements.healthStatus.className = 'monitoring-health-status status-warning';
+                    } else {
+                        elements.healthStatus.textContent = 'Normal';
+                        elements.healthStatus.className = 'monitoring-health-status status-normal';
+                    }
+                }
+            };
+        })();
+
+        // Initialize Monitoring module
+        monitoringModule.init();
+
+        // ========== Documents Module ==========
+        const documentsModule = (function() {
+            // State
+            const state = {
+                mediaStream: null,
+                capturedDocument: null
+            };
+
+            // DOM elements
+            const elements = {
+                cameraPreview: document.getElementById('cameraPreview'),
+                startCameraBtn: document.getElementById('startCameraBtn'),
+                captureBtn: document.getElementById('captureBtn'),
+                uploadBtn: document.getElementById('uploadBtn'),
+                documentPreview: document.getElementById('documentPreview'),
+                blockchainStatus: document.getElementById('blockchainStatus'),
+                docType: document.getElementById('docType')
+            };
+
+            // Public methods
+            return {
+                init: function() {
+                    // Initialize event listeners
+                    elements.startCameraBtn.addEventListener('click', this.initCamera.bind(this));
+                    elements.captureBtn.addEventListener('click', this.captureDocument.bind(this));
+                    elements.uploadBtn.addEventListener('click', this.uploadToBlockchain.bind(this));
+                },
+
+                initCamera: async function() {
+                    try {
+                        // Check for camera support
+                        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                            throw new Error('Camera API not supported in this browser');
+                        }
+                        
+                        // Request camera access
+                        state.mediaStream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                facingMode: 'environment',
+                                width: { ideal: 1280 },
+                                height: { ideal: 720 }
+                            },
+                            audio: false
+                        });
+                        
+                        // Display camera stream
+                        elements.cameraPreview.srcObject = state.mediaStream;
+                        elements.cameraPreview.style.display = 'block';
+                        elements.captureBtn.disabled = false;
+                        elements.startCameraBtn.disabled = true;
+                        
+                        // Handle camera errors
+                        elements.cameraPreview.onerror = () => {
+                            this.showError('Failed to load camera stream');
+                            this.stopCamera();
+                        };
+                        
+                    } catch (error) {
+                        this.showError(`Camera Error: ${error.message}`);
+                        console.error('Camera initialization failed:', error);
+                    }
+                },
+
+                captureDocument: async function() {
+                    try {
+                        if (!state.mediaStream) {
+                            throw new Error('Camera not initialized');
+                        }
+                        
+                        const video = elements.cameraPreview;
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        
+                        // Draw video frame to canvas
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        
+                        // Create document object
+                        state.capturedDocument = {
+                            type: elements.docType.value,
+                            timestamp: new Date().toISOString(),
+                            imageData: canvas.toDataURL('image/jpeg', 0.9),
+                            metadata: {
+                                resolution: `${canvas.width}x${canvas.height}`,
+                                device: navigator.userAgent
+                            }
+                        };
+                        
+                        // Display preview
+                        elements.documentPreview.innerHTML = `
+                            <img src="${state.capturedDocument.imageData}" alt="Captured Document" class="img-thumbnail">
+                            <p class="mt-2">Document ready for blockchain storage</p>
+                        `;
+                        
+                        elements.uploadBtn.disabled = false;
+                        this.stopCamera();
+                        
+                    } catch (error) {
+                        this.showError(`Capture Error: ${error.message}`);
+                        console.error('Document capture failed:', error);
+                    }
+                },
+
+                uploadToBlockchain: async function() {
+                    if (!state.capturedDocument) {
+                        this.showError('No document captured');
+                        return;
+                    }
+                    
+                    try {
+                        // Show loading state
+                        elements.uploadBtn.disabled = true;
+                        elements.blockchainStatus.innerHTML = `
+                            <div class="d-flex align-items-center text-primary">
+                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span>Processing document...</span>
+                            </div>
+                        `;
+                        
+                        // Convert to PDF
+                        const { PDFDocument } = PDFLib;
+                        const pdfDoc = await PDFDocument.create();
+                        const page = pdfDoc.addPage([600, 800]);
+                        
+                        // Embed the image
+                        const imageBytes = await fetch(state.capturedDocument.imageData)
+                            .then(res => res.arrayBuffer());
+                        const image = await pdfDoc.embedJpg(imageBytes);
+                        
+                        // Draw image on PDF
+                        const { width, height } = image.scale(0.5);
+                        page.drawImage(image, {
+                            x: 50,
+                            y: 600 - height,
+                            width,
+                            height
+                        });
+                        
+                        // Add metadata
+                        page.drawText(`Document Type: ${state.capturedDocument.type}`, { x: 50, y: 750 });
+                        page.drawText(`Capture Time: ${new Date(state.capturedDocument.timestamp).toLocaleString()}`, { x: 50, y: 730 });
+                        
+                        // Save PDF
+                        const pdfBytes = await pdfDoc.save();
+                        
+                        // In a real implementation, you would send to MindsDB blockchain API
+                        // This is a simulation for demonstration purposes
+                        this.simulateBlockchainUpload(pdfBytes);
+                        
+                    } catch (error) {
+                        this.showError(`Processing Error: ${error.message}`);
+                        console.error('Document processing failed:', error);
+                        elements.uploadBtn.disabled = false;
+                    }
+                },
+
+                simulateBlockchainUpload: function(pdfBytes) {
+                    setTimeout(() => {
+                        // Generate fake transaction hash
+                        const txHash = `0x${Array(64).fill(0).map(() => 
+                            Math.floor(Math.random() * 16).toString(16)).join('')}`;
+                        
+                        // Update UI with success
+                        elements.blockchainStatus.innerHTML = `
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle me-2"></i>
+                                Document successfully stored in blockchain!
+                                <div class="mt-2">
+                                    <small>Transaction Hash:</small>
+                                    <div class="text-truncate">${txHash}</div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Reset capture state
+                        state.capturedDocument = null;
+                        elements.documentPreview.innerHTML = '';
+                        elements.uploadBtn.disabled = true;
+                        elements.captureBtn.disabled = true;
+                        elements.startCameraBtn.disabled = false;
+                        
+                        // In a real app, you would also update the patient timeline
+                        console.log('Document stored in blockchain:', {
+                            type: state.capturedDocument.type,
+                            timestamp: state.capturedDocument.timestamp,
+                            transaction: txHash
+                        });
+                        
+                    }, 3000);
+                },
+
+                stopCamera: function() {
+                    if (state.mediaStream) {
+                        state.mediaStream.getTracks().forEach(track => track.stop());
+                        state.mediaStream = null;
+                    }
+                    elements.cameraPreview.srcObject = null;
+                    elements.cameraPreview.style.display = 'none';
+                },
+
+                showError: function(message) {
+                    elements.blockchainStatus.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            ${message}
                         </div>
-                        <span>Processing document...</span>
-                    </div>
-                `;
-                
-                // Convert to PDF
-                const { PDFDocument } = PDFLib;
-                const pdfDoc = await PDFDocument.create();
-                const page = pdfDoc.addPage([600, 800]);
-                
-                // Embed the image
-                const imageBytes = await fetch(capturedDocument.imageData)
-                    .then(res => res.arrayBuffer());
-                const image = await pdfDoc.embedJpg(imageBytes);
-                
-                // Draw image on PDF
-                const { width, height } = image.scale(0.5);
-                page.drawImage(image, {
-                    x: 50,
-                    y: 600 - height,
-                    width,
-                    height
-                });
-                
-                // Add metadata
-                page.drawText(`Document Type: ${capturedDocument.type}`, { x: 50, y: 750 });
-                page.drawText(`Capture Time: ${new Date(capturedDocument.timestamp).toLocaleString()}`, { x: 50, y: 730 });
-                
-                // Save PDF
-                const pdfBytes = await pdfDoc.save();
-                
-                // In a real implementation, you would send to MindsDB blockchain API
-                // This is a simulation for demonstration purposes
-                simulateBlockchainUpload(pdfBytes);
-                
-            } catch (error) {
-                showError(`Processing Error: ${error.message}`);
-                console.error('Document processing failed:', error);
-                docElements.uploadBtn.disabled = false;
-            }
-        }
+                    `;
+                }
+            };
+        })();
 
-        // Simulate blockchain upload (replace with actual MindsDB API call)
-        function simulateBlockchainUpload(pdfBytes) {
-            setTimeout(() => {
-                // Generate fake transaction hash
-                const txHash = `0x${Array(64).fill(0).map(() => 
-                    Math.floor(Math.random() * 16).toString(16)).join('')}`;
-                
-                // Update UI with success
-                docElements.blockchainStatus.innerHTML = `
-                    <div class="alert alert-success">
-                        <i class="fas fa-check-circle me-2"></i>
-                        Document successfully stored in blockchain!
-                        <div class="mt-2">
-                            <small>Transaction Hash:</small>
-                            <div class="text-truncate">${txHash}</div>
-                        </div>
-                    </div>
-                `;
-                
-                // Reset capture state
-                capturedDocument = null;
-                docElements.documentPreview.innerHTML = '';
-                docElements.uploadBtn.disabled = true;
-                docElements.captureBtn.disabled = true;
-                docElements.startCameraBtn.disabled = false;
-                
-                // In a real app, you would also update the patient timeline
-                console.log('Document stored in blockchain:', {
-                    type: capturedDocument.type,
-                    timestamp: capturedDocument.timestamp,
-                    transaction: txHash
-                });
-                
-            }, 3000);
-        }
-
-        // Stop camera stream
-        function stopCamera() {
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
-            }
-            docElements.cameraPreview.srcObject = null;
-            docElements.cameraPreview.style.display = 'none';
-        }
-
-        // Show error message
-        function showError(message) {
-            docElements.blockchainStatus.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    ${message}
-                </div>
-            `;
-        }
+        // Initialize Documents module
+        documentsModule.init();
 
         // Clean up on page unload
         window.addEventListener('beforeunload', () => {
-            stopCamera();
+            documentsModule.stopCamera();
         });
-      </script>
+    </script>
 </body>
 </html>

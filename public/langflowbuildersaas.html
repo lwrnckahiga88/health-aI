@@ -1,0 +1,1909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Langflow Builder - AI Workflow Microservice</title>
+  <meta name="theme-color" content="#6366f1" />
+  <meta name="description" content="Visual AI workflow builder microservice for app developers" />
+  <link rel="manifest" href="manifest.json" />
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <style>
+    :root { 
+      --bg: #0f0f23;
+      --panel: #1a1a2e;
+      --node: #16213e;
+      --node-border: #3b4d6b;
+      --edge: #22d3ee;
+      --accent: #6366f1;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --text: #e2e8f0;
+    }
+    
+    * { box-sizing: border-box; }
+    
+    html, body { 
+      height: 100%; 
+      background: var(--bg); 
+      color: var(--text); 
+      margin: 0; 
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+    }
+    
+    .app { 
+      display: flex; 
+      flex-direction: column; 
+      height: 100vh; 
+    }
+    
+    .panel { 
+      background: var(--panel); 
+      border-bottom: 1px solid var(--node-border); 
+    }
+    
+    .btn {
+      background: var(--node);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      padding: 8px 16px;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.875rem;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    
+    .btn:hover {
+      background: #1e2a47;
+      border-color: var(--accent);
+    }
+    
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    
+    .btn.primary:hover {
+      background: #5b5bf6;
+    }
+    
+    .btn.success {
+      background: var(--success);
+      border-color: var(--success);
+      color: white;
+    }
+    
+    .btn.warning {
+      background: var(--warning);
+      border-color: var(--warning);
+      color: #111827;
+    }
+    
+    .btn.error {
+      background: var(--error);
+      border-color: var(--error);
+      color: white;
+    }
+    
+    /* Node Styles */
+    .flow-node {
+      position: absolute;
+      min-width: 200px;
+      max-width: 280px;
+      background: var(--node);
+      border: 1px solid var(--node-border);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 10;
+    }
+    
+    .flow-node:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+    }
+    
+    .flow-node.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+    }
+    
+    .flow-node.running {
+      border-color: var(--success);
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    }
+    
+    .node-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--node-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .node-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+    
+    .node-type {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--accent);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    
+    .node-body {
+      padding: 16px;
+    }
+    
+    .node-config {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      resize: vertical;
+      min-height: 80px;
+      width: 100%;
+    }
+    
+    .node-config:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    
+    .node-status {
+      margin-top: 12px;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    
+    .status-idle { background: rgba(100, 116, 139, 0.1); color: #94a3b8; }
+    .status-running { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    .status-error { background: rgba(239, 68, 68, 0.1); color: var(--error); }
+    .status-success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    
+    /* Port Styles */
+    .node-port {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--node-border);
+      border: 3px solid var(--node);
+      cursor: crosshair;
+      transition: all 0.2s ease;
+      z-index: 20;
+    }
+    
+    .node-port:hover {
+      background: var(--accent);
+      transform: scale(1.2);
+    }
+    
+    .node-port.input {
+      left: -7px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    
+    .node-port.output {
+      right: -7px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    
+    .node-port.connected {
+      background: var(--success);
+    }
+    
+    /* Canvas */
+    #canvas {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+      background: 
+        radial-gradient(circle at 25% 25%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+        linear-gradient(180deg, var(--bg) 0%, #0a0a1a 100%);
+    }
+    
+    #canvas::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 20px 20px;
+      pointer-events: none;
+    }
+    
+    #edges-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+    
+    .flow-edge {
+      stroke: var(--edge);
+      stroke-width: 2;
+      fill: none;
+      filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.3));
+    }
+    
+    .flow-edge.active {
+      stroke: var(--success);
+      stroke-width: 3;
+      animation: flow 2s linear infinite;
+    }
+    
+    @keyframes flow {
+      0% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: 20; }
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      width: 300px;
+      background: var(--panel);
+      border-right: 1px solid var(--node-border);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .sidebar-section {
+      padding: 20px;
+      border-bottom: 1px solid var(--node-border);
+    }
+    
+    .sidebar-title {
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+    
+    .node-palette {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    
+    .palette-item {
+      padding: 12px;
+      background: var(--node);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+      font-size: 0.8rem;
+    }
+    
+    .palette-item:hover {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.1);
+    }
+    
+    .palette-item i {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 1.2rem;
+      color: var(--accent);
+    }
+    
+    /* Logs */
+    .logs-container {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      height: 200px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 12px;
+    }
+    
+    .log-entry {
+      margin-bottom: 4px;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    
+    .log-info { color: #94a3b8; }
+    .log-success { color: var(--success); background: rgba(16, 185, 129, 0.1); }
+    .log-warning { color: var(--warning); background: rgba(245, 158, 11, 0.1); }
+    .log-error { color: var(--error); background: rgba(239, 68, 68, 0.1); }
+    
+    /* API Config */
+    .api-config {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      padding: 12px;
+      width: 100%;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: var(--text);
+    }
+    
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--panel);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+    }
+    
+    .toast.show {
+      transform: translateX(0);
+    }
+    
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.error { border-left: 4px solid var(--error); }
+    .toast.warning { border-left: 4px solid var(--warning); }
+    
+    /* PWA Install Prompt */
+    .pwa-install-prompt {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: var(--panel);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      z-index: 1000;
+      max-width: 320px;
+      display: none;
+    }
+    
+    .pwa-install-prompt.show {
+      display: block;
+      animation: slideIn 0.3s ease;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    /* Offline Indicator */
+    .offline-indicator {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: var(--error);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      z-index: 1000;
+      display: none;
+    }
+    
+    .offline-indicator.show {
+      display: block;
+    }
+    
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .app {
+        flex-direction: column;
+      }
+      
+      .sidebar {
+        width: 100%;
+        height: auto;
+        max-height: 40vh;
+        overflow-y: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--node-border);
+      }
+      
+      .flex-1 {
+        height: 60vh;
+      }
+      
+      .btn span {
+        display: none;
+      }
+      
+      .btn {
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="panel p-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <h1 class="text-xl font-bold text-white">
+          <i class="fa fa-project-diagram text-indigo-400"></i>
+          Langflow Builder
+        </h1>
+        <span class="text-sm text-gray-400">v2.1.0 | AI Workflow Microservice</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="btn-install" class="btn primary hidden">
+          <i class="fa fa-download"></i> Install App
+        </button>
+        <button id="btn-save" class="btn primary">
+          <i class="fa fa-save"></i> Save Flow
+        </button>
+        <button id="btn-deploy" class="btn success">
+          <i class="fa fa-rocket"></i> Deploy
+        </button>
+        <button id="btn-run" class="btn warning">
+          <i class="fa fa-play"></i> Execute
+        </button>
+        <button id="btn-stop" class="btn error" disabled>
+          <i class="fa fa-stop"></i> Stop
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex flex-1">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Node Palette -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">Component Library</div>
+        <div class="node-palette">
+          <div class="palette-item" data-type="LLMNode">
+            <i class="fa fa-brain"></i>
+            LLM
+          </div>
+          <div class="palette-item" data-type="PromptNode">
+            <i class="fa fa-comment-alt"></i>
+            Prompt
+          </div>
+          <div class="palette-item" data-type="DataNode">
+            <i class="fa fa-database"></i>
+            Data
+          </div>
+          <div class="palette-item" data-type="APINode">
+            <i class="fa fa-plug"></i>
+            API
+          </div>
+          <div class="palette-item" data-type="TransformNode">
+            <i class="fa fa-cogs"></i>
+            Transform
+          </div>
+          <div class="palette-item" data-type="ConditionalNode">
+            <i class="fa fa-code-branch"></i>
+            Logic
+          </div>
+          <div class="palette-item" data-type="MemoryNode">
+            <i class="fa fa-memory"></i>
+            Memory
+          </div>
+          <div class="palette-item" data-type="OutputNode">
+            <i class="fa fa-export"></i>
+            Output
+          </div>
+        </div>
+      </div>
+
+      <!-- API Configuration -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">API Configuration</div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">OpenAI API Key</label>
+            <input id="openai-key" class="api-config" type="password" placeholder="sk-...">
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Base URL</label>
+            <input id="api-url" class="api-config" value="https://api.openai.com/v1" placeholder="API endpoint">
+          </div>
+        </div>
+      </div>
+
+      <!-- Flow Settings -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">Flow Settings</div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Flow Name</label>
+            <input id="flow-name" class="api-config" value="My AI Workflow" placeholder="Enter flow name">
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Description</label>
+            <textarea id="flow-desc" class="api-config" rows="3" placeholder="Describe your workflow..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Execution Logs -->
+      <div class="sidebar-section flex-1">
+        <div class="sidebar-title">Execution Logs</div>
+        <div id="logs" class="logs-container"></div>
+      </div>
+    </div>
+
+    <!-- Main Canvas -->
+    <div class="flex-1 flex flex-col">
+      <!-- Canvas Toolbar -->
+      <div class="panel p-3 border-b border-gray-700">
+        <div class="flex items-center gap-3">
+          <button id="btn-clear" class="btn">
+            <i class="fa fa-trash"></i> Clear
+          </button>
+          <button id="btn-zoom-fit" class="btn">
+            <i class="fa fa-expand"></i> Fit View
+          </button>
+          <button id="btn-export" class="btn">
+            <i class="fa fa-download"></i> Export JSON
+          </button>
+          <button id="btn-import" class="btn">
+            <i class="fa fa-upload"></i> Import
+          </button>
+          <div class="flex-1"></div>
+          <div class="text-sm text-gray-400">
+            <span id="node-count">0 nodes</span> • 
+            <span id="edge-count">0 connections</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas Area -->
+      <div id="canvas">
+        <svg id="edges-svg"></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="toast">
+  <div id="toast-message"></div>
+</div>
+
+<!-- PWA Install Prompt -->
+<div id="pwa-install-prompt" class="pwa-install-prompt">
+  <div class="font-medium mb-2">Install Langflow Builder</div>
+  <div class="text-sm text-gray-400 mb-3">Install this application on your home screen for quick and easy access</div>
+  <div class="flex gap-2">
+    <button id="pwa-install-cancel" class="btn flex-1">Not Now</button>
+    <button id="pwa-install-confirm" class="btn primary flex-1">Install</button>
+  </div>
+</div>
+
+<!-- Offline Indicator -->
+<div id="offline-indicator" class="offline-indicator">
+  <i class="fa fa-wifi"></i> Offline Mode
+</div>
+
+<script>
+// Service Worker Registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js')
+      .then(function(registration) {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      })
+      .catch(function(error) {
+        console.log('ServiceWorker registration failed: ', error);
+      });
+  });
+}
+
+// Before Install Prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const installBtn = document.getElementById('btn-install');
+  if (installBtn) {
+    installBtn.classList.remove('hidden');
+    installBtn.addEventListener('click', () => {
+      installBtn.classList.add('hidden');
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User accepted the install prompt');
+        } else {
+          console.log('User dismissed the install prompt');
+        }
+        deferredPrompt = null;
+      });
+    });
+  }
+});
+
+// Online/Offline detection
+window.addEventListener('online', function() {
+  document.getElementById('offline-indicator').classList.remove('show');
+  langflowBuilder.log('Connection restored', 'success');
+  langflowBuilder.toast('Back online', 'success');
+});
+
+window.addEventListener('offline', function() {
+  document.getElementById('offline-indicator').classList.add('show');
+  langflowBuilder.log('Connection lost - working offline', 'warning');
+  langflowBuilder.toast('Working offline', 'warning');
+});
+
+class LangflowBuilder {
+  constructor() {
+    this.nodes = new Map();
+    this.edges = new Map();
+    this.selectedNode = null;
+    this.draggedNode = null;
+    this.connecting = false;
+    this.connectionStart = null;
+    this.nodeCounter = 0;
+    this.isRunning = false;
+    
+    this.canvas = document.getElementById('canvas');
+    this.edgesSvg = document.getElementById('edges-svg');
+    this.logs = document.getElementById('logs');
+    
+    this.init();
+  }
+  
+  init() {
+    this.setupEventListeners();
+    this.updateStats();
+    this.loadFromStorage();
+    this.log('Langflow Builder initialized', 'info');
+  }
+  
+  setupEventListeners() {
+    // Node palette
+    document.querySelectorAll('.palette-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        const type = e.currentTarget.dataset.type;
+        this.createNode(type);
+      });
+    });
+    
+    // Toolbar buttons
+    document.getElementById('btn-clear').addEventListener('click', () => this.clearCanvas());
+    document.getElementById('btn-run').addEventListener('click', () => this.executeFlow());
+    document.getElementById('btn-stop').addEventListener('click', () => this.stopExecution());
+    document.getElementById('btn-save').addEventListener('click', () => this.saveFlow());
+    document.getElementById('btn-deploy').addEventListener('click', () => this.deployFlow());
+    document.getElementById('btn-export').addEventListener('click', () => this.exportFlow());
+    document.getElementById('btn-import').addEventListener('click', () => this.importFlow());
+    document.getElementById('btn-zoom-fit').addEventListener('click', () => this.zoomToFit());
+    
+    // Canvas events
+    this.canvas.addEventListener('click', (e) => {
+      if (e.target === this.canvas) {
+        this.deselectAll();
+      }
+    });
+    
+    this.canvas.addEventListener('mousemove', (e) => {
+      if (this.connecting && this.connectionStart) {
+        this.updateConnectionPreview(e);
+      }
+    });
+    
+    this.canvas.addEventListener('mouseup', (e) => {
+      if (this.connecting) {
+        this.finishConnection(e);
+      }
+    });
+    
+    // Touch events for mobile
+    this.canvas.addEventListener('touchstart', (e) => {
+      if (e.target === this.canvas) {
+        this.deselectAll();
+      }
+    }, { passive: true });
+    
+    // PWA install prompt
+    const installPrompt = document.getElementById('pwa-install-prompt');
+    document.getElementById('pwa-install-confirm').addEventListener('click', () => {
+      installPrompt.classList.remove('show');
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('User accepted the install prompt');
+          }
+          deferredPrompt = null;
+        });
+      }
+    });
+    
+    document.getElementById('pwa-install-cancel').addEventListener('click', () => {
+      installPrompt.classList.remove('show');
+      localStorage.setItem('pwaInstallDismissed', 'true');
+    });
+    
+    // Show install prompt after 10 seconds if not already installed
+    if (!window.matchMedia('(display-mode: standalone)').matches && 
+        !localStorage.getItem('pwaInstallDismissed')) {
+      setTimeout(() => {
+        installPrompt.classList.add('show');
+      }, 10000);
+    }
+  }
+  
+  createNode(type, x = null, y = null) {
+    const nodeId = `node_${++this.nodeCounter}`;
+    const rect = this.canvas.getBoundingClientRect();
+    
+    const nodeX = x !== null ? x : rect.width / 2 - 100 + Math.random() * 200;
+    const nodeY = y !== null ? y : rect.height / 2 - 50 + Math.random() * 100;
+    
+    const nodeConfig = this.getNodeConfig(type);
+    const nodeElement = this.createNodeElement(nodeId, type, nodeConfig, nodeX, nodeY);
+    
+    this.canvas.appendChild(nodeElement);
+    
+    const node = {
+      id: nodeId,
+      type: type,
+      element: nodeElement,
+      x: nodeX,
+      y: nodeY,
+      config: nodeConfig,
+      status: 'idle',
+      inputs: [],
+      outputs: [],
+      data: null
+    };
+    
+    this.nodes.set(nodeId, node);
+    this.makeNodeDraggable(node);
+    this.setupNodeEvents(node);
+    
+    this.updateStats();
+    this.log(`Created ${type} node: ${nodeId}`, 'info');
+    this.toast(`${type} node added`, 'success');
+    
+    return node;
+  }
+  
+  getNodeConfig(type) {
+    const configs = {
+      LLMNode: {
+        model: "gpt-3.5-turbo",
+        temperature: 0.7,
+        max_tokens: 500,
+        system_prompt: "You are a helpful assistant."
+      },
+      PromptNode: {
+        template: "Answer the following question: {input}",
+        variables: ["input"]
+      },
+      DataNode: {
+        source: "manual",
+        data: "",
+        format: "text"
+      },
+      APINode: {
+        url: "",
+        method: "GET",
+        headers: {},
+        params: {}
+      },
+      TransformNode: {
+        operation: "format",
+        script: "return input.toUpperCase();"
+      },
+      ConditionalNode: {
+        condition: "input.length > 10",
+        true_path: "continue",
+        false_path: "stop"
+      },
+      MemoryNode: {
+        type: "conversation",
+        max_messages: 10
+      },
+      OutputNode: {
+        format: "json",
+        destination: "response"
+      }
+    };
+    
+    return configs[type] || {};
+  }
+  
+  createNodeElement(id, type, config, x, y) {
+    const div = document.createElement('div');
+    div.className = 'flow-node';
+    div.style.left = `${x}px`;
+    div.style.top = `${y}px`;
+    div.innerHTML = `
+      <div class="node-header">
+        <div class="node-title">${this.getNodeTitle(type)}</div>
+        <div class="node-type">${type}</div>
+      </div>
+      <div class="node-body">
+        <textarea class="node-config" spellcheck="false">${JSON.stringify(config, null, 2)}</textarea>
+        <div class="node-status status-idle">
+          <i class="fa fa-circle"></i> Idle
+        </div>
+      </div>
+      <div class="node-port input" data-port="input"></div>
+      <div class="node-port output" data-port="output"></div>
+      <button class="absolute top-2 right-2 text-gray-400 hover:text-red-400 text-sm">
+        <i class="fa fa-times"></i>
+      </button>
+    `;
+    
+    return div;
+  }
+  
+  getNodeTitle(type) {
+    const titles = {
+      LLMNode: "Language Model",
+      PromptNode: "Prompt Template",
+      DataNode: "Data Source",
+      APINode: "API Call",
+      TransformNode: "Data Transform",
+      ConditionalNode: "Conditional Logic",
+      MemoryNode: "Memory Buffer",
+      OutputNode: "Output Format"
+    };
+    
+    return titles[type] || type;
+  }
+  
+  makeNodeDraggable(node) {
+    let isDragging = false;
+    let startX, startY;
+    
+    const startDrag = (clientX, clientY) => {
+      isDragging = true;
+      startX = clientX - node.x;
+      startY = clientY - node.y;
+      
+      this.selectNode(node);
+    };
+    
+    const doDrag = (clientX, clientY) => {
+      if (!isDragging) return;
+      
+      node.x = clientX - startX;
+      node.y = clientY - startY;
+      node.element.style.left = `${node.x}px`;
+      node.element.style.top = `${node.y}px`;
+      
+      this.updateEdges();
+    };
+    
+    const endDrag = () => {
+      isDragging = false;
+    };
+    
+    // Mouse events
+    node.element.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.node-config') || e.target.closest('.node-port') || e.target.closest('button')) {
+        return;
+      }
+      
+      startDrag(e.clientX, e.clientY);
+      
+      const handleMouseMove = (e) => {
+        doDrag(e.clientX, e.clientY);
+      };
+      
+      const handleMouseUp = () => {
+        endDrag();
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+      
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    });
+    
+    // Touch events for mobile
+    node.element.addEventListener('touchstart', (e) => {
+      if (e.target.closest('.node-config') || e.target.closest('.node-port') || e.target.closest('button')) {
+        return;
+      }
+      
+      const touch = e.touches[0];
+      startDrag(touch.clientX, touch.clientY);
+      e.preventDefault();
+    }, { passive: false });
+    
+    node.element.addEventListener('touchmove', (e) => {
+      const touch = e.touches[0];
+      doDrag(touch.clientX, touch.clientY);
+      e.preventDefault();
+    }, { passive: false });
+    
+    node.element.addEventListener('touchend', (e) => {
+      endDrag();
+      e.preventDefault();
+    }, { passive: false });
+  }
+  
+  setupNodeEvents(node) {
+    // Delete button
+    node.element.querySelector('button').addEventListener('click', () => {
+      this.deleteNode(node.id);
+    });
+    
+    // Config changes
+    node.element.querySelector('.node-config').addEventListener('input', (e) => {
+      try {
+        node.config = JSON.parse(e.target.value);
+        this.log(`Updated config for ${node.id}`, 'info');
+      } catch (err) {
+        this.log(`Invalid JSON in ${node.id}`, 'error');
+      }
+    });
+    
+    // Port connections
+    const outputPort = node.element.querySelector('.node-port.output');
+    outputPort.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      this.startConnection(node, e);
+    });
+    
+    outputPort.addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      this.startConnection(node, e);
+      e.preventDefault();
+    }, { passive: false });
+    
+    const inputPort = node.element.querySelector('.node-port.input');
+    inputPort.addEventListener('mouseup', (e) => {
+      if (this.connecting) {
+        this.completeConnection(node, e);
+      }
+    });
+    
+    inputPort.addEventListener('touchend', (e) => {
+      if (this.connecting) {
+        this.completeConnection(node, e);
+        e.preventDefault();
+      }
+    }, { passive: false });
+  }
+  
+  selectNode(node) {
+    this.deselectAll();
+    node.element.classList.add('selected');
+    this.selectedNode = node;
+  }
+  
+  deselectAll() {
+    this.nodes.forEach(node => {
+      node.element.classList.remove('selected');
+    });
+    this.selectedNode = null;
+  }
+  
+  deleteNode(nodeId) {
+    const node = this.nodes.get(nodeId);
+    if (!node) return;
+    
+    // Remove connected edges
+    this.edges.forEach((edge, edgeId) => {
+      if (edge.from === nodeId || edge.to === nodeId) {
+        this.edges.delete(edgeId);
+      }
+    });
+    
+    // Remove node element
+    node.element.remove();
+    this.nodes.delete(nodeId);
+    
+    this.updateEdges();
+    this.updateStats();
+    this.log(`Deleted node: ${nodeId}`, 'warning');
+  }
+  
+  startConnection(fromNode, event) {
+    this.connecting = true;
+    this.connectionStart = fromNode;
+    
+    // Create preview line
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    line.classList.add('flow-edge');
+    line.style.strokeDasharray = '5,5';
+    line.style.stroke = '#f59e0b';
+    line.id = 'connection-preview';
+    this.edgesSvg.appendChild(line);
+    
+    this.updateConnectionPreview(event);
+  }
+  
+  updateConnectionPreview(event) {
+    const preview = document.getElementById('connection-preview');
+    if (!preview || !this.connectionStart) return;
+    
+    const fromRect = this.connectionStart.element.getBoundingClientRect();
+    const canvasRect = this.canvas.getBoundingClientRect();
+    
+    const fromX = fromRect.right - canvasRect.left - 7;
+    const fromY = fromRect.top + fromRect.height / 2 - canvasRect.top;
+    
+    // Get coordinates from mouse or touch event
+    let toX, toY;
+    if (event.type.includes('touch')) {
+      toX = event.touches[0].clientX - canvasRect.left;
+      toY = event.touches[0].clientY - canvasRect.top;
+    } else {
+      toX = event.clientX - canvasRect.left;
+      toY = event.clientY - canvasRect.top;
+    }
+    
+    const path = this.createBezierPath(fromX, fromY, toX, toY);
+    preview.setAttribute('d', path);
+  }
+  
+  completeConnection(toNode, event) {
+    if (!this.connecting || !this.connectionStart || this.connectionStart === toNode) {
+      this.cancelConnection();
+      return;
+    }
+    
+    const edgeId = `edge_${this.connectionStart.id}_${toNode.id}`;
+    
+    // Check if connection already exists
+    if (this.edges.has(edgeId)) {
+      this.cancelConnection();
+      this.toast('Connection already exists', 'warning');
+      return;
+    }
+    
+    // Create edge
+    const edge = {
+      id: edgeId,
+      from: this.connectionStart.id,
+      to: toNode.id,
+      fromNode: this.connectionStart,
+      toNode: toNode
+    };
+    
+    this.edges.set(edgeId, edge);
+    
+    // Update port visuals
+    this.connectionStart.element.querySelector('.node-port.output').classList.add('connected');
+    toNode.element.querySelector('.node-port.input').classList.add('connected');
+    
+    this.cancelConnection();
+    this.updateEdges();
+    this.updateStats();
+    this.log(`Connected ${this.connectionStart.id} → ${toNode.id}`, 'success');
+    this.toast('Nodes connected', 'success');
+  }
+  
+  finishConnection(event) {
+    this.cancelConnection();
+  }
+  
+  cancelConnection() {
+    this.connecting = false;
+    this.connectionStart = null;
+    
+    const preview = document.getElementById('connection-preview');
+    if (preview) {
+      preview.remove();
+    }
+  }
+  
+  updateEdges() {
+    // Clear existing edges
+    this.edgesSvg.querySelectorAll('.flow-edge:not(#connection-preview)').forEach(edge => {
+      edge.remove();
+    });
+    
+    // Redraw all edges
+    this.edges.forEach(edge => {
+      const fromRect = edge.fromNode.element.getBoundingClientRect();
+      const toRect = edge.toNode.element.getBoundingClientRect();
+      const canvasRect = this.canvas.getBoundingClientRect();
+      
+      const fromX = fromRect.right - canvasRect.left - 7;
+      const fromY = fromRect.top + fromRect.height / 2 - canvasRect.top;
+      const toX = toRect.left - canvasRect.left + 7;
+      const toY = toRect.top + toRect.height / 2 - canvasRect.top;
+      
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.classList.add('flow-edge');
+      path.setAttribute('d', this.createBezierPath(fromX, fromY, toX, toY));
+      path.setAttribute('id', edge.id);
+      
+      // Add click handler for edge deletion
+      path.style.cursor = 'pointer';
+      path.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.deleteEdge(edge.id);
+      });
+      
+      this.edgesSvg.appendChild(path);
+    });
+  }
+  
+  createBezierPath(x1, y1, x2, y2) {
+    const dx = Math.abs(x2 - x1);
+    const controlOffset = Math.min(dx * 0.5, 100);
+    
+    const cx1 = x1 + controlOffset;
+    const cx2 = x2 - controlOffset;
+    
+    return `M ${x1} ${y1} C ${cx1} ${y1} ${cx2} ${y2} ${x2} ${y2}`;
+  }
+  
+  deleteEdge(edgeId) {
+    const edge = this.edges.get(edgeId);
+    if (!edge) return;
+    
+    // Update port visuals
+    const outputPorts = edge.fromNode.element.querySelectorAll('.node-port.output');
+    const inputPorts = edge.toNode.element.querySelectorAll('.node-port.input');
+    
+    // Check if ports have other connections
+    const hasOtherOutputs = Array.from(this.edges.values()).some(e => 
+      e.from === edge.from && e.id !== edgeId
+    );
+    const hasOtherInputs = Array.from(this.edges.values()).some(e => 
+      e.to === edge.to && e.id !== edgeId
+    );
+    
+    if (!hasOtherOutputs) {
+      outputPorts.forEach(port => port.classList.remove('connected'));
+    }
+    if (!hasOtherInputs) {
+      inputPorts.forEach(port => port.classList.remove('connected'));
+    }
+    
+    this.edges.delete(edgeId);
+    this.updateEdges();
+    this.updateStats();
+    this.log(`Deleted connection: ${edgeId}`, 'warning');
+  }
+  
+  async executeFlow() {
+    if (this.isRunning) {
+      this.toast('Flow is already running', 'warning');
+      return;
+    }
+    
+    if (this.nodes.size === 0) {
+      this.toast('No nodes to execute', 'warning');
+      return;
+    }
+    
+    this.isRunning = true;
+    this.updateRunButtons();
+    
+    this.log('🚀 Starting flow execution...', 'info');
+    this.toast('Flow execution started', 'success');
+    
+    try {
+      // Find entry points (nodes with no inputs)
+      const entryNodes = Array.from(this.nodes.values()).filter(node => {
+        return !Array.from(this.edges.values()).some(edge => edge.to === node.id);
+      });
+      
+      if (entryNodes.length === 0) {
+        this.log('⚠️ No entry points found. Creating a cycle or disconnected graph.', 'warning');
+        // Execute all nodes in order
+        const nodesList = Array.from(this.nodes.values());
+        await this.executeNodeSequence(nodesList);
+      } else {
+        // Execute from entry points
+        for (const node of entryNodes) {
+          await this.executeNodeTree(node);
+        }
+      }
+      
+      this.log('✅ Flow execution completed successfully', 'success');
+      this.toast('Flow executed successfully', 'success');
+      
+    } catch (error) {
+      this.log(`❌ Flow execution failed: ${error.message}`, 'error');
+      this.toast('Flow execution failed', 'error');
+    } finally {
+      this.isRunning = false;
+      this.updateRunButtons();
+    }
+  }
+  
+  async executeNodeTree(node, visited = new Set()) {
+    if (visited.has(node.id)) {
+      this.log(`🔄 Cycle detected at ${node.id}, skipping`, 'warning');
+      return null;
+    }
+    
+    visited.add(node.id);
+    
+    // Execute current node
+    const result = await this.executeNode(node);
+    
+    // Find and execute connected nodes
+    const connectedEdges = Array.from(this.edges.values()).filter(edge => edge.from === node.id);
+    
+    for (const edge of connectedEdges) {
+      const nextNode = this.nodes.get(edge.to);
+      if (nextNode) {
+        await this.executeNodeTree(nextNode, new Set(visited));
+      }
+    }
+    
+    return result;
+  }
+  
+  async executeNode(node) {
+    this.log(`▶️ Executing ${node.type}: ${node.id}`, 'info');
+    
+    // Update node status
+    this.setNodeStatus(node, 'running');
+    
+    try {
+      let result;
+      
+      switch (node.type) {
+        case 'LLMNode':
+          result = await this.executeLLMNode(node);
+          break;
+        case 'PromptNode':
+          result = await this.executePromptNode(node);
+          break;
+        case 'DataNode':
+          result = await this.executeDataNode(node);
+          break;
+        case 'APINode':
+          result = await this.executeAPINode(node);
+          break;
+        case 'TransformNode':
+          result = await this.executeTransformNode(node);
+          break;
+        case 'ConditionalNode':
+          result = await this.executeConditionalNode(node);
+          break;
+        case 'MemoryNode':
+          result = await this.executeMemoryNode(node);
+          break;
+        case 'OutputNode':
+          result = await this.executeOutputNode(node);
+          break;
+        default:
+          result = `Executed ${node.type}`;
+      }
+      
+      node.data = result;
+      this.setNodeStatus(node, 'success');
+      this.log(`✅ ${node.id} completed: ${JSON.stringify(result).substring(0, 100)}...`, 'success');
+      
+      return result;
+      
+    } catch (error) {
+      this.setNodeStatus(node, 'error');
+      this.log(`❌ ${node.id} failed: ${error.message}`, 'error');
+      throw error;
+    }
+  }
+  
+  async executeLLMNode(node) {
+    const apiKey = document.getElementById('openai-key').value;
+    const apiUrl = document.getElementById('api-url').value;
+    
+    if (!apiKey && navigator.onLine) {
+      throw new Error('OpenAI API key not configured');
+    }
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+    
+    // Mock response (in real implementation, call OpenAI API)
+    const mockResponse = {
+      id: 'chatcmpl-' + Math.random().toString(36).substr(2, 9),
+      object: 'chat.completion',
+      model: node.config.model || 'gpt-3.5-turbo',
+      choices: [{
+        message: {
+          role: 'assistant',
+          content: `This is a simulated response from ${node.config.model}. Input processed successfully with temperature ${node.config.temperature}.`
+        },
+        finish_reason: 'stop'
+      }],
+      usage: {
+        prompt_tokens: 50,
+        completion_tokens: 30,
+        total_tokens: 80
+      }
+    };
+    
+    return mockResponse.choices[0].message.content;
+  }
+  
+  async executePromptNode(node) {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    let template = node.config.template || "Process: {input}";
+    const variables = node.config.variables || ['input'];
+    
+    // Replace variables with sample data
+    variables.forEach(variable => {
+      template = template.replace(`{${variable}}`, `sample_${variable}_data`);
+    });
+    
+    return template;
+  }
+  
+  async executeDataNode(node) {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    if (node.config.source === 'manual') {
+      return node.config.data || "Sample data from manual input";
+    } else if (node.config.source === 'api') {
+      return "Data fetched from external API";
+    }
+    
+    return "Default data source";
+  }
+  
+  async executeAPINode(node) {
+    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
+    
+    const mockResponse = {
+      status: 200,
+      data: {
+        message: `API call to ${node.config.url || 'https://api.example.com'}`,
+        method: node.config.method || 'GET',
+        timestamp: new Date().toISOString(),
+        response_time: Math.floor(Math.random() * 500) + 100
+      }
+    };
+    
+    return mockResponse;
+  }
+  
+  async executeTransformNode(node) {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    const operation = node.config.operation || 'format';
+    const mockInput = "sample input data";
+    
+    switch (operation) {
+      case 'format':
+        return mockInput.toUpperCase();
+      case 'filter':
+        return mockInput.split(' ').filter(word => word.length > 3).join(' ');
+      case 'extract':
+        return mockInput.match(/\w+/g) || [];
+      default:
+        return `Transformed: ${mockInput}`;
+    }
+  }
+  
+  async executeConditionalNode(node) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const condition = node.config.condition || "true";
+    const mockEvaluation = Math.random() > 0.5;
+    
+    return {
+      condition: condition,
+      result: mockEvaluation,
+      path: mockEvaluation ? node.config.true_path : node.config.false_path
+    };
+  }
+  
+  async executeMemoryNode(node) {
+    await new Promise(resolve => setTimeout(resolve, 150));
+    
+    // Simulate memory operations
+    const memoryType = node.config.type || 'conversation';
+    const maxMessages = node.config.max_messages || 10;
+    
+    return {
+      type: memoryType,
+      stored_items: Math.floor(Math.random() * maxMessages),
+      memory_usage: Math.floor(Math.random() * 100) + 'KB'
+    };
+  }
+  
+  async executeOutputNode(node) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const format = node.config.format || 'json';
+    const mockOutput = {
+      timestamp: new Date().toISOString(),
+      format: format,
+      data: "Processed workflow output",
+      status: "completed"
+    };
+    
+    if (format === 'json') {
+      return JSON.stringify(mockOutput, null, 2);
+    } else if (format === 'text') {
+      return `Output: ${mockOutput.data} (${mockOutput.status})`;
+    }
+    
+    return mockOutput;
+  }
+  
+  setNodeStatus(node, status) {
+    const statusElement = node.element.querySelector('.node-status');
+    const icons = {
+      idle: 'fa-circle',
+      running: 'fa-spinner fa-spin',
+      success: 'fa-check-circle',
+      error: 'fa-exclamation-circle'
+    };
+    
+    const messages = {
+      idle: 'Idle',
+      running: 'Running...',
+      success: 'Completed',
+      error: 'Error'
+    };
+    
+    statusElement.className = `node-status status-${status}`;
+    statusElement.innerHTML = `<i class="fa ${icons[status]}"></i> ${messages[status]}`;
+    
+    if (status === 'running') {
+      node.element.classList.add('running');
+    } else {
+      node.element.classList.remove('running');
+    }
+    
+    node.status = status;
+  }
+  
+  stopExecution() {
+    if (!this.isRunning) {
+      this.toast('No execution to stop', 'warning');
+      return;
+    }
+    
+    this.isRunning = false;
+    this.updateRunButtons();
+    
+    // Reset all node statuses
+    this.nodes.forEach(node => {
+      this.setNodeStatus(node, 'idle');
+    });
+    
+    this.log('🛑 Flow execution stopped', 'warning');
+    this.toast('Execution stopped', 'warning');
+  }
+  
+  updateRunButtons() {
+    const runBtn = document.getElementById('btn-run');
+    const stopBtn = document.getElementById('btn-stop');
+    
+    runBtn.disabled = this.isRunning;
+    stopBtn.disabled = !this.isRunning;
+    
+    if (this.isRunning) {
+      runBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      stopBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+      runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      stopBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+  }
+  
+  clearCanvas() {
+    if (this.isRunning) {
+      this.toast('Cannot clear canvas while running', 'error');
+      return;
+    }
+    
+    this.nodes.forEach(node => {
+      node.element.remove();
+    });
+    
+    this.nodes.clear();
+    this.edges.clear();
+    this.edgesSvg.innerHTML = '';
+    
+    this.updateStats();
+    this.log('🗑️ Canvas cleared', 'info');
+    this.toast('Canvas cleared', 'success');
+    
+    // Clear from storage
+    localStorage.removeItem('langflow_saved');
+  }
+  
+  saveFlow() {
+    const flowName = document.getElementById('flow-name').value || 'Untitled Flow';
+    const flowDesc = document.getElementById('flow-desc').value || 'No description';
+    
+    const flowData = {
+      metadata: {
+        name: flowName,
+        description: flowDesc,
+        version: "1.0.0",
+        created: new Date().toISOString(),
+        author: "Langflow Builder"
+      },
+      nodes: Array.from(this.nodes.values()).map(node => ({
+        id: node.id,
+        type: node.type,
+        position: { x: node.x, y: node.y },
+        config: node.config,
+        status: node.status
+      })),
+      edges: Array.from(this.edges.values()).map(edge => ({
+        id: edge.id,
+        from: edge.from,
+        to: edge.to
+      }))
+    };
+    
+    localStorage.setItem('langflow_saved', JSON.stringify(flowData));
+    this.log(`💾 Flow saved: ${flowName}`, 'success');
+    this.toast('Flow saved successfully', 'success');
+  }
+  
+  loadFromStorage() {
+    const savedFlow = localStorage.getItem('langflow_saved');
+    if (savedFlow) {
+      try {
+        const flowData = JSON.parse(savedFlow);
+        this.loadFlowData(flowData);
+        this.log('📝 Loaded saved flow from storage', 'info');
+      } catch (error) {
+        this.log('❌ Failed to load saved flow', 'error');
+      }
+    }
+  }
+  
+  deployFlow() {
+    const flowData = this.exportFlowData();
+    
+    // Simulate deployment process
+    this.log('🚀 Deploying flow to production...', 'info');
+    this.toast('Deploying flow...', 'warning');
+    
+    setTimeout(() => {
+      const deploymentId = 'deploy_' + Math.random().toString(36).substr(2, 9);
+      const endpoint = `https://api.langflow.com/v1/flows/${deploymentId}`;
+      
+      this.log(`✅ Flow deployed successfully!`, 'success');
+      this.log(`📡 Endpoint: ${endpoint}`, 'info');
+      this.log(`🔑 API Key: lf_${Math.random().toString(36).substr(2, 20)}`, 'info');
+      
+      this.toast('Flow deployed successfully!', 'success');
+    }, 2000);
+  }
+  
+  exportFlow() {
+    const flowData = this.exportFlowData();
+    const dataStr = JSON.stringify(flowData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `${flowData.metadata.name.replace(/\s+/g, '_')}_flow.json`;
+    link.click();
+    
+    this.toast('Flow exported successfully', 'success');
+    this.log('📤 Flow exported to JSON file', 'info');
+  }
+  
+  exportFlowData() {
+    const flowName = document.getElementById('flow-name').value || 'Untitled Flow';
+    const flowDesc = document.getElementById('flow-desc').value || 'No description';
+    
+    return {
+      metadata: {
+        name: flowName,
+        description: flowDesc,
+        version: "1.0.0",
+        created: new Date().toISOString(),
+        author: "Langflow Builder",
+        nodes_count: this.nodes.size,
+        edges_count: this.edges.size
+      },
+      config: {
+        api_url: document.getElementById('api-url').value,
+        has_api_key: !!document.getElementById('openai-key').value
+      },
+      nodes: Array.from(this.nodes.values()).map(node => ({
+        id: node.id,
+        type: node.type,
+        position: { x: node.x, y: node.y },
+        config: node.config,
+        status: node.status
+      })),
+      edges: Array.from(this.edges.values()).map(edge => ({
+        id: edge.id,
+        from: edge.from,
+        to: edge.to
+      }))
+    };
+  }
+  
+  importFlow() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const flowData = JSON.parse(e.target.result);
+          this.loadFlowData(flowData);
+          this.toast('Flow imported successfully', 'success');
+        } catch (error) {
+          this.toast('Failed to import flow', 'error');
+          this.log(`❌ Import failed: ${error.message}`, 'error');
+        }
+      };
+      reader.readAsText(file);
+    };
+    
+    input.click();
+  }
+  
+  loadFlowData(flowData) {
+    this.clearCanvas();
+    
+    // Load metadata
+    if (flowData.metadata) {
+      document.getElementById('flow-name').value = flowData.metadata.name || '';
+      document.getElementById('flow-desc').value = flowData.metadata.description || '';
+    }
+    
+    // Load config
+    if (flowData.config) {
+      document.getElementById('api-url').value = flowData.config.api_url || '';
+    }
+    
+    // Load nodes
+    if (flowData.nodes) {
+      flowData.nodes.forEach(nodeData => {
+        const node = this.createNode(nodeData.type, nodeData.position.x, nodeData.position.y);
+        node.config = nodeData.config;
+        node.element.querySelector('.node-config').value = JSON.stringify(nodeData.config, null, 2);
+        this.setNodeStatus(node, nodeData.status || 'idle');
+      });
+    }
+    
+    // Load edges
+    if (flowData.edges) {
+      setTimeout(() => {
+        flowData.edges.forEach(edgeData => {
+          const fromNode = this.nodes.get(edgeData.from);
+          const toNode = this.nodes.get(edgeData.to);
+          
+          if (fromNode && toNode) {
+            const edge = {
+              id: edgeData.id,
+              from: edgeData.from,
+              to: edgeData.to,
+              fromNode: fromNode,
+              toNode: toNode
+            };
+            
+            this.edges.set(edgeData.id, edge);
+            
+            // Update port visuals
+            fromNode.element.querySelector('.node-port.output').classList.add('connected');
+            toNode.element.querySelector('.node-port.input').classList.add('connected');
+          }
+        });
+        
+        this.updateEdges();
+        this.updateStats();
+      }, 100);
+    }
+    
+    this.log(`📥 Flow imported: ${flowData.metadata?.name || 'Unknown'}`, 'success');
+  }
+  
+  zoomToFit() {
+    if (this.nodes.size === 0) {
+      this.toast('No nodes to zoom to', 'warning');
+      return;
+    }
+    
+    const canvasRect = this.canvas.getBoundingClientRect();
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    
+    this.nodes.forEach(node => {
+      minX = Math.min(minX, node.x);
+      minY = Math.min(minY, node.y);
+      maxX = Math.max(maxX, node.x + node.element.offsetWidth);
+      maxY = Math.max(maxY, node.y + node.element.offsetHeight);
+    });
+    
+    const nodesWidth = maxX - minX;
+    const nodesHeight = maxY - minY;
+    
+    // Add some padding
+    const padding = 50;
+    minX -= padding;
+    minY -= padding;
+    nodesWidth += padding * 2;
+    nodesHeight += padding * 2;
+    
+    // Calculate scale to fit
+    const scaleX = canvasRect.width / nodesWidth;
+    const scaleY = canvasRect.height / nodesHeight;
+    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 1
+    
+    // Calculate offset to center
+    const offsetX = -minX * scale + (canvasRect.width - nodesWidth * scale) / 2;
+    const offsetY = -minY * scale + (canvasRect.height - nodesHeight * scale) / 2;
+    
+    // Apply transform to all nodes
+    this.nodes.forEach(node => {
+      node.element.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+      node.element.style.transformOrigin = '0 0';
+    });
+    
+    // Update edges
+    this.updateEdges();
+    
+    this.log('Zoomed to fit all nodes', 'info');
+  }
+  
+  updateStats() {
+    document.getElementById('node-count').textContent = `${this.nodes.size} nodes`;
+    document.getElementById('edge-count').textContent = `${this.edges.size} connections`;
+  }
+  
+  log(message, type = 'info') {
+    const logEntry = document.createElement('div');
+    logEntry.className = `log-entry log-${type}`;
+    logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+    
+    this.logs.appendChild(logEntry);
+    this.logs.scrollTop = this.logs.scrollHeight;
+    
+    // Keep only last 100 log entries
+    while (this.logs.children.length > 100) {
+      this.logs.removeChild(this.logs.firstChild);
+    }
+  }
+  
+  toast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toast-message');
+    
+    toastMessage.textContent = message;
+    toast.className = `toast ${type} show`;
+    
+    setTimeout(() => {
+      toast.classList.remove('show');
+    }, 3000);
+  }
+}
+
+// Initialize the application
+let langflowBuilder;
+
+document.addEventListener('DOMContentLoaded', () => {
+  langflowBuilder = new LangflowBuilder();
+  
+  // Add some sample nodes for demonstration
+  setTimeout(() => {
+    if (langflowBuilder.nodes.size === 0) {
+      const dataNode = langflowBuilder.createNode('DataNode', 100, 100);
+      const promptNode = langflowBuilder.createNode('PromptNode', 350, 150);
+      const llmNode = langflowBuilder.createNode('LLMNode', 600, 200);
+      const outputNode = langflowBuilder.createNode('OutputNode', 850, 250);
+      
+      // Auto-connect sample nodes
+      setTimeout(() => {
+        langflowBuilder.edges.set('demo_edge_1', {
+          id: 'demo_edge_1',
+          from: dataNode.id,
+          to: promptNode.id,
+          fromNode: dataNode,
+          toNode: promptNode
+        });
+        
+        langflowBuilder.edges.set('demo_edge_2', {
+          id: 'demo_edge_2',
+          from: promptNode.id,
+          to: llmNode.id,
+          fromNode: promptNode,
+          toNode: llmNode
+        });
+        
+        langflowBuilder.edges.set('demo_edge_3', {
+          id: 'demo_edge_3',
+          from: llmNode.id,
+          to: outputNode.id,
+          fromNode: llmNode,
+          toNode: outputNode
+        });
+        
+        // Update port visuals
+        dataNode.element.querySelector('.node-port.output').classList.add('connected');
+        promptNode.element.querySelector('.node-port.input').classList.add('connected');
+        promptNode.element.querySelector('.node-port.output').classList.add('connected');
+        llmNode.element.querySelector('.node-port.input').classList.add('connected');
+        llmNode.element.querySelector('.node-port.output').classList.add('connected');
+        outputNode.element.querySelector('.node-port.input').classList.add('connected');
+        
+        langflowBuilder.updateEdges();
+        langflowBuilder.updateStats();
+      }, 500);
+    }
+  }, 1000);
+});
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    switch (e.key) {
+      case 's':
+        e.preventDefault();
+        langflowBuilder.saveFlow();
+        break;
+      case 'r':
+        e.preventDefault();
+        langflowBuilder.executeFlow();
+        break;
+      case 'e':
+        e.preventDefault();
+        langflowBuilder.exportFlow();
+        break;
+      case 'Delete':
+      case 'Backspace':
+        if (langflowBuilder.selectedNode) {
+          e.preventDefault();
+          langflowBuilder.deleteNode(langflowBuilder.selectedNode.id);
+        }
+        break;
+    }
+  }
+});
+
+// Add resize handler for responsive canvas
+window.addEventListener('resize', () => {
+  if (langflowBuilder) {
+    langflowBuilder.updateEdges();
+  }
+});
+</script>
+</body>
+</html>

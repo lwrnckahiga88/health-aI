@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Offline Langflow PWA</title>
+
+<!-- Inline Manifest -->
+<script type="application/manifest+json">
+{
+  "short_name": "LangflowPWA",
+  "name": "Offline Langflow PWA",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f0f0f0",
+  "theme_color": "#2196f3",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://via.placeholder.com/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+</script>
+
+<style>
+:root {
+  --node-bg: #d9f0ff;
+  --node-border: #2196f3;
+  --canvas-bg: #f8f9fa;
+  --connection-color: #555;
+}
+body { margin:0; font-family:sans-serif; background:#f0f0f0; }
+#toolbar { padding:10px; background:#fff; border-bottom:1px solid #ccc; display:flex; gap:10px; flex-wrap:wrap; }
+#canvas { position:relative; width:100%; height:70vh; background:var(--canvas-bg); overflow:hidden; border:1px solid #ccc; }
+.node { position:absolute; padding:8px 12px; background:var(--node-bg); border:1px solid var(--node-border); border-radius:6px; cursor:pointer; user-select:none; }
+.connection { position:absolute; pointer-events:none; z-index:0; border-top:2px solid var(--connection-color); }
+#chat { height:25vh; overflow-y:auto; border-top:1px solid #ccc; padding:10px; background:#fff; display:flex; flex-direction:column; }
+#chat p { margin:5px 0; }
+#chat p.user { color:#000; font-weight:bold; }
+#chat p.bot { color:#2196f3; white-space:pre-wrap; }
+#chat-input { display:flex; gap:5px; margin-top:5px; }
+#chat-input input { flex:1; padding:6px; border-radius:4px; border:1px solid #bbb; }
+#chat-input button { padding:6px 10px; }
+#status { padding:6px 10px; font-size:14px; color:#555; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <input type="file" id="pdfInput" multiple>
+  <button id="loadPDFs">Load PDFs</button>
+  <input type="file" id="embedderInput" multiple>
+  <input type="file" id="generatorInput" multiple>
+  <button id="addNodeBtn">Add Node</button>
+</div>
+
+<div id="canvas"></div>
+
+<div id="chat">
+  <div id="chat-messages"></div>
+  <div id="chat-input">
+    <input type="text" id="userInput" placeholder="Type your message...">
+    <button id="sendBtn">Send</button>
+  </div>
+</div>
+
+<div id="status">Ready</div>
+
+<!-- PDF.js -->
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist/build/pdf.min.js"></script>
+<!-- Transformers.js -->
+<script src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
+
+<script>
+(async ()=>{
+const statusEl=document.getElementById('status');
+const chatDiv=document.getElementById('chat-messages');
+const userInput=document.getElementById('userInput');
+const sendBtn=document.getElementById('sendBtn');
+const canvas=document.getElementById('canvas');
+
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist/build/pdf.worker.min.js';
+
+let embedder=null,generator=null,embeddingsDB=[],nodes=[],connections=[];
+
+function updateStatus(text){ statusEl.innerText=text; }
+
+// ===== Load Models =====
+document.getElementById('embedderInput').addEventListener('change', async e=>{
+  const files=Array.from(e.target.files); if(!files.length) return;
+  updateStatus('Loading MiniLM model...');
+  embedder=await window.transformers.pipeline('feature-extraction',files);
+  updateStatus('MiniLM ready!');
+});
+document.getElementById('generatorInput').addEventListener('change', async e=>{
+  const files=Array.from(e.target.files); if(!files.length) return;
+  updateStatus('Loading GPT2 model...');
+  generator=await window.transformers.pipeline('text-generation',files);
+  updateStatus('GPT2 ready!');
+});
+
+// ===== PDF to text & embeddings =====
+async function pdfToText(file){
+  const arrayBuffer=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument(arrayBuffer).promise;
+  let text='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    text+=content.items.map(it=>it.str).join(' ').replace(/\s+/g,' ').trim()+'\n';
+  }
+  return text;
+}
+function chunkText(text,size=500,overlap=50){
+  const chunks=[];
+  let i=0;
+  while(i<text.length){ chunks.push(text.slice(i,i+size)); i+=size-overlap; }
+  return chunks;
+}
+document.getElementById('loadPDFs').addEventListener('click', async ()=>{
+  if(!embedder){ alert('Load MiniLM first!'); return; }
+  const files=document.getElementById('pdfInput').files;
+  if(!files.length) return alert('Select PDFs!');
+  updateStatus('Creating embeddings...');
+  for(const file of files){
+    const text=await pdfToText(file);
+    const chunks=chunkText(text,512,50);
+    for(const chunk of chunks){
+      const vec=(await embedder(chunk)).flat(Infinity);
+      embeddingsDB.push({text:chunk,vector:vec});
+    }
+  }
+  updateStatus('Embeddings ready!');
+  alert('✅ PDFs loaded and embeddings generated!');
+});
+
+// ===== Cosine similarity & retrieval =====
+function cosineSim(a,b){
+  if(!a||!b||a.length!==b.length) return -1;
+  let dot=0,ma=0,mb=0;
+  for(let i=0;i<a.length;i++){ dot+=a[i]*b[i]; ma+=a[i]*a[i]; mb+=b[i]*b[i]; }
+  return dot/(Math.sqrt(ma)*Math.sqrt(mb)+1e-12);
+}
+async function retrieve(query){
+  if(!embeddingsDB.length) return '';
+  const qVec=(await embedder(query)).flat(Infinity);
+  embeddingsDB.forEach(d=>d.score=cosineSim(d.vector,qVec));
+  embeddingsDB.sort((a,b)=>(b.score||0)-(a.score||0));
+  return embeddingsDB.slice(0,3).map(d=>d.text).join('\n\n');
+}
+
+// ===== Chat =====
+function appendMessage(msg,sender='user'){
+  const p=document.createElement('p'); p.className=sender; p.innerText=msg;
+  chatDiv.appendChild(p); chatDiv.scrollTop=chatDiv.scrollHeight;
+}
+async function sendMessage(){
+  const msg=userInput.value.trim(); if(!msg) return;
+  appendMessage(msg,'user'); updateStatus('Retrieving context...');
+  const context=await retrieve(msg); updateStatus('Generating...');
+  if(!generator){ appendMessage('Load GPT2 first!','bot'); updateStatus('Ready'); return; }
+  const out=await generator(`Context: ${context}\nUser: ${msg}\nAI:`, {max_length:150,temperature:0.7});
+  const reply=out[0]?.generated_text??out[0]?.text??'No reply';
+  appendMessage(reply.replace(/^Context:.*?AI:/s,''),'bot'); userInput.value=''; updateStatus('Ready');
+}
+sendBtn.addEventListener('click', sendMessage);
+userInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendMessage(); });
+
+// ===== Workflow Nodes & Connections =====
+function createNode(text='Node',x=50,y=50,id=null){
+  const node=document.createElement('div'); node.className='node'; node.innerText=text;
+  node.style.left=x+'px'; node.style.top=y+'px'; canvas.appendChild(node);
+  const nodeId=id||'node-'+Date.now()+'-'+Math.random().toString(16).slice(2);
+  const nodeObj={el:node,text,outputs:[],processed:false,id:nodeId};
+  nodes.push(nodeObj);
+
+  let offsetX=0,offsetY=0,dragging=false;
+  node.addEventListener('mousedown', e=>{ dragging=true; offsetX=e.offsetX; offsetY=e.offsetY; node.style.zIndex=1000; });
+  document.addEventListener('mousemove', e=>{ if(!dragging) return; node.style.left=(e.clientX-offsetX-canvas.offsetLeft)+'px'; node.style.top=(e.clientY-offsetY-canvas.offsetTop)+'px'; drawConnections(); });
+  document.addEventListener('mouseup', ()=>{ dragging=false; node.style.zIndex=1; saveGraph(); });
+
+  node.addEventListener('click', e=>{
+    if(e.shiftKey){
+      if(canvas.selectedNode && canvas.selectedNode!==nodeObj){ connectNodes(canvas.selectedNode,nodeObj); canvas.selectedNode=null; }
+      else canvas.selectedNode=nodeObj;
+    }
+  });
+
+  node.addEventListener('dblclick', async()=>{ await processNode(nodeObj); });
+  saveGraph(); return nodeObj;
+}
+document.getElementById('addNodeBtn').addEventListener('click', ()=>createNode());
+function connectNodes(nodeA,nodeB){ nodeA.outputs.push(nodeB.id); connections.push({from:nodeA.id,to:nodeB.id}); drawConnections(); saveGraph(); }
+function drawConnections(){ document.querySelectorAll('.connection').forEach(c=>c.remove()); connections.forEach(c=>{ const fromNode=nodes.find(n=>n.id===c.from)?.el; const toNode=nodes.find(n=>n.id===c.to)?.el; if(!fromNode||!toNode) return; const fromRect=fromNode.getBoundingClientRect(); const toRect=toNode.getBoundingClientRect(); const canvasRect=canvas.getBoundingClientRect(); const x1=fromRect.left+fromRect.width/2-canvasRect.left; const y1=fromRect.top+fromRect.height/2-canvasRect.top; const x2=toRect.left+toRect.width/2-canvasRect.left; const y2=toRect.top+toRect.height/2-canvasRect.top; const line=document.createElement('div'); line.className='connection'; line.style.left=Math.min(x1,x2)+'px'; line.style.top=Math.min(y1,y2)+'px'; line.style.width=Math.abs(x2-x1)+'px'; line.style.height=Math.abs(y2-y1)+'px'; canvas.appendChild(line); }); }
+
+async function processNode(node){ if(!generator||!embedder) return; if(node.processed) return; node.processed=true; updateStatus('Processing node...'); const context=await retrieve(node.text); const out=await generator(`Context: ${context}\nNode: ${node.text}\nAI:`, {max_length:150,temperature:0.7}); const reply=out[0]?.generated_text??out[0]?.text??''; appendMessage(`Node: ${node.text}\nAI Output: ${reply}`,'bot'); for(const nextId of node.outputs){ const nextNode=nodes.find(n=>n.id===nextId); nextNode.text=reply; await processNode(nextNode); } updateStatus('Ready'); saveGraph(); }
+
+// ===== Persistence =====
+function saveGraph(){ const nodeData=nodes.map(n=>({id:n.id,text:n.text,x:parseInt(n.el.style.left),y:parseInt(n.el.style.top),outputs:n.outputs})); localStorage.setItem('nodes',JSON.stringify(nodeData)); localStorage.setItem('connections',JSON.stringify(connections)); }
+function loadGraph(){ const nodeData=JSON.parse(localStorage.getItem('nodes')||'[]'); const connData=JSON.parse(localStorage.getItem('connections')||'[]'); nodes=[]; connections=[]; nodeData.forEach(nd=>{ createNode(nd.text,nd.x,nd.y,nd.id).outputs=nd.outputs; }); connections=connData; drawConnections(); }
+loadGraph();
+
+// ===== Inline Service Worker =====
+if('serviceWorker' in navigator){
+  const swCode=`
+    const CACHE='langflow-cache-v1';
+    const ASSETS=['/', location.href, 'https://cdn.jsdelivr.net/npm/pdfjs-dist/build/pdf.min.js','https://cdn.jsdelivr.net/npm/pdfjs-dist/build/pdf.worker.min.js','https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js'];
+    self.addEventListener('install',e=>{ e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))); self.skipWaiting(); });
+    self.addEventListener('activate',e=>{ e.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(k=>k!==CACHE?caches.delete(k):0)))); self.clients.claim(); });
+    self.addEventListener('fetch',e=>{ e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))); });
+  `;
+  const blob=new Blob([swCode],{type:'application/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(blob)).then(()=>console.log('SW registered')).catch(err=>console.error(err));
+}
+
+})();
+</script>
+
+</body>
+</html>

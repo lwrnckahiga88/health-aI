@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Unified Pandemic Langflow PWA</title>
+
+  <!-- Inline manifest -->
+  <script id="app-manifest" type="application/json">
+  {
+    "name": "Unified Pandemic Langflow PWA",
+    "short_name": "PandemicFlow",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#0ea5e9",
+    "description": "SEIRD model + Langflow-style node builder integrated in a PWA"
+  }
+  </script>
+
+  <style>
+    html,body,#root { height:100%; margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#071426; color:#e6eef8; }
+    .container { max-width:1300px; margin:18px auto; display:grid; grid-template-columns: 420px 1fr; gap:16px; padding:18px; }
+    .panel { background: linear-gradient(180deg,#071827,#07102a); border-radius:12px; padding:12px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.03); }
+    .title { font-size:18px; font-weight:700; margin-bottom:8px; color:#cfe8ff; }
+    .muted { color:#87a7c4; font-size:13px; }
+    .small { font-size:13px; color:#9fb7d2; }
+    button { cursor:pointer; }
+    .btn { padding:8px 10px; border-radius:8px; border:none; background:#0ea5e9; color:#071127; font-weight:700; }
+    .btn.ghost { background:transparent; border:1px solid rgba(255,255,255,0.04); color:#cfe8ff; }
+    .node-card { background: linear-gradient(180deg,#071b2b,#051428); padding:10px; border-radius:10px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.03); }
+    label { display:block; font-size:12px; color:#9fb7d2; margin-bottom:6px; }
+    input, select, textarea { width:100%; padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.02); color:#e6eef8; }
+    .canvas-wrap { position:relative; height:600px; background:linear-gradient(180deg,#071427,#04101e); border-radius:12px; overflow:hidden; }
+    #canvas { position:absolute; inset:0; }
+    #canvas-edges, #canvas-drag { position:absolute; inset:0; pointer-events:none; }
+    .node-el { position:absolute; width:180px; background:linear-gradient(180deg,#072b3e,#0b3448); border-radius:10px; padding:8px; box-shadow:0 6px 18px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.03); cursor:grab; }
+    .node-el .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+    .node-type { font-size:12px; color:#9fb7d2; background:rgba(255,255,255,0.02); padding:3px 6px; border-radius:999px; }
+    .port { position:absolute; width:12px; height:12px; border-radius:50%; background:#10b981; border:2px solid rgba(0,0,0,0.6); }
+    .port.in { left:-8px; top:50%; transform:translateY(-50%); }
+    .port.out { right:-8px; top:50%; transform:translateY(-50%); }
+    .log { height:120px; overflow:auto; background:rgba(255,255,255,0.02); border-radius:8px; padding:8px; font-family:monospace; font-size:12px; color:#9fb7d2; }
+    .graph-wrap { margin-top:8px; height:260px; background:#081220; border-radius:8px; padding:8px; }
+    .controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
+    .metrics { margin-top:8px; font-size:13px; color:#cfe8ff; }
+    .footer { margin-top:12px; display:flex; justify-content:space-between; align-items:center; color:#87a7c4; font-size:13px; }
+    .apply-btn { margin-top:8px; width:100%; padding:8px; border-radius:8px; background:#f59e0b; color:#071127; font-weight:700; border:none; }
+    .icon-btn { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.03); padding:8px; border-radius:8px; color:#cfe8ff; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React + ReactDOM UMD -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel for JSX on the fly -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Recharts UMD -->
+  <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
+
+  <script type="text/babel">
+  // Keep linting quiet for UMD inlined code
+  const { useState, useRef, useEffect, forwardRef, useImperativeHandle } = React;
+  const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+
+  /******************************************************************
+   * PandemicModel (SEIRD) - kept structure and naming from your code
+   ******************************************************************/
+  const PandemicModel = forwardRef((props, ref) => {
+    // SEIRD Model parameters
+    const [params, setParams] = useState({
+      beta: 0.3,        // Transmission rate
+      sigma: 1/5.1,     // Incubation rate (1/incubation period)
+      gamma: 1/10,      // Recovery rate (1/infectious period)
+      mu: 0.001,        // Death rate
+      alpha: 0.1,       // Intervention effectiveness
+      rho: 0.05,        // Reporting rate
+      populationSize: 1000000
+    });
+
+    // Initial conditions
+    const [initialConditions, setInitialConditions] = useState({
+      susceptible: 999900,
+      exposed: 50,
+      infected: 50,
+      recovered: 0,
+      dead: 0
+    });
+
+    // Simulation state
+    const [isRunning, setIsRunning] = useState(false);
+    const [currentDay, setCurrentDay] = useState(0);
+    const [data, setData] = useState([]);
+    const [populations, setPopulations] = useState(initialConditions);
+    const [showSettings, setShowSettings] = useState(false);
+    const [interventionDay, setInterventionDay] = useState(30);
+    const [realDataMode, setRealDataMode] = useState(false);
+    const [uploadedData, setUploadedData] = useState(null);
+
+    // Real-world scenario presets
+    const [scenarioPresets] = useState({
+      covid19: { beta: 0.4, sigma: 1/5.1, gamma: 1/10, mu: 0.002, populationSize: 1000000, name: "COVID-19 (Alpha variant)" },
+      influenza: { beta: 0.5, sigma: 1/2, gamma: 1/7, mu: 0.0001, populationSize: 1000000, name: "Seasonal Influenza" },
+      unknown_high: { beta: 0.6, sigma: 1/3, gamma: 1/14, mu: 0.005, populationSize: 1000000, name: "Unknown High Transmissibility" },
+      unknown_severe: { beta: 0.25, sigma: 1/7, gamma: 1/21, mu: 0.01, populationSize: 1000000, name: "Unknown High Severity" }
+    });
+
+    const intervalRef = useRef(null);
+    const timeStep = 1; // 1 day
+
+    // SEIRD differential equations (kept structure)
+    const updatePopulations = (S, E, I, R, D, dt) => {
+      const N = S + E + I + R; // Total living population
+      const { beta, sigma, gamma, mu, alpha } = params;
+
+      const effectiveBeta = currentDay >= interventionDay ? beta * (1 - alpha) : beta;
+
+      const newE = effectiveBeta * S * I / N * dt;
+      const newI = sigma * E * dt;
+      const newR = gamma * I * dt;
+      const newD = mu * I * dt;
+
+      return {
+        susceptible: Math.max(0, S - newE),
+        exposed: Math.max(0, E + newE - newI),
+        infected: Math.max(0, I + newI - newR - newD),
+        recovered: Math.max(0, R + newR),
+        dead: Math.max(0, D + newD)
+      };
+    };
+
+    // Calculate metrics
+    const calculateMetrics = (S, E, I, R, D) => {
+      const N = params.populationSize;
+      const effectiveBeta = currentDay >= interventionDay ? params.beta * (1 - params.alpha) : params.beta;
+      const R0 = effectiveBeta / (params.gamma + params.mu);
+      const Rt = R0 * (S / N);
+      const attackRate = ((N - S) / N) * 100;
+      const cfr = D > 0 ? (D / (R + D)) * 100 : 0;
+      const prevalence = (I / N) * 100000; // per 100,000
+      return { R0, Rt, attackRate, cfr, prevalence };
+    };
+
+    // Run simulation step
+    const simulationStep = () => {
+      setCurrentDay(prev => prev + 1);
+      setPopulations(prev => {
+        const newPops = updatePopulations(prev.susceptible, prev.exposed, prev.infected, prev.recovered, prev.dead, timeStep);
+        const metrics = calculateMetrics(newPops.susceptible, newPops.exposed, newPops.infected, newPops.recovered, newPops.dead);
+        setData(d => {
+          const next = [...d, {
+            day: currentDay + 1,
+            ...newPops,
+            newCases: Math.max(0, newPops.infected - prev.infected),
+            ...metrics
+          }];
+          return next.slice(-500);
+        });
+        return newPops;
+      });
+    };
+
+    // Start/stop simulation
+    const toggleSimulation = () => {
+      if (isRunning) {
+        clearInterval(intervalRef.current);
+        setIsRunning(false);
+      } else {
+        intervalRef.current = setInterval(simulationStep, 500);
+        setIsRunning(true);
+      }
+    };
+
+    // Reset simulation
+    const resetSimulation = () => {
+      clearInterval(intervalRef.current);
+      setIsRunning(false);
+      setCurrentDay(0);
+      setPopulations(initialConditions);
+      setData([{
+        day: 0,
+        ...initialConditions,
+        newCases: 0,
+        R0: params.beta / (params.gamma + params.mu),
+        Rt: params.beta / (params.gamma + params.mu),
+        attackRate: 0,
+        cfr: 0,
+        prevalence: (initialConditions.infected / params.populationSize) * 100000
+      }]);
+    };
+
+    // Load scenario preset
+    const loadScenario = (scenarioKey) => {
+      const scenario = scenarioPresets[scenarioKey];
+      if (scenario) setParams(prev => ({ ...prev, ...scenario }));
+    };
+
+    // Handle file upload for real data (CSV)
+    const handleFileUpload = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const csvData = e.target.result;
+            const lines = csvData.split('\n').map(l => l.trim()).filter(Boolean);
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            const rows = lines.slice(1).map(line => {
+              const cols = line.split(',').map(c => c.trim());
+              const obj = {};
+              headers.forEach((h, i) => obj[h] = cols[i]);
+              return obj;
+            });
+            setUploadedData(rows);
+            setRealDataMode(true);
+            const first = rows[0] || null;
+            if (first && first.infected) {
+              const infected = parseFloat(first.infected) || 0;
+              const recovered = parseFloat(first.recovered) || 0;
+              const dead = parseFloat(first.dead) || 0;
+              const exposed = parseFloat(first.exposed) || Math.max(0, infected * 2);
+              const susceptible = params.populationSize - infected - recovered - dead - exposed;
+              setPopulations({ susceptible, exposed, infected, recovered, dead });
+              setCurrentDay(0);
+              setData([]);
+              setRealDataMode(true);
+            }
+          } catch (err) {
+            console.error('CSV parse error', err);
+            setRealDataMode(false);
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+
+    // Export simulation data
+    const exportData = () => {
+      const csvContent = [
+        'day,susceptible,exposed,infected,recovered,dead,newCases,R0,Rt,attackRate,cfr,prevalence',
+        ...data.map(d =>
+          `${d.day},${Math.round(d.susceptible)},${Math.round(d.exposed)},${Math.round(d.infected)},${Math.round(d.recovered)},${Math.round(d.dead)},${Math.round(d.newCases)},${d.R0.toFixed(3)},${d.Rt.toFixed(3)},${d.attackRate.toFixed(3)},${d.cfr.toFixed(3)},${d.prevalence.toFixed(3)}`
+        )
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'seird_simulation.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    };
+
+    // Initialize
+    useEffect(() => {
+      resetSimulation();
+    }, []);
+
+    useEffect(() => {
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      };
+    }, []);
+
+    // Expose methods for NodeEditor (apply params etc)
+    useImperativeHandle(ref, () => ({
+      applyParams: (newParams) => {
+        if (!newParams) return;
+        const numeric = {};
+        Object.keys(newParams).forEach(k => {
+          const v = newParams[k];
+          if (typeof v === 'number') numeric[k] = v;
+          else if (!isNaN(parseFloat(v))) numeric[k] = parseFloat(v);
+          else numeric[k] = v;
+        });
+        if ('infected' in numeric || 'susceptible' in numeric || 'exposed' in numeric || 'recovered' in numeric || 'dead' in numeric) {
+          setInitialConditions(prev => ({ ...prev, ...numeric }));
+          setPopulations(prev => ({ ...prev, ...numeric }));
+        }
+        const allowedParams = ['beta','sigma','gamma','mu','alpha','rho','populationSize'];
+        const toSet = {};
+        allowedParams.forEach(k => { if (k in numeric) toSet[k] = numeric[k]; });
+        if (Object.keys(toSet).length) setParams(p => ({ ...p, ...toSet }));
+      },
+      simulationStep: () => simulationStep(),
+      resetSimulation: () => resetSimulation(),
+      toggleSimulation: () => toggleSimulation(),
+      getLatestMetrics: () => {
+        return data.length ? data[data.length - 1] : null;
+      }
+    }));
+
+    const currentMetrics = data.length > 0 ? data[data.length - 1] : null;
+
+    // UI
+    return (
+      <div className="panel" style={{ padding:12 }}>
+        <div className="title">Pandemic SEIRD Model</div>
+        <div className="small">Susceptible-Exposed-Infected-Recovered-Dead with interventions and reporting</div>
+
+        <div style={{ marginTop:10 }}>
+          <div style={{ display:'flex', gap:8 }}>
+            <button className="btn" onClick={toggleSimulation}>{isRunning ? 'Pause' : 'Start'}</button>
+            <button className="btn ghost" onClick={() => { simulationStep(); }}>{'Step'}</button>
+            <button className="btn ghost" onClick={resetSimulation}>{'Reset'}</button>
+            <button className="btn ghost" onClick={exportData}>{'Export CSV'}</button>
+          </div>
+
+          <div className="controls" style={{ marginTop:10 }}>
+            <div style={{ flex:1 }}>
+              <label style={{ color:'#9fb7d2' }}>Intervention Day</label>
+              <input type="number" value={interventionDay} onChange={e=>setInterventionDay(parseInt(e.target.value||0))} />
+            </div>
+            <div style={{ width:180 }}>
+              <label style={{ color:'#9fb7d2' }}>Preset</label>
+              <select onChange={e => loadScenario(e.target.value)}>
+                <option value="">Select scenario</option>
+                <option value="covid19">COVID-19</option>
+                <option value="influenza">Influenza</option>
+                <option value="unknown_high">Unknown High</option>
+                <option value="unknown_severe">Unknown Severe</option>
+              </select>
+            </div>
+            <div style={{ width:220 }}>
+              <label style={{ color:'#9fb7d2' }}>Upload CSV (real data)</label>
+              <input type="file" accept=".csv" onChange={handleFileUpload} />
+            </div>
+          </div>
+        </div>
+
+        <div className="graph-wrap" style={{ marginTop:12 }}>
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={data}>
+              <CartesianGrid stroke="#0b2a3c" />
+              <XAxis dataKey="day" stroke="#6aa6c9" />
+              <YAxis stroke="#6aa6c9" />
+              <Tooltip wrapperStyle={{ color:'#071127' }} />
+              <Legend />
+              <Line type="monotone" dataKey="infected" stroke="#ef4444" dot={false} />
+              <Line type="monotone" dataKey="recovered" stroke="#10b981" dot={false} />
+              <Line type="monotone" dataKey="dead" stroke="#9ca3af" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {currentMetrics && (
+          <div className="metrics">
+            <div>Day: {currentMetrics.day} &nbsp; | &nbsp; Infected: {Math.round(currentMetrics.infected)} &nbsp; | &nbsp; Recovered: {Math.round(currentMetrics.recovered)} &nbsp; | &nbsp; Dead: {Math.round(currentMetrics.dead)}</div>
+            <div style={{ marginTop:6 }} className="muted">
+              R0: {currentMetrics.R0.toFixed(2)} &nbsp; | &nbsp; Rt: {currentMetrics.Rt.toFixed(2)} &nbsp; | &nbsp; Attack Rate: {currentMetrics.attackRate.toFixed(2)}%
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  });
+
+  /******************************************************************
+   * NodeEditor - simple LangFlow-like node editor
+   * - add nodes: Input, pandemic, Output
+   * - drag, connect, select, edit params
+   * - apply selected node params to PandemicModel via ref
+   ******************************************************************/
+  function NodeEditor({ onApplyNodeParams, onTriggerStep }) {
+    const [nodes, setNodes] = useState([]);
+    const [edges, setEdges] = useState([]);
+    const [nodeCounter, setNodeCounter] = useState(1);
+    const [selectedNodeId, setSelectedNodeId] = useState(null);
+    const [connectingFrom, setConnectingFrom] = useState(null);
+    const canvasRef = useRef(null);
+    const dragState = useRef({ draggingId: null, offsetX:0, offsetY:0 });
+
+    useEffect(()=> {
+      if (nodes.length === 0) {
+        const n1 = { id:'n1', type:'Input', x:20, y:20, params:{days:120, seed:42}, label:'Input n1' };
+        const n2 = { id:'n2', type:'pandemic', x:20, y:160, params:{beta:0.3, sigma:1/5.1, gamma:1/10, mu:0.001, infected:50, populationSize:1000000}, label:'Pandemic n2' };
+        const n3 = { id:'n3', type:'Output', x:20, y:320, params:{}, label:'Output n3' };
+        setNodes([n1,n2,n3]);
+        setNodeCounter(4);
+      }
+    }, []);
+
+    const addNode = (type) => {
+      const id = 'n' + nodeCounter;
+      setNodeCounter(c => c + 1);
+      const base = { id, type, x: 80 + Math.random()*200, y: 40 + Math.random()*240, label: `${type} ${id}`, params: {} };
+      if (type === 'pandemic') base.params = { beta:0.3, sigma:1/5.1, gamma:1/10, mu:0.001, infected:50, populationSize:1000000 };
+      setNodes(ns => [...ns, base]);
+    };
+
+    const removeNode = (id) => {
+      setNodes(ns => ns.filter(n=>n.id!==id));
+      setEdges(es => es.filter(e=>e.from !== id && e.to !== id));
+      if (selectedNodeId === id) setSelectedNodeId(null);
+    };
+
+    const startDrag = (e, id) => {
+      const elRect = canvasRef.current.getBoundingClientRect();
+      const found = nodes.find(n => n.id === id);
+      if (!found) return;
+      dragState.current = { draggingId: id, offsetX: e.clientX - found.x - elRect.left, offsetY: e.clientY - found.y - elRect.top };
+      document.addEventListener('mousemove', onDrag);
+      document.addEventListener('mouseup', endDrag);
+    };
+
+    const onDrag = (e) => {
+      const elRect = canvasRef.current.getBoundingClientRect();
+      const st = dragState.current;
+      if (!st.draggingId) return;
+      const nx = e.clientX - elRect.left - st.offsetX;
+      const ny = e.clientY - elRect.top - st.offsetY;
+      setNodes(ns => ns.map(n => n.id === st.draggingId ? { ...n, x: nx, y: ny } : n ));
+    };
+
+    const endDrag = () => {
+      document.removeEventListener('mousemove', onDrag);
+      document.removeEventListener('mouseup', endDrag);
+      dragState.current = { draggingId: null, offsetX:0, offsetY:0 };
+    };
+
+    const startConnection = (fromId) => {
+      setConnectingFrom(fromId);
+    };
+
+    const completeConnection = (toId) => {
+      if (!connectingFrom) return;
+      if (connectingFrom === toId) { setConnectingFrom(null); return; }
+      setEdges(es => {
+        if (es.some(e => e.from === connectingFrom && e.to === toId)) return es;
+        return [...es, { from: connectingFrom, to: toId }];
+      });
+      setConnectingFrom(null);
+    };
+
+    const selectNode = (id) => setSelectedNodeId(id);
+
+    const updateNodeParams = (id, params) => {
+      setNodes(ns => ns.map(n => n.id === id ? { ...n, params } : n ));
+    };
+
+    const getSelectedNode = () => nodes.find(n => n.id === selectedNodeId);
+
+    const applySelectedNodeParams = () => {
+      const n = getSelectedNode();
+      if (!n) return;
+      if (onApplyNodeParams) onApplyNodeParams(n.params);
+    };
+
+    const triggerWorkflowStep = () => {
+      nodes.forEach(n => {
+        if (n.type === 'pandemic') {
+          if (onTriggerStep) onTriggerStep(n.params);
+        }
+      });
+    };
+
+    return (
+      <div className="panel">
+        <div className="title">Node Builder</div>
+        <div className="small">Add nodes, drag, connect, and apply node parameters to the SEIRD model</div>
+
+        <div style={{ marginTop:8 }} className="node-card">
+          <div style={{ display:'flex', gap:8 }}>
+            <button className="icon-btn" onClick={() => addNode('Input')}>Add Input</button>
+            <button className="icon-btn" onClick={() => addNode('pandemic')}>Add Pandemic</button>
+            <button className="icon-btn" onClick={() => addNode('Output')}>Add Output</button>
+            <button className="icon-btn" onClick={() => { setNodes([]); setEdges([]); setSelectedNodeId(null); }}>Clear</button>
+          </div>
+        </div>
+
+        <div className="node-card">
+          <div style={{ fontWeight:700 }}>Selected Node</div>
+          <div style={{ marginTop:8 }}>
+            { selectedNodeId ? (
+              <>
+                <label>Parameters (edit JSON)</label>
+                <textarea rows="6" value={ JSON.stringify(getSelectedNode().params, null, 2) }
+                  onChange={e => {
+                    try {
+                      const parsed = JSON.parse(e.target.value);
+                      updateNodeParams(selectedNodeId, parsed);
+                    } catch(err) {
+                      // wait until valid JSON
+                    }
+                  }} />
+                <button className="apply-btn" onClick={applySelectedNodeParams}>Apply to SEIRD</button>
+                <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                  <button className="btn ghost" onClick={() => removeNode(selectedNodeId)}>Delete Node</button>
+                </div>
+              </>
+            ) : <div className="muted">No node selected — click a node on the canvas to edit it.</div> }
+          </div>
+        </div>
+
+        <div className="node-card" style={{ marginTop:8 }}>
+          <div style={{ fontWeight:700 }}>Workflow Controls</div>
+          <div style={{ marginTop:8 }}>
+            <button className="btn" onClick={() => triggerWorkflowStep()}>Trigger Workflow Step</button>
+            <button className="btn ghost" onClick={() => {
+              const p = nodes.find(n => n.type === 'pandemic');
+              if (p && onApplyNodeParams) onApplyNodeParams(p.params);
+            }} style={{ marginLeft:8 }}>Apply First Pandemic</button>
+          </div>
+        </div>
+
+        <div className="node-card" style={{ marginTop:8 }}>
+          <div style={{ fontWeight:700 }}>Activity Log</div>
+          <div className="log" style={{ marginTop:8 }}>
+            { nodes.map(n => <div key={n.id}>{n.id} ({n.type}) — {JSON.stringify(n.params)}</div>) }
+          </div>
+        </div>
+
+        <div style={{ marginTop:8 }} className="canvas-wrap">
+          <div id="canvas" ref={canvasRef} style={{ position:'absolute', inset:0 }}>
+            { nodes.map(node => (
+              <div key={node.id}
+                   className="node-el"
+                   style={{ left: node.x, top: node.y }}
+                   onMouseDown={(e) => startDrag(e, node.id)}
+                   onClick={(e) => { e.stopPropagation(); selectNode(node.id); }}>
+                <div className="head">
+                  <div style={{ fontWeight:700 }}>{node.label}</div>
+                  <div className="node-type">{node.type}</div>
+                </div>
+                <div style={{ fontSize:12, color:'#9fb7d2' }}>
+                  { Object.keys(node.params||{}).length ? Object.entries(node.params).slice(0,3).map(([k,v]) => `${k}:${v}`).join(' | ') : 'no params' }
+                </div>
+                <div className="port out" onMouseDown={(e) => { e.stopPropagation(); startConnection(node.id); }}></div>
+                <div className="port in" onMouseUp={(e) => { e.stopPropagation(); completeConnection(node.id); }}></div>
+              </div>
+            )) }
+          </div>
+
+          <svg id="canvas-edges" style={{ position:'absolute', inset:0, pointerEvents:'none' }}>
+            { edges.map((edge, i) => {
+              const from = nodes.find(n => n.id === edge.from);
+              const to = nodes.find(n => n.id === edge.to);
+              if (!from || !to) return null;
+              const x1 = from.x + 180, y1 = from.y + 40;
+              const x2 = to.x, y2 = to.y + 40;
+              const dx = Math.abs(x2 - x1);
+              const c1 = x1 + Math.min(120, dx * 0.5);
+              const c2 = x2 - Math.min(120, dx * 0.5);
+              return <path key={i} d={`M ${x1} ${y1} C ${c1} ${y1} ${c2} ${y2} ${x2} ${y2}`} stroke="#22d3ee" fill="none" strokeWidth="2" />;
+            }) }
+          </svg>
+        </div>
+      </div>
+    );
+  }
+
+  /******************************************************************
+   * App wrapper: merges NodeEditor + PandemicModel side-by-side,
+   * offers auto-run streaming and small log area.
+   ******************************************************************/
+  function App() {
+    const pandemicRef = useRef(null);
+    const [autoRun, setAutoRun] = useState(false);
+    const autoRef = useRef(null);
+    const [appLog, setAppLog] = useState([]);
+
+    const log = (msg) => setAppLog(l => [...l.slice(-400), `[${new Date().toLocaleTimeString()}] ${msg}`]);
+
+    const applyNodeParams = (params) => {
+      if (pandemicRef.current && pandemicRef.current.applyParams) {
+        pandemicRef.current.applyParams(params);
+        log('Applied node params to SEIRD: ' + JSON.stringify(params));
+      } else {
+        log('PandemicModel not ready');
+      }
+    };
+
+    const triggerStepFromNode = (params) => {
+      if (pandemicRef.current && pandemicRef.current.simulationStep) {
+        pandemicRef.current.simulationStep();
+        log('Triggered simulation step from node with params: ' + JSON.stringify(params));
+      }
+    };
+
+    const toggleAutoRun = () => {
+      const next = !autoRun;
+      setAutoRun(next);
+      if (next) {
+        autoRef.current = setInterval(() => {
+          if (pandemicRef.current && pandemicRef.current.simulationStep) {
+            pandemicRef.current.simulationStep();
+            log('Auto-run: simulation step executed.');
+          }
+        }, 2000);
+        log('Auto-run started');
+      } else {
+        clearInterval(autoRef.current);
+        autoRef.current = null;
+        log('Auto-run stopped');
+      }
+    };
+
+    useEffect(() => {
+      return () => { if (autoRef.current) clearInterval(autoRef.current); };
+    }, []);
+
+    return (
+      <div className="container">
+        <div>
+          <NodeEditor onApplyNodeParams={applyNodeParams} onTriggerStep={triggerStepFromNode} />
+          <div className="panel" style={{ marginTop:12 }}>
+            <div className="title">Stream & Controls</div>
+            <div className="small">Auto-run executes a SEIRD step every 2 seconds</div>
+            <div style={{ marginTop:8, display:'flex', gap:8 }}>
+              <button className="btn" onClick={() => { if (pandemicRef.current && pandemicRef.current.toggleSimulation) pandemicRef.current.toggleSimulation(); }}>Toggle SEIRD Play</button>
+              <button className="btn ghost" onClick={() => { if (pandemicRef.current && pandemicRef.current.resetSimulation) pandemicRef.current.resetSimulation(); log('Reset SEIRD model'); }}>Reset SEIRD</button>
+              <button className="btn" onClick={toggleAutoRun}>{ autoRun ? 'Stop Auto-run' : 'Start Auto-run' }</button>
+            </div>
+
+            <div style={{ marginTop:10 }}>
+              <div className="small">Activity Log</div>
+              <div className="log" style={{ marginTop:8 }}>
+                { appLog.slice().reverse().map((l,i) => <div key={i}>{l}</div>) }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <PandemicModel ref={pandemicRef} />
+        </div>
+      </div>
+    );
+  }
+
+  // Render App
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+  // Inline manifest registration & service worker registration
+  (function registerManifestAndSW(){
+    try {
+      const m = document.getElementById('app-manifest').textContent;
+      const blob = new Blob([m], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = url;
+      document.head.appendChild(link);
+    } catch(e) {
+      console.warn('manifest attach failed', e);
+    }
+
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        const CACHE='unified-pandemic-cache-v1';
+        const OFFLINE = ['./','https://unpkg.com/react@18/umd/react.development.js','https://unpkg.com/react-dom@18/umd/react-dom.development.js','https://unpkg.com/@babel/standalone/babel.min.js','https://unpkg.com/recharts/umd/Recharts.min.js'];
+        self.addEventListener('install', (ev) => {
+          ev.waitUntil(caches.open(CACHE).then(c => c.addAll(OFFLINE)));
+          self.skipWaiting();
+        });
+        self.addEventListener('activate', (ev) => { ev.waitUntil(self.clients.claim()); });
+        self.addEventListener('fetch', (ev) => {
+          const req = ev.request;
+          if (req.method !== 'GET') return;
+          ev.respondWith(caches.match(req).then(res => {
+            return res || fetch(req).then(net => {
+              const copy = net.clone();
+              caches.open(CACHE).then(c => c.put(req, copy));
+              return net;
+            }).catch(()=>caches.match('./'));
+          }));
+        });
+      `;
+      try {
+        const blob = new Blob([swCode], { type:'application/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(swUrl).then(() => console.log('SW registered'));
+      } catch(err) {
+        console.warn('SW registration failed', err);
+      }
+    }
+  })();
+  </script>
+</body>
+</html>

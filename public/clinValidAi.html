@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clinical Protocol Validation Workflow</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- xenova transformers (in-browser) -->
+<script type="module" src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
+<style>
+:root {
+  --color-node-input: #10b981;
+  --color-node-knowledge: #8b5cf6;
+  --color-node-validator: #ef4444;
+  --color-node-llm: #ec4899;
+  --color-node-output: #facc15;
+  --color-port-input: #10b981;
+  --color-port-output: #3b82f6;
+  --color-edge: #4ade80;
+  --color-flow-dot: #60a5fa;
+  --color-canvas-bg: #0f172a;
+  --color-node-bg: #1e293b;
+  --color-node-border: #334155;
+}
+
+body {
+  margin:0;
+  font-family: 'Inter', sans-serif;
+  background: var(--color-canvas-bg);
+  color:white;
+  overflow:hidden;
+  user-select:none;
+}
+
+.node {
+  position:absolute;
+  padding:12px;
+  background: var(--color-node-bg);
+  border:2px solid var(--color-node-border);
+  border-radius:8px;
+  cursor:move;
+  width:260px;
+  min-height:70px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);
+  transition:all 0.2s ease;
+  z-index:5;
+}
+
+.node:hover { transform: translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.2);}
+.node.selected { border-color:#facc15 !important; box-shadow:0 0 0 2px rgba(250,204,21,0.4);}
+.node-input{ border-color: var(--color-node-input);}
+.node-knowledge{ border-color: var(--color-node-knowledge);}
+.node-validator{ border-color: var(--color-node-validator);}
+.node-llm{ border-color: var(--color-node-llm);}
+.node-output{ border-color: var(--color-node-output);}
+.node-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+.node-title{ font-weight:600; font-size:0.9rem;}
+.node-icon{ font-size:0.8rem;}
+.node-content{ margin-top:8px; }
+
+.edge{ stroke: var(--color-edge); stroke-width:3; fill:none; stroke-linecap:round; cursor:pointer; transition:all 0.2s ease;}
+.edge:hover{ stroke:#86efac; stroke-width:4;}
+
+.port{ width:14px; height:14px; border-radius:50%; position:absolute; cursor:crosshair; z-index:10; transition:all 0.1s ease;}
+.port:hover{ transform:scale(1.2);}
+.input-port{ left:-7px; background: var(--color-port-input);}
+.output-port{ right:-7px; background: var(--color-port-output);}
+
+#canvas{ position:relative; width:100%; height:100%; background: var(--color-canvas-bg);}
+#edges,#flow,#connecting-line{ position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;}
+#connecting-line{ display:none; stroke:#facc15; stroke-width:2; stroke-dasharray:5,5;}
+
+.toast{
+  position: fixed;
+  top:20px;
+  right:20px;
+  padding:12px 16px;
+  background:#1e293b;
+  border-left:4px solid #4ade80;
+  border-radius:6px;
+  opacity:0;
+  transform:translateX(100px);
+  transition:all 0.3s ease;
+  z-index:1000;
+}
+.toast.error{ border-left-color:#ef4444;}
+.toast.visible{ opacity:1; transform:translateX(0);}
+
+.toolbar-btn{
+  padding:8px 12px;
+  background:#374151;
+  border:1px solid #475569;
+  border-radius:6px;
+  color:white;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:0.85rem;
+  transition:all 0.2s ease;
+}
+.toolbar-btn:hover{ background:#4b5563; }
+.toolbar-btn.success{ background:#10b981; border-color:#10b981;}
+.toolbar-btn.danger{ background:#ef4444; border-color:#ef4444;}
+.toolbar-btn.warning{ background:#f59e0b; border-color:#f59e0b;}
+.toolbar-btn.primary{ background:#3b82f6; border-color:#3b82f6;}
+
+.file-upload{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; border:2px dashed #475569; border-radius:8px; margin-top:6px; cursor:pointer; font-size:0.75rem;}
+.file-upload.hover{ border-color:#3b82f6; background: rgba(59,130,246,0.02); }
+.file-info{ margin-top:6px; font-size:0.75rem; text-align:center; max-height:90px; overflow-y:auto;}
+.text-area { width:100%; min-height:80px; padding:6px; border-radius:6px; border:1px solid #475569; background:#334155; color:white;}
+</style>
+</head>
+<body>
+
+<!-- Input Panel -->
+<div id="input-panel" class="p-4 bg-slate-900 border-b border-slate-700">
+  <div class="flex items-center gap-4">
+    <div class="flex-1">
+      <label class="block text-sm font-medium mb-1">Validation Parameters</label>
+      <textarea id="protocol-input" class="text-area">{ "model_version": "varnet-v2.1.0", "test_scenarios": 500, "validation_focus": ["diagnostic_accuracy","treatment_compliance","dosage_safety"], "compliance_thresholds": { "diagnostic_accuracy": 0.95, "treatment_compliance": 0.98, "knowledge_retrieval": 0.95 } }</textarea>
+    </div>
+    <div>
+      <button id="btn-apply-input" class="toolbar-btn success mt-6"><i class="fas fa-play"></i> Apply Parameters</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toolbar -->
+<div id="toolbar" class="p-2 bg-slate-900 border-b border-slate-700 flex gap-2">
+  <button id="btn-add-knowledge" class="toolbar-btn"><i class="fas fa-database"></i> Knowledge Base</button>
+  <button id="btn-add-validator" class="toolbar-btn"><i class="fas fa-check-circle"></i> Validator</button>
+  <button id="btn-add-llm" class="toolbar-btn"><i class="fas fa-brain"></i> LLM Analyst</button>
+  <button id="btn-add-output" class="toolbar-btn"><i class="fas fa-file-alt"></i> Report</button>
+  <div class="toolbar-separator w-px bg-slate-600 mx-2"></div>
+  <button id="btn-connect-mode" class="toolbar-btn"><i class="fas fa-plug"></i> Connect</button>
+  <button id="btn-run-graph" class="toolbar-btn success"><i class="fas fa-play"></i> Run Validation</button>
+  <button id="btn-stop-graph" class="toolbar-btn danger"><i class="fas fa-stop"></i> Stop</button>
+  <div class="toolbar-separator w-px bg-slate-600 mx-2"></div>
+  <button id="btn-clear-workspace" class="toolbar-btn danger"><i class="fas fa-trash-alt"></i> Clear</button>
+</div>
+
+<!-- Canvas -->
+<div id="canvas-container" style="position:relative; overflow:hidden; height:calc(100vh - 350px);">
+  <div id="canvas" style="transform-origin:0 0; transform:scale(1);"></div>
+  <svg id="edges"></svg>
+  <svg id="flow"></svg>
+  <svg id="connecting-line"></svg>
+</div>
+
+<!-- Output Panel -->
+<div id="output-panel" class="p-4 bg-slate-900 border-t border-slate-700 h-48 overflow-y-auto">
+  <div class="output-header flex justify-between mb-2">
+    <div class="flex gap-1">
+      <div class="output-tab active" data-tab="results">Validation Results</div>
+      <div class="output-tab" data-tab="log">Execution Log</div>
+      <div class="output-tab" data-tab="report">Compliance Report</div>
+    </div>
+    <div>
+      <button id="btn-clear-output" class="toolbar-btn"><i class="fas fa-trash"></i> Clear Output</button>
+    </div>
+  </div>
+  <div id="output-content"><div class="text-slate-400">// Protocol validation results will appear here...</div></div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Hidden File Input -->
+<input type="file" id="file-input" style="display:none;" multiple />
+
+<script type="module">
+import { pipeline } from "https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js";
+
+let nodes=[], edges=[], nodeId=0, connectMode=false, dragPort=null, currentInput=null, isRunning=false;
+const canvas=document.getElementById('canvas');
+const edgesSvg=document.getElementById('edges');
+const connectingLineSvg=document.getElementById('connecting-line');
+const protocolInput=document.getElementById('protocol-input');
+const outputContent=document.getElementById('output-content');
+const toast=document.getElementById('toast');
+const fileInput=document.getElementById('file-input');
+
+// local model handle
+let localModel=null;
+async function loadLocalModel(){
+  if(localModel) return localModel;
+  try{
+    showToast("Loading local model (may take a moment)...");
+    localModel = await pipeline("text-classification", "Xenova/distilbert-base-uncased-finetuned-sst-2-english");
+    showToast("Local model ready ✅");
+    return localModel;
+  }catch(err){
+    showToast("Local model failed to load: " + (err.message||err), true);
+    throw err;
+  }
+}
+async function runLocalModel(input){
+  if(!localModel) await loadLocalModel();
+  return await localModel(input);
+}
+
+// UI helpers
+function showToast(msg,error=false){ toast.textContent=msg; toast.className=`toast ${error?"error":""} visible`; setTimeout(()=>toast.classList.remove('visible'),3000); }
+function addOutput(msg,type="info"){ const div=document.createElement('div'); div.textContent=msg; if(type==="error") div.style.color="salmon"; if(type==="success") div.style.color="lightgreen"; outputContent.appendChild(div); outputContent.scrollTop=outputContent.scrollHeight; }
+function clearOutput(){ outputContent.innerHTML=""; }
+
+// Node creation
+function createNode(type,x=100,y=100){
+  const id=nodeId++;
+  const nodeEl=document.createElement('div');
+  nodeEl.className='node node-'+type.toLowerCase();
+  nodeEl.style.left=x+'px'; nodeEl.style.top=y+'px';
+
+  let contentHtml=`<div class="node-header"><span class="node-title">${type}</span><span class="node-icon fa fa-times"></span></div><div class="node-content"></div><div class="port output-port"></div>`;
+  nodeEl.innerHTML=contentHtml;
+
+  canvas.appendChild(nodeEl);
+  const node={id,type,el:nodeEl,data:{files:[],localModels:[],cloudModels:[],output:null,mode:"auto"}}; // mode: auto|local|cloud
+  nodes.push(node);
+
+  // delete button
+  nodeEl.querySelector('.fa-times').onclick=(e)=>{ e.stopPropagation(); deleteNode(id); };
+
+  // output port click (start connect)
+  const outPort=nodeEl.querySelector('.output-port');
+  outPort.onclick=(e)=>{ e.stopPropagation(); if(connectMode){ dragPort=node; connectingLineSvg.style.display='block'; } };
+
+  // make draggable & select
+  makeDraggable(nodeEl);
+  nodeEl.onclick=()=>selectNode(id);
+
+  // Type-specific UI
+  const contentDiv=nodeEl.querySelector('.node-content');
+
+  if(type==="KnowledgeBase"){
+    // File upload area with drag & drop + click fallback + model add options
+    const uploadDiv=document.createElement('div');
+    uploadDiv.className="file-upload";
+    uploadDiv.innerHTML=`<i class="fas fa-upload"></i> <div style="font-weight:600;margin-top:6px;">Click or drop files</div><div class="file-info"></div><div style="display:flex;gap:6px;margin-top:8px;"><button class="toolbar-btn" data-action="add-local">Add Local Model</button><button class="toolbar-btn" data-action="add-cloud">Add Cloud Model URL</button></div>`;
+    const fileInfo=uploadDiv.querySelector('.file-info');
+
+    uploadDiv.addEventListener('click', (e)=>{ e.stopPropagation(); fileInput.onchange=(ev)=>{ const fls=Array.from(fileInput.files); node.data.files.push(...fls); updateFileInfo(node,fileInfo); }; fileInput.click(); });
+
+    // drag/drop over drop area
+    uploadDiv.addEventListener('dragover', (e)=>{ e.preventDefault(); uploadDiv.classList.add('hover'); });
+    uploadDiv.addEventListener('dragleave', ()=>{ uploadDiv.classList.remove('hover'); });
+    uploadDiv.addEventListener('drop', (e)=>{ e.preventDefault(); uploadDiv.classList.remove('hover'); const fls=Array.from(e.dataTransfer.files||[]); if(fls.length){ node.data.files.push(...fls); updateFileInfo(node,fileInfo); showToast(`${fls.length} file(s) added to Knowledge node`); } });
+
+    // local model button: pick files (extensions filtered)
+    uploadDiv.querySelector('[data-action="add-local"]').onclick=(ev)=>{ ev.stopPropagation(); fileInput.onchange=(ev)=>{ const fls=Array.from(fileInput.files); const modelFiles = fls.filter(f=>/\.(onnx|bin|pt|pth|tflite)$/i.test(f.name)); if(modelFiles.length) node.data.localModels.push(...modelFiles); else node.data.files.push(...fls); updateFileInfo(node,fileInfo); showToast('Local model(s) added'); }; fileInput.click(); };
+
+    // cloud model button: prompt URL
+    uploadDiv.querySelector('[data-action="add-cloud"]').onclick=(ev)=>{ ev.stopPropagation(); const url = prompt('Paste cloud model URL (https://...)'); if(url){ node.data.cloudModels.push(url); updateFileInfo(node,fileInfo); showToast('Cloud model URL added'); } };
+
+    contentDiv.appendChild(uploadDiv);
+    updateFileInfo(node,fileInfo);
+
+    // allow dropping files directly onto whole node too
+    nodeEl.addEventListener('dragover', (e)=>{ e.preventDefault(); nodeEl.classList.add('hover'); });
+    nodeEl.addEventListener('dragleave', ()=>{ nodeEl.classList.remove('hover'); });
+    nodeEl.addEventListener('drop', (e)=>{ e.preventDefault(); nodeEl.classList.remove('hover'); const fls=Array.from(e.dataTransfer.files||[]); if(fls.length){ node.data.files.push(...fls); updateFileInfo(node,fileInfo); showToast(`${fls.length} file(s) dropped into Knowledge node`); } });
+  }
+
+  if(type==="LLMAnalyst"){
+    // Add a mode toggle (Auto / Local / Cloud)
+    const toggle=document.createElement('select');
+    toggle.className="text-black text-xs mt-2 p-1 rounded";
+    toggle.innerHTML='<option value="auto">Auto</option><option value="local">Local</option><option value="cloud">Cloud</option>';
+    toggle.onchange=(e)=>{ node.data.mode=e.target.value; showToast(`LLMAnalyst #${id} mode: ${node.data.mode}`); };
+    contentDiv.appendChild(toggle);
+
+    // Also show a small status text
+    const status=document.createElement('div');
+    status.style.marginTop='8px';
+    status.style.fontSize='0.8rem';
+    status.style.opacity='0.9';
+    status.innerText='LLM ready';
+    contentDiv.appendChild(status);
+  }
+
+  if(type==="Validator"){
+    const info=document.createElement('div');
+    info.style.fontSize='0.85rem';
+    info.innerText='Validator node — checks compliance and safety.';
+    contentDiv.appendChild(info);
+  }
+
+  if(type==="Report"){
+    const info=document.createElement('div');
+    info.style.fontSize='0.85rem';
+    info.innerText='Report node — aggregates outputs.';
+    contentDiv.appendChild(info);
+  }
+
+  // style node border by type
+  styleNodeByType(node);
+
+  return node;
+}
+
+function updateFileInfo(node, el){
+  const parts=[];
+  if(node.data.files && node.data.files.length) parts.push('<strong>Files:</strong> ' + node.data.files.map(f=>f.name).join(', '));
+  if(node.data.localModels && node.data.localModels.length) parts.push('<strong>Local models:</strong> ' + node.data.localModels.map(f=>f.name).join(', '));
+  if(node.data.cloudModels && node.data.cloudModels.length) parts.push('<strong>Cloud models:</strong> ' + node.data.cloudModels.join('<br>'));
+  el.innerHTML = parts.length ? parts.join('<br>') : '<em>No files yet</em>';
+}
+
+function styleNodeByType(node){
+  node.el.classList.remove('node-knowledge','node-validator','node-llm','node-output','node-input');
+  if(node.type==='KnowledgeBase') node.el.classList.add('node-knowledge');
+  if(node.type==='Validator') node.el.classList.add('node-validator');
+  if(node.type==='LLMAnalyst') node.el.classList.add('node-llm');
+  if(node.type==='Report') node.el.classList.add('node-output');
+}
+
+// selection / delete
+function selectNode(id){ nodes.forEach(n=>n.el.classList.remove('selected')); const node=nodes.find(n=>n.id===id); if(node) node.el.classList.add('selected'); }
+function deleteNode(id){ const idx=nodes.findIndex(n=>n.id===id); if(idx>=0){ try{ canvas.removeChild(nodes[idx].el); }catch(e){} nodes.splice(idx,1); edges=edges.filter(e=>e.from!==id && e.to!==id); renderEdges(); } }
+
+// dragging nodes
+function makeDraggable(el){
+  let isDragging=false,startX,startY;
+  el.addEventListener('mousedown', e=>{
+    if(e.target.classList.contains('fa-times') || e.target.classList.contains('port') || e.target.tagName==='SELECT' ) return;
+    isDragging=true;
+    startX = e.clientX - el.offsetLeft;
+    startY = e.clientY - el.offsetTop;
+    el.style.zIndex = 50;
+  });
+  document.addEventListener('mousemove', e=>{
+    if(!isDragging) return;
+    el.style.left = (e.clientX - startX) + 'px';
+    el.style.top  = (e.clientY - startY) + 'px';
+    renderEdges();
+  });
+  document.addEventListener('mouseup', ()=>{
+    isDragging=false;
+    el.style.zIndex = 5;
+  });
+}
+
+// edges
+function createEdge(fromId, toId){
+  if(edges.some(e=>e.from===fromId && e.to===toId)) return;
+  edges.push({from:fromId, to:toId});
+  renderEdges();
+}
+function renderEdges(){
+  edgesSvg.innerHTML='';
+  edges.forEach(edge=>{
+    const f = nodes.find(n=>n.id===edge.from);
+    const t = nodes.find(n=>n.id===edge.to);
+    if(!f || !t) return;
+    const x1 = f.el.offsetLeft + f.el.offsetWidth - 7;
+    const y1 = f.el.offsetTop + f.el.offsetHeight/2;
+    const x2 = t.el.offsetLeft + 7;
+    const y2 = t.el.offsetTop + t.el.offsetHeight/2;
+    const dx = Math.abs(x2 - x1);
+    const cx1 = x1 + Math.min(120, dx*0.5);
+    const cx2 = x2 - Math.min(120, dx*0.5);
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    const d = `M ${x1} ${y1} C ${cx1} ${y1} ${cx2} ${y2} ${x2} ${y2}`;
+    path.setAttribute('d', d);
+    // color by source type
+    const color = edgeColorForNodeType(f.type);
+    path.setAttribute('stroke', color);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('class', 'edge');
+    edgesSvg.appendChild(path);
+  });
+}
+function edgeColorForNodeType(type){
+  switch(type){
+    case 'KnowledgeBase': return 'rgba(139,92,246,0.9)';
+    case 'Validator': return 'rgba(239,68,68,0.9)';
+    case 'LLMAnalyst': return 'rgba(236,72,153,0.9)';
+    case 'Report': return 'rgba(250,204,21,0.95)';
+    default: return 'rgba(74,222,128,0.95)';
+  }
+}
+
+// execution
+async function highlightNode(node){
+  node.el.classList.add('selected');
+  addOutput(`Executing ${node.type}`);
+  await new Promise(r=>setTimeout(r, 700));
+  node.el.classList.remove('selected');
+}
+
+const nodeTypes = {
+  KnowledgeBase: async (node, input) => {
+    await highlightNode(node);
+    return { summary: "Knowledge uploaded", results: node.data.files?.map(f=>f.name)||[] };
+  },
+  Validator: async (node, input) => {
+    await highlightNode(node);
+    // Very simple: pass-through
+    return { summary: "Validation passed", results: input.flat() };
+  },
+  LLMAnalyst: async (node, input) => {
+    await highlightNode(node);
+    let results = [];
+    // Mode precedence: node.data.mode (local/cloud/auto)
+    const mode = node.data.mode || 'auto';
+    if(mode === 'local'){
+      try{
+        const out = await runLocalModel("This protocol is safe and effective.");
+        // out is an array of {label,score}
+        if(Array.isArray(out) && out.length) results = [`${out[0].label} (${out[0].score.toFixed(2)})`];
+        else results = ['Local model returned no result'];
+      }catch(err){
+        results = ['Local model error: ' + (err.message||err)];
+      }
+    } else if(mode === 'cloud'){
+      // Placeholder: replace with your cloud API call.
+      results = ["Cloud model response placeholder"];
+    } else { // auto
+      // find nearest knowledge node
+      const nearest = findNearestKnowledge(node);
+      if(nearest){
+        // If nearest has localModels or cloudModels prefer localModels -> cloudModels -> files
+        if(nearest.data.localModels && nearest.data.localModels.length){
+          results = ["Auto-linked: will use local model from nearest Knowledge node"];
+        } else if(nearest.data.cloudModels && nearest.data.cloudModels.length){
+          results = ["Auto-linked: will use cloud model URL from nearest Knowledge node"];
+        } else if(nearest.data.files && nearest.data.files.length){
+          results = ["Auto-linked: using knowledge files from nearest Knowledge node"];
+        } else {
+          results = ["Auto-linked: nearest has no usable models/files"];
+        }
+      } else {
+        results = ["No Knowledge node found for auto mode"];
+      }
+    }
+    return { summary: "LLM analysis done", results };
+  },
+  Report: async (node, input) => {
+    await highlightNode(node);
+    return { summary: "Report generated", results: input.flat() };
+  }
+};
+
+function findNearestKnowledge(node){
+  // compute distance to knowledge nodes
+  const candidates = nodes.filter(n=>n.type==='KnowledgeBase');
+  if(candidates.length===0) return null;
+  const nx = node.el.offsetLeft + node.el.offsetWidth/2;
+  const ny = node.el.offsetTop + node.el.offsetHeight/2;
+  candidates.sort((a,b)=>{
+    const ax = a.el.offsetLeft + a.el.offsetWidth/2;
+    const ay = a.el.offsetTop + a.el.offsetHeight/2;
+    const bx = b.el.offsetLeft + b.el.offsetWidth/2;
+    const by = b.el.offsetTop + b.el.offsetHeight/2;
+    const da = Math.hypot(nx-ax, ny-ay);
+    const db = Math.hypot(nx-bx, ny-by);
+    return da - db;
+  });
+  return candidates[0];
+}
+
+async function runGraph(){
+  if(isRunning) return;
+  isRunning = true;
+  addOutput("=== Starting Workflow ===", "success");
+  try{
+    // naive sequence: nodes in creation order (you can implement topo ordering if you want)
+    for(const node of nodes){
+      if(!isRunning) break;
+      const inputData = edges.filter(e=>e.to===node.id).map(e=> nodes.find(n=>n.id===e.from).data.output ).filter(Boolean);
+      if(nodeTypes[node.type]){
+        const result = await nodeTypes[node.type](node, inputData);
+        node.data.output = result;
+        addOutput(`Node ${node.type} done: ${result.summary}`, "success");
+      }
+    }
+    const reportNode = nodes.find(n=>n.type==='Report');
+    if(reportNode){
+      const reportInput = edges.filter(e=>e.to===reportNode.id).map(e=> nodes.find(n=>n.id===e.from).data.output ).filter(Boolean);
+      addOutput("=== Final Report ===", "success");
+      addOutput(JSON.stringify(reportInput.flatMap(r=>r.results||[]), null, 2), "success");
+    }
+  }catch(err){
+    addOutput(err.message || String(err), "error");
+  }
+  isRunning = false;
+}
+
+// Buttons wiring
+document.getElementById('btn-add-knowledge').onclick = ()=>createNode("KnowledgeBase", 100 + nodes.length*10, 100 + nodes.length*6);
+document.getElementById('btn-add-validator').onclick = ()=>createNode("Validator", 250 + nodes.length*10, 150 + nodes.length*6);
+document.getElementById('btn-add-llm').onclick = ()=>createNode("LLMAnalyst", 400 + nodes.length*10, 200 + nodes.length*6);
+document.getElementById('btn-add-output').onclick = ()=>createNode("Report", 550 + nodes.length*10, 250 + nodes.length*6);
+document.getElementById('btn-connect-mode').onclick = ()=>{
+  connectMode = !connectMode;
+  showToast(connectMode ? "Connect mode ON" : "Connect mode OFF");
+};
+document.getElementById('btn-run-graph').onclick = runGraph;
+document.getElementById('btn-stop-graph').onclick = ()=>{ isRunning=false; addOutput("Workflow stopped", "error"); };
+document.getElementById('btn-clear-workspace').onclick = ()=>{ nodes.forEach(n=>{ try{ canvas.removeChild(n.el); }catch(e){} }); nodes=[]; edges=[]; renderEdges(); };
+document.getElementById('btn-apply-input').onclick = ()=>{ try{ currentInput = JSON.parse(protocolInput.value); showToast("Parameters applied"); }catch(e){ showToast("Invalid JSON", true); } };
+document.getElementById('btn-clear-output').onclick = clearOutput;
+
+// Connecting line while dragging
+canvas.addEventListener('mousemove', e=>{
+  if(!dragPort) return;
+  connectingLineSvg.style.display = 'block';
+  connectingLineSvg.innerHTML = '';
+  const rect = canvas.getBoundingClientRect();
+  const line = document.createElementNS("http://www.w3.org/2000/svg","path");
+  const x1 = dragPort.el.offsetLeft + dragPort.el.offsetWidth - 7;
+  const y1 = dragPort.el.offsetTop + dragPort.el.offsetHeight/2;
+  const x2 = e.clientX - rect.left;
+  const y2 = e.clientY - rect.top;
+  const dx = Math.abs(x2 - x1);
+  const cx1 = x1 + Math.min(120, dx*0.5);
+  const cx2 = x2 - Math.min(120, dx*0.5);
+  const d = `M ${x1} ${y1} C ${cx1} ${y1} ${cx2} ${y2} ${x2} ${y2}`;
+  line.setAttribute('d', d);
+  line.setAttribute('stroke', '#facc15');
+  line.setAttribute('fill', 'none');
+  line.setAttribute('stroke-width', '2');
+  line.setAttribute('stroke-dasharray', '5,5');
+  connectingLineSvg.appendChild(line);
+});
+
+canvas.addEventListener('mouseup', e=>{
+  if(!dragPort) return;
+  // find target node under cursor
+  const targetNode = nodes.find(n=> n.el.contains(e.target) && n.id!==dragPort.id);
+  if(targetNode){
+    createEdge(dragPort.id, targetNode.id);
+    showToast(`Edge created from ${dragPort.type} to ${targetNode.type}`);
+  }
+  dragPort = null;
+  connectingLineSvg.style.display = 'none';
+  connectingLineSvg.innerHTML = '';
+});
+
+// allow dropping files onto canvas to create a knowledge node or add to selected knowledge node
+canvas.addEventListener('dragover', e=>{ e.preventDefault(); });
+canvas.addEventListener('drop', e=>{
+  e.preventDefault();
+  const dt = e.dataTransfer;
+  if(!dt || !dt.files || dt.files.length===0) return;
+  const fls = Array.from(dt.files);
+  // see if a selected knowledge node exists
+  const selected = nodes.find(n=> n.el.classList.contains('selected') && n.type==='KnowledgeBase');
+  if(selected){
+    selected.data.files.push(...fls);
+    const info = selected.el.querySelector('.file-info');
+    if(info) updateFileInfo(selected, info);
+    showToast(`${fls.length} file(s) added to selected Knowledge node`);
+  } else {
+    // create new knowledge node at drop pos
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const newNode = createNode('KnowledgeBase', x-50, y-20);
+    newNode.data.files.push(...fls);
+    const info = newNode.el.querySelector('.file-info');
+    if(info) updateFileInfo(newNode, info);
+    showToast(`Knowledge node created with ${fls.length} file(s)`);
+  }
+});
+
+// allow connecting by clicking input port when in connect mode (alternative)
+canvas.addEventListener('click', e=>{
+  if(e.target.classList.contains('input-port') && connectMode && dragPort){
+    const tgt = nodes.find(n=> n.el.contains(e.target));
+    if(tgt && dragPort.node && dragPort.node.id !== tgt.id){
+      createEdge(dragPort.node.id, tgt.id);
+      dragPort = null;
+      showToast('Edge created (click flow)');
+    }
+  }
+});
+
+// Utility: initialize with a demo minimal flow
+(function initDemo(){
+  const k = createNode('KnowledgeBase', 100, 80);
+  const v = createNode('Validator', 320, 140);
+  const l = createNode('LLMAnalyst', 520, 180);
+  const r = createNode('Report', 720, 220);
+  // create demo edges
+  createEdge(k.id, v.id);
+  createEdge(v.id, l.id);
+  createEdge(l.id, r.id);
+  renderEdges();
+  // load local model in background
+  loadLocalModel().catch(()=>{/*silent*/});
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClinVARnet Unified PWA + Pandemic SEIRD</title>
+
+<!-- Manifest -->
+<script type="application/json" id="manifest">
+{
+  "name": "ClinVARnet Unified PWA",
+  "short_name": "ClinVARnet",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f0f0f0",
+  "theme_color": "#4f46e5",
+  "description": "Offline multi-layer node editor with AI and dynamic SEIRD pandemic simulation",
+  "icons": [
+    {"src":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABG0lEQVQ4T2NkoBAwUqifgYGBoYGB4z//f3+YzDMyM8+fP/58xDgaHn4AgJw2xCuQT3I5QHgVqRwiEyMQwCDJg1DoA7uHgVJcxiFlS5ghZ2Xj8Aw0T9DScmInRj4gZCqEcQvN/LxzMwkzRzODtG6Ng4vPnz8fBwRnz/+/3+H9mT1ZEXjDkgwRBogmAPx/Gdg5HhA8k2wxhLB+3IEFL8lIgaD8cPnmM1Zf3v/jww8cPHz+eMmD7hyMnbyyNjY3xBiOhjgD5L0JYSAIAbP0xC5WFT0RAAAAAElFTkSuQmCC","sizes":"16x16","type":"image/png"}
+  ]
+}
+</script>
+
+<!-- Tailwind + React + Recharts + Lucide -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/recharts/umd/Recharts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide-react/dist/lucide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist/build/pdf.min.js"></script>
+
+<style>
+body { margin:0; font-family:sans-serif; background:#f0f0f0; }
+canvas { background:#fff; border:1px solid #ccc; display:block; margin:0 auto; }
+.node { position:absolute; border-radius:8px; padding:8px; min-width:160px; cursor:pointer; user-select:none; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
+#toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333;color:#fff;padding:10px 20px;border-radius:8px; display:none; z-index:1000; }
+.parameter-panel { position:fixed; top:80px; right:20px; width:320px; background:#fff; border:1px solid #ccc; border-radius:8px; padding:10px; box-shadow:0 4px 12px rgba(0,0,0,0.3); display:none; z-index:100; max-height:75%; overflow-y:auto; }
+.parameter-panel h3 { font-weight:bold; margin-bottom:6px; }
+.parameter-panel label { display:block; margin-top:6px; font-size:0.85em; }
+.parameter-panel input, .parameter-panel select, .parameter-panel textarea { width:100%; padding:4px; border-radius:4px; border:1px solid #ccc; margin-top:2px; }
+button { cursor:pointer; margin-top:4px; }
+.tab { display:inline-block; padding:6px 12px; cursor:pointer; background:#ddd; margin-right:4px; border-radius:4px; }
+.tab.active { background:#4f46e5; color:#fff; }
+</style>
+</head>
+<body>
+
+<h1 class="text-center text-2xl font-bold my-4">ClinVARnet Unified PWA + Pandemic SEIRD</h1>
+
+<div class="text-center mb-4">
+  <span class="tab active" data-tab="workflow">Workflow Builder</span>
+  <span class="tab" data-tab="pandemic">Pandemic SEIRD Model</span>
+</div>
+
+<!-- Workflow Builder -->
+<div id="workflowTab">
+  <canvas id="graphCanvas" width="1400" height="800"></canvas>
+  <div id="toast"></div>
+  <div id="parameterPanel" class="parameter-panel">
+    <h3 id="paramTitle">Node Parameters</h3>
+    <div id="paramInputs"></div>
+  </div>
+</div>
+
+<!-- Pandemic Model -->
+<div id="pandemicTab" style="display:none;">
+  <div id="pandemicRoot"></div>
+</div>
+
+<script type="module">
+
+// -------------------- Tabs --------------------
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('workflowTab').style.display = tab.dataset.tab==='workflow'?'block':'none';
+    document.getElementById('pandemicTab').style.display = tab.dataset.tab==='pandemic'?'block':'none';
+  });
+});
+
+// -------------------- Workflow Builder (ClinVARnet) --------------------
+import { AutoModelForCausalLM, AutoTokenizer } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js';
+
+let model, tokenizer;
+async function loadModel(){
+  showToast('Loading AI model offline...',5000);
+  tokenizer = await AutoTokenizer.from_pretrained('Xenova/gpt2-small',{cacheDir:'transformers-cache'});
+  model = await AutoModelForCausalLM.from_pretrained('Xenova/gpt2-small',{cacheDir:'transformers-cache'});
+  showToast('Offline AI model ready',2000);
+}
+loadModel();
+
+const canvas=document.getElementById('graphCanvas');
+const ctx=canvas.getContext('2d');
+let nodes=[], edges=[], nodeIdCounter=0;
+let selectedNode=null, dragOffset={x:0,y:0};
+let connectingNode=null, connectingOutputIndex=null, editingNode=null;
+
+// Toast
+function showToast(msg,duration=2000){
+  const toast=document.getElementById('toast'); toast.textContent=msg; toast.style.display='block';
+  setTimeout(()=>toast.style.display='none',duration);
+}
+
+// Node Classes
+class Node{
+  constructor(x,y,label,type='generic'){
+    this.id=nodeIdCounter++; this.x=x; this.y=y; this.label=label; this.type=type;
+    this.inputs=['in']; this.outputs=['out']; this.parameters={prompt:'Edit me', spawnNext:[], connectTo:[], attachments:[]};
+    this.width=160; this.height=70; this.outputValue=null;
+  }
+  draw(ctx){
+    ctx.fillStyle=this.type==='ai'?'#0ea5e9':'#4f46e5';
+    ctx.fillRect(this.x,this.y,this.width,this.height);
+    ctx.fillStyle='#fff'; ctx.font='bold 14px sans-serif';
+    ctx.fillText(this.label,this.x+8,this.y+18);
+    this.inputs.forEach((_,i)=>{ ctx.beginPath(); ctx.arc(this.x,this.y+30+i*14,5,0,2*Math.PI); ctx.fill(); });
+    this.outputs.forEach((_,i)=>{ ctx.beginPath(); ctx.arc(this.x+this.width,this.y+30+i*14,5,0,2*Math.PI); ctx.fill(); });
+    if(this.outputValue!==null){ ctx.font='12px sans-serif'; ctx.fillText(this.outputValue.toString().substring(0,20), this.x+8,this.y+this.height-8); }
+  }
+  isInside(mx,my){ return mx>this.x && mx<this.x+this.width && my>this.y && my<this.y+this.height; }
+  getPortUnderMouse(mx,my){
+    for(let i=0;i<this.inputs.length;i++){ const px=this.x, py=this.y+30+i*14; if(Math.hypot(mx-px,my-py)<7) return {type:'input', index:i}; }
+    for(let i=0;i<this.outputs.length;i++){ const px=this.x+this.width, py=this.y+30+i*14; if(Math.hypot(mx-px,my-py)<7) return {type:'output', index:i}; }
+    return null;
+  }
+}
+
+class Edge{
+  constructor(fromNode,fromIndex,toNode,toIndex){ this.fromNode=fromNode; this.toNode=toNode; this.fromIndex=fromIndex; this.toIndex=toIndex; }
+  draw(ctx){
+    const startX=this.fromNode.x+this.fromNode.width, startY=this.fromNode.y+30+this.fromIndex*14;
+    const endX=this.toNode.x, endY=this.toNode.y+30+this.toIndex*14;
+    ctx.strokeStyle='#111'; ctx.lineWidth=2; ctx.beginPath();
+    ctx.moveTo(startX,startY); ctx.bezierCurveTo(startX+50,startY,endX-50,endY,endX,endY); ctx.stroke();
+  }
+}
+
+function draw(){ ctx.clearRect(0,0,canvas.width,canvas.height); edges.forEach(e=>e.draw(ctx)); nodes.forEach(n=>n.draw(ctx)); requestAnimationFrame(draw); }
+requestAnimationFrame(draw);
+
+function saveWorkflow(){ localStorage.setItem('nodes',JSON.stringify(nodes)); localStorage.setItem('edges',JSON.stringify(edges.map(e=>({from:e.fromNode.id,to:e.toNode.id,fromIndex:e.fromIndex,toIndex:e.toIndex})))); }
+
+function loadWorkflow(){
+  const savedNodes=JSON.parse(localStorage.getItem('nodes')||'[]');
+  const savedEdges=JSON.parse(localStorage.getItem('edges')||'[]');
+  nodes=savedNodes.map(n=>{ const node=new Node(n.x,n.y,n.label,n.type); node.id=n.id; node.parameters=n.parameters||{prompt:'Edit me',spawnNext:[],connectTo:[],attachments:[]}; node.outputValue=n.outputValue||null; return node; });
+  nodeIdCounter = nodes.length ? Math.max(...nodes.map(n=>n.id))+1 : 0;
+  edges=savedEdges.map(e=>new Edge(nodes.find(n=>n.id===e.from), e.fromIndex, nodes.find(n=>n.id===e.to), e.toIndex));
+}
+loadWorkflow();
+
+// Mouse Events
+canvas.addEventListener('mousedown', e=>{
+  const mx=e.offsetX, my=e.offsetY;
+  const node=nodes.find(n=>n.isInside(mx,my));
+  if(connectingNode){
+    if(node && node!==connectingNode){ const port=node.getPortUnderMouse(mx,my); if(port && port.type==='input'){ edges.push(new Edge(connectingNode,connectingOutputIndex,node,port.index)); connectingNode=null; connectingOutputIndex=null; saveWorkflow(); showToast('Nodes Connected'); return; }}
+    connectingNode=null; connectingOutputIndex=null; return;
+  }
+  if(node){
+    const port=node.getPortUnderMouse(mx,my);
+    if(port && port.type==='output'){ connectingNode=node; connectingOutputIndex=port.index; return; }
+    selectedNode=node; dragOffset={x:mx-node.x,y:my-node.y}; showNodeParameters(node);
+  } else hideNodeParameters();
+});
+canvas.addEventListener('mousemove', e=>{ if(selectedNode){ selectedNode.x=e.offsetX-dragOffset.x; selectedNode.y=e.offsetY-dragOffset.y; saveWorkflow(); executeWorkflow(); } });
+canvas.addEventListener('mouseup', e=>{ selectedNode=null; });
+
+// Parameter Panel
+const paramPanel=document.getElementById('parameterPanel');
+const paramInputsDiv=document.getElementById('paramInputs');
+const paramTitle=document.getElementById('paramTitle');
+
+function showNodeParameters(node){
+  editingNode=node; paramPanel.style.display='block'; paramTitle.textContent=`Node: ${node.label}`; paramInputsDiv.innerHTML='';
+  for(const key in node.parameters){
+    if(key==='attachments') continue;
+    const label=document.createElement('label'); label.textContent=key;
+    const input=document.createElement('textarea'); input.value=node.parameters[key]; input.rows=2;
+    input.oninput=(e)=>{ node.parameters[key]=e.target.value; saveWorkflow(); executeWorkflow(); };
+    paramInputsDiv.appendChild(label); paramInputsDiv.appendChild(input);
+  }
+
+  // File attachments
+  const fileLabel=document.createElement('label'); fileLabel.textContent='Attachments (PDF/DOC/CSV)';
+  const fileInput=document.createElement('input'); fileInput.type='file'; fileInput.multiple=true;
+  fileInput.onchange=(e)=>{
+    const files=Array.from(e.target.files);
+    files.forEach(f=>{
+      const reader=new FileReader();
+      reader.onload=function(ev){ node.parameters.attachments.push({name:f.name, data:ev.target.result}); saveWorkflow(); showToast('Attachment added'); };
+      reader.readAsDataURL(f);
+    });
+  };
+  paramInputsDiv.appendChild(fileLabel); paramInputsDiv.appendChild(fileInput);
+
+  const spawnBtn=document.createElement('button'); spawnBtn.textContent='Spawn Node from Parameter';
+  spawnBtn.className='mt-2 w-full bg-yellow-500 text-white px-2 py-1 rounded';
+  spawnBtn.onclick=()=>{ 
+    if(editingNode.parameters.spawnNext){
+      editingNode.parameters.spawnNext.forEach(p=>{
+        const spawned=new Node(editingNode.x+180, editingNode.y+Math.random()*200, p,'generic'); nodes.push(spawned);
+      });
+      saveWorkflow(); executeWorkflow(); showToast('Spawned nodes from parameter array'); 
+    }
+  };
+  paramInputsDiv.appendChild(spawnBtn);
+}
+
+function hideNodeParameters(){ editingNode=null; paramPanel.style.display='none'; }
+
+// Execute Workflow
+async function executeNode(node){
+  if(node.type==='ai' && model && tokenizer){
+    try{
+      const inputIds = await tokenizer.encode(node.parameters.prompt);
+      const output = await model.generate(inputIds,{max_new_tokens:20});
+      node.outputValue = await tokenizer.decode(output[0]);
+    } catch(e){ node.outputValue='AI Error'; }
+  } else node.outputValue=Math.random().toFixed(4);
+
+  if(node.parameters.connectTo){
+    node.parameters.connectTo.forEach(tid=>{
+      const targetNode = nodes.find(n=>n.id==tid);
+      if(targetNode && !edges.find(e=>e.fromNode===node && e.toNode===targetNode))
+        edges.push(new Edge(node,0,targetNode,0));
+    });
+  }
+  edges.filter(e=>e.fromNode===node).forEach(e=>e.toNode.parameters.input=node.outputValue);
+  return node.outputValue;
+}
+
+async function executeWorkflow(){
+  const executed=new Set();
+  async function recurse(n){ if(executed.has(n.id)) return; const deps=edges.filter(e=>e.toNode===n).map(e=>e.fromNode); for(const d of deps) await recurse(d); await executeNode(n); executed.add(n.id);}
+  const outputNodes=nodes.filter(n=>n.type==='output'); await Promise.all(outputNodes.map(n=>recurse(n)));
+}
+
+// Buttons
+['Run Workflow','Add Node','Add AI Node'].forEach((text,i)=>{
+  const btn=document.createElement('button'); btn.textContent=text; btn.className='fixed top-'+(4+i*8)+' right-4 bg-indigo-600 text-white px-4 py-2 rounded shadow';
+  if(text==='Run Workflow') btn.onclick=executeWorkflow;
+  if(text==='Add Node') btn.onclick=()=>{ const n=new Node(100+Math.random()*300,100+Math.random()*300,'New Node'); nodes.push(n); saveWorkflow(); executeWorkflow(); showToast('Node Added'); };
+  if(text==='Add AI Node') btn.onclick=()=>{ const n=new Node(200+Math.random()*300,150+Math.random()*300,'AI Node','ai'); n.parameters={prompt:'Hello AI', spawnNext:[], connectTo:[], attachments:[]}; nodes.push(n); saveWorkflow(); executeWorkflow(); showToast('AI Node Added'); };
+  document.body.appendChild(btn);
+});
+
+// -------------------- Pandemic SEIRD Model --------------------
+const e = React.createElement;
+const { useState, useEffect, useRef } = React;
+const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar } = Recharts;
+
+function PandemicModel(){
+  const [params,setParams]=useState({beta:0.3,sigma:1/5.1,gamma:1/10,mu:0.001,alpha:0.1,rho:0.05,populationSize:1000000});
+  const [initialConditions,setInitialConditions]=useState({susceptible:999900,exposed:50,infected:50,recovered:0,dead:0});
+  const [isRunning,setIsRunning]=useState(false);
+  const [currentDay,setCurrentDay]=useState(0);
+  const [data,setData]=useState([]);
+  const [populations,setPopulations]=useState(initialConditions);
+  const intervalRef=useRef(null);
+
+  const timeStep=1;
+
+  const updatePopulations=(S,E,I,R,D,dt)=>{
+    let effectiveBeta = currentDay>=30?params.beta*(1-params.alpha):params.beta;
+    const N=S+E+I+R;
+    const newE=E+dt*(effectiveBeta*S*I/N - params.sigma*E);
+    const newI=I+dt*(params.sigma*E - params.gamma*I - params.mu*I);
+    const newR=R+dt*(params.gamma*I);
+    const newD=D+dt*(params.mu*I);
+    const newS=S-dt*(effectiveBeta*S*I/N);
+    return {susceptible:newS, exposed:newE, infected:newI, recovered:newR, dead:newD};
+  };
+
+  const simulationStep=()=>{
+    setCurrentDay(prev=>prev+1);
+    setPopulations(prev=>{
+      const next=updatePopulations(prev.susceptible, prev.exposed, prev.infected, prev.recovered, prev.dead,timeStep);
+      setData(d=>[...d,{day:currentDay+1,...next}]);
+      return next;
+    });
+  };
+
+  const toggleSimulation=()=>{ if(isRunning){ clearInterval(intervalRef.current); setIsRunning(false); } else{ intervalRef.current=setInterval(simulationStep,100); setIsRunning(true); } };
+  const resetSimulation=()=>{ clearInterval(intervalRef.current); setIsRunning(false); setCurrentDay(0); setPopulations(initialConditions); setData([{day:0,...initialConditions}]); };
+
+  const handleFileUpload=(e)=>{
+    const f=e.target.files[0]; if(f){ const reader=new FileReader();
+      reader.onload=ev=>{
+        const csv=ev.target.result.split('\n').slice(1).map(l=>l.split(',').map(Number));
+        if(csv.length>0){
+          setParams(prev=>({...prev, beta:csv[0][1], sigma:csv[0][2], gamma:csv[0][3], mu:csv[0][4]}));
+          setInitialConditions({susceptible:csv[0][5], exposed:csv[0][6], infected:csv[0][7], recovered:csv[0][8], dead:csv[0][9]});
+          showToast('CSV loaded');
+        }
+      };
+      reader.readAsText(f);
+    }
+  };
+
+  const exportData=()=>{
+    const csvContent=['day,susceptible,exposed,infected,recovered,dead',
+      ...data.map(d=>`${d.day},${d.susceptible},${d.exposed},${d.infected},${d.recovered},${d.dead}`)
+    ].join('\n');
+    const blob=new Blob([csvContent],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='pandemic.csv'; a.click(); URL.revokeObjectURL(url);
+  };
+
+  useEffect(()=>{ resetSimulation(); return()=>{ if(intervalRef.current) clearInterval(intervalRef.current); } },[]);
+
+  return e('div',{className:'p-4'},
+    e('h2', {className:'text-xl font-bold mb-2'},'Pandemic SEIRD Model'),
+    e('div',{},
+      e('button',{className:'mr-2 bg-green-500 text-white px-2 py-1 rounded', onClick:toggleSimulation}, isRunning?'Pause':'Run'),
+      e('button',{className:'mr-2 bg-red-500 text-white px-2 py-1 rounded', onClick:resetSimulation},'Reset'),
+      e('button',{className:'mr-2 bg-blue-500 text-white px-2 py-1 rounded', onClick:exportData},'Export CSV'),
+      e('input',{type:'file',accept:'.csv',onChange:handleFileUpload})
+    ),
+    e(LineChart,{width:1000,height:400,data:data},
+      e(CartesianGrid,{}), e(XAxis,{dataKey:'day'}), e(YAxis,{}), e(Tooltip,{}), e(Legend,{}),
+      e(Line,{type:'monotone',dataKey:'susceptible',stroke:'#8884d8'}),
+      e(Line,{type:'monotone',dataKey:'exposed',stroke:'#82ca9d'}),
+      e(Line,{type:'monotone',dataKey:'infected',stroke:'#ff7300'}),
+      e(Line,{type:'monotone',dataKey:'recovered',stroke:'#0088FE'}),
+      e(Line,{type:'monotone',dataKey:'dead',stroke:'#FF0000'})
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('pandemicRoot')).render(e(PandemicModel));
+
+</script>
+
+<script>
+// -------------------- Service Worker Registration --------------------
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').then(()=>console.log('SW registered')); }
+
+// -------------------- Inline Service Worker --------------------
+const swCode=`self.addEventListener('install',e=>{ e.waitUntil(caches.open('pwa-cache').then(c=>c.addAll(['/']))); self.skipWaiting(); });
+self.addEventListener('fetch',e=>{ e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))); });`;
+const swBlob = new Blob([swCode], {type:'application/javascript'});
+const swURL = URL.createObjectURL(swBlob);
+navigator.serviceWorker.register(swURL);
+</script>
+
+</body>
+</html>

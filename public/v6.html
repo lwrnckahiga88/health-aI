@@ -1,0 +1,235 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetStream Performance Dashboard v6</title>
+<meta name="theme-color" content="#6366f1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.1/dist/hls.min.js"></script>
+<style>
+:root{--bg:#0f0f23;--panel:#1a1a2e;--node:#16213e;--node-border:#3b4d6b;--accent:#6366f1;--text:#e2e8f0;--success:#10b981;--warning:#f59e0b;--error:#ef4444}
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text)}
+.app{display:flex;flex-direction:column;min-height:100vh}
+.panel{background:var(--panel);border-bottom:1px solid var(--node-border);padding:12px}
+.flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}.gap-3{gap:12px}
+.btn{background:var(--node);border:1px solid var(--node-border);border-radius:8px;padding:8px 12px;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.container{display:flex;gap:16px;padding:16px;align-items:flex-start}
+.column{flex:1;min-width:300px}
+.card{background:var(--panel);border:1px solid var(--node-border);border-radius:12px;padding:16px;margin-bottom:16px}
+.stat-value{font-weight:700;font-size:1.25rem}
+input.url-input{width:100%;padding:10px;border-radius:8px;border:1px solid var(--node-border);background:var(--node);color:var(--text)}
+canvas{background:transparent;border-radius:8px}
+.small{font-size:0.9rem;color:#9ca3af}
+.flex-row{display:flex;gap:8px}
+.muted{color:#94a3b8}
+.video-container{aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;margin-bottom:8px}
+ul{padding-left:16px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="panel flex items-center justify-between">
+    <h1 style="margin:0;font-size:1.1rem;">NetStream v6 - Live Performance Dashboard</h1>
+    <div class="flex items-center gap-3">
+      <button id="btn-connect-wallet" class="btn primary">Connect Wallet</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="column">
+      <div class="card">
+        <h2>IPFS / CDN / Livepeer Metrics</h2>
+        <canvas id="comparisonChart" height="200"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>ERC-20 Rewards & Wallet</h3>
+        <div>Wallet: <strong id="wallet-address">Not connected</strong></div>
+        <div>Tokens: <strong id="token-balance">0</strong></div>
+        <canvas id="tokenChart" height="120"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>IPFS Preload Status</h3>
+        <ul id="ipfs-list"></ul>
+      </div>
+    </div>
+
+    <div class="column">
+      <div class="card">
+        <h2>Live Stream / Video Player</h2>
+        <div class="video-container">
+          <video id="test-video" controls autoplay muted></video>
+        </div>
+        <canvas id="streamChart" height="140"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;right:16px;bottom:16px;background:#111827;color:#fff;padding:10px;border-radius:8px;display:none;"></div>
+
+<script>
+// ---------------------------
+// Toast function
+function toast(msg,type='info'){
+  const el=document.getElementById('toast');el.innerText=msg;
+  el.style.display='block';
+  el.style.background= type==='error' ? '#b91c1c' : type==='success' ? '#065f46' : '#111827';
+  setTimeout(()=>el.style.display='none',3000);
+}
+
+// ---------------------------
+// Wallet & ERC20
+let provider, signer, userAddress;
+let tokenBalance=0;
+let contract;
+const ERC20_ABI = ["function balanceOf(address) view returns (uint256)","function transfer(address to, uint amount) returns (bool)","function decimals() view returns (uint8)"];
+const ERC20_ADDRESS = "0xYourTokenContractAddressHere";
+
+async function connectWallet(){
+  if(window.ethereum){
+    provider=new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts",[]);
+    signer=provider.getSigner();
+    userAddress=await signer.getAddress();
+    document.getElementById('wallet-address').innerText=userAddress;
+    contract=new ethers.Contract(ERC20_ADDRESS,ERC20_ABI,signer);
+    updateTokenBalance();
+    toast('Wallet connected','success');
+  } else toast('No wallet found','error');
+}
+
+async function updateTokenBalance(){
+  if(contract && userAddress){
+    const balance=await contract.balanceOf(userAddress);
+    const decimals=await contract.decimals();
+    tokenBalance=parseFloat(ethers.utils.formatUnits(balance,decimals));
+    document.getElementById('token-balance').innerText=tokenBalance.toFixed(2);
+    addTokenChartPoint(tokenBalance);
+  }
+}
+
+async function claimTokens(amount){
+  if(contract && signer){
+    const decimals=await contract.decimals();
+    const tx=await contract.transfer(userAddress,ethers.utils.parseUnits(amount.toString(),decimals));
+    await tx.wait();
+    updateTokenBalance();
+    toast(`Claimed ${amount} tokens`,'success');
+  }
+}
+
+// ---------------------------
+// Charts
+const comparisonCtx=document.getElementById('comparisonChart').getContext('2d');
+const comparisonChart=new Chart(comparisonCtx,{
+  type:'bar',
+  data:{
+    labels:[],
+    datasets:[
+      {label:'IPFS TTFB',data:[],backgroundColor:'#10b981'},
+      {label:'CDN TTFB',data:[],backgroundColor:'#6366f1'},
+      {label:'Livepeer TTFB',data:[],backgroundColor:'#f59e0b'}
+    ]
+  },
+  options:{responsive:true,scales:{y:{beginAtZero:true}}}
+});
+
+const streamChartCtx=document.getElementById('streamChart').getContext('2d');
+const streamChart=new Chart(streamChartCtx,{type:'line',data:{labels:[],datasets:[{label:'Buffer (ms)',data:[],borderColor:'#10b981',fill:false}]},options:{responsive:true}});
+
+const tokenChartCtx=document.getElementById('tokenChart').getContext('2d');
+const tokenChart=new Chart(tokenChartCtx,{type:'line',data:{labels:[],datasets:[{label:'Token Balance',data:[],borderColor:'#fbbf24',fill:false}]},options:{responsive:true}});
+
+// ---------------------------
+// IPFS preload
+let autoPreloadQueue=[];
+function updateIPFSList(url,status='queued'){
+  const ul=document.getElementById('ipfs-list');
+  const existing=ul.querySelector(`[data-url="${url}"]`);
+  if(existing){existing.innerText=`${url} - ${status}`;return;}
+  const li=document.createElement('li');li.innerText=`${url} - ${status}`;li.dataset.url=url;
+  ul.appendChild(li);
+}
+
+async function cacheIPFSVideo(url){
+  if(!url) return;
+  const res=await fetch(url);
+  const blob=await res.blob();
+  updateIPFSList(url,'cached');
+  awardTokens(3);
+}
+
+// ---------------------------
+// Auto pipeline & metrics
+async function measureTTFB(url){
+  const start=performance.now();
+  await fetch(url,{mode:'cors'});
+  return Math.round(performance.now()-start);
+}
+
+async function runComparison(){
+  for(const url of autoPreloadQueue){
+    const ipfsTTFB=await measureTTFB(url.ipfs);
+    const cdnTTFB=await measureTTFB(url.cdn);
+    const livepeerTTFB=await measureTTFB(url.livepeer);
+
+    comparisonChart.data.labels.push(url.name);
+    comparisonChart.data.datasets[0].data.push(ipfsTTFB);
+    comparisonChart.data.datasets[1].data.push(cdnTTFB);
+    comparisonChart.data.datasets[2].data.push(livepeerTTFB);
+    comparisonChart.update();
+
+    awardTokens(1);
+  }
+}
+
+function playVideo(url){
+  const vid=document.getElementById('test-video');
+  if(Hls.isSupported()){
+    const hls=new Hls();
+    hls.loadSource(url);
+    hls.attachMedia(vid);
+    hls.on(Hls.Events.MANIFEST_PARSED,()=>vid.play());
+  } else {vid.src=url;vid.play();}
+}
+
+// ---------------------------
+// Token rewards
+function awardTokens(amount){
+  tokenBalance+=amount;
+  document.getElementById('token-balance').innerText=tokenBalance.toFixed(2);
+  addTokenChartPoint(tokenBalance);
+  if(contract && signer) claimTokens(amount);
+}
+function addTokenChartPoint(value){
+  const t=new Date().toLocaleTimeString();
+  tokenChart.data.labels.push(t);
+  tokenChart.data.datasets[0].data.push(value);
+  tokenChart.update();
+}
+
+// ---------------------------
+// Init
+async function initPWA(){
+  toast('NetStream v6 ready!','success');
+  // Example IPFS/CDN/Livepeer test videos
+  autoPreloadQueue=[
+    {name:'Video 1', ipfs:'https://ipfs.io/ipfs/Qm...', cdn:'https://cdn.example.com/video1.mp4', livepeer:'https://livepeer.com/video1.m3u8'},
+    {name:'Video 2', ipfs:'https://ipfs.io/ipfs/Qm...', cdn:'https://cdn.example.com/video2.mp4', livepeer:'https://livepeer.com/video2.m3u8'}
+  ];
+  for(const v of autoPreloadQueue) updateIPFSList(v.ipfs,'queued');
+  await runComparison();
+  playVideo(autoPreloadQueue[0].cdn);
+}
+
+initPWA();
+document.getElementById('btn-connect-wallet').addEventListener('click',connectWallet);
+</script>
+</body>
+</html>

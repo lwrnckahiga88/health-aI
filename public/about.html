@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>juA.kalI – Health AI Platform</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%);
+            color: #ffffff;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="0.5" fill="%23ffffff" opacity="0.05"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            animation: grain 8s linear infinite;
+        }
+
+        @keyframes grain {
+            0%, 100% { transform: translate(0, 0); }
+            10% { transform: translate(-5%, -10%); }
+            30% { transform: translate(3%, -15%); }
+            50% { transform: translate(-2%, 5%); }
+            70% { transform: translate(8%, -5%); }
+            90% { transform: translate(-1%, -10%); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa, #34d399, #fbbf24);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .hero .tagline {
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+            animation: fadeInUp 1s ease-out 0.3s both;
+        }
+
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: #64748b;
+            font-style: italic;
+            animation: fadeInUp 1s ease-out 0.6s both;
+        }
+
+        /* Video Section */
+        .video-section {
+            padding: 4rem 0;
+            background: rgba(15, 15, 35, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .video-container {
+            position: relative;
+            max-width: 900px;
+            margin: 0 auto;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            animation: slideInUp 1s ease-out;
+        }
+
+        .video-player {
+            width: 100%;
+            height: 500px;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .video-content {
+            text-align: center;
+            z-index: 2;
+            position: relative;
+        }
+
+        .africa-map {
+            width: 200px;
+            height: 150px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 50px 20px 50px 20px;
+            margin: 0 auto 2rem;
+            position: relative;
+            animation: pulse 3s infinite;
+        }
+
+        .africa-map::before {
+            content: '🌍';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+        }
+
+        .play-button {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+        }
+
+        .play-button:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+        }
+
+        .play-button i {
+            color: white;
+            font-size: 1.5rem;
+            margin-left: 5px;
+        }
+
+        .video-progress {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #60a5fa, #34d399);
+            width: 35%;
+            border-radius: 2px;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 0;
+            background: rgba(30, 41, 59, 0.5);
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 3rem;
+            background: linear-gradient(135deg, #60a5fa, #34d399);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #60a5fa;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-description {
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        /* Tech Stack Section */
+        .tech-stack {
+            padding: 6rem 0;
+            background: rgba(15, 15, 35, 0.9);
+        }
+
+        .tech-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .tech-table th {
+            background: linear-gradient(135deg, #1e40af, #3730a3);
+            color: white;
+            padding: 1.5rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .tech-table td {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+        }
+
+        .tech-table tr:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Footer */
+        .footer {
+            padding: 3rem 0;
+            text-align: center;
+            background: rgba(15, 15, 35, 0.95);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero .tagline {
+                font-size: 1.2rem;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .video-player {
+                height: 400px;
+            }
+            
+            .tech-table {
+                font-size: 0.9rem;
+            }
+            
+            .tech-table th,
+            .tech-table td {
+                padding: 1rem;
+            }
+        }
+
+        /* Scroll Animations */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease-out;
+        }
+
+        .animate-on-scroll.animated {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>🧠 juA.kalI Health AI Platform</h1>
+                <p class="tagline">"AI for every village, AI for every healer."</p>
+                <p class="subtitle">Empowering remote diagnostics for Africa and beyond — <em>Jua.Kali Innovations</em></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Video Section -->
+    <section class="video-section">
+        <div class="container">
+            <div class="video-container animate-on-scroll">
+                <div class="video-player">
+                    <div class="africa-map"></div>
+                    <div class="video-content">
+                        <h3 style="color: #60a5fa; margin-bottom: 1rem;">AI for every village,</h3>
+                        <h3 style="color: #34d399; margin-bottom: 2rem;">AI for every healer</h3>
+                        <p style="color: #cbd5e1; max-width: 400px;">Empowering remote diagnostics for Africa and beyond</p>
+                    </div>
+                    <div class="play-button" onclick="playVideo()">
+                        <i class="fas fa-play"></i>
+                    </div>
+                    <div class="video-progress">
+                        <i class="fas fa-play" style="color: #cbd5e1;"></i>
+                        <span style="color: #cbd5e1; font-size: 0.9rem;">2:21</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                        <i class="fas fa-volume-up" style="color: #cbd5e1;"></i>
+                        <i class="fas fa-expand" style="color: #cbd5e1;"></i>
+                    </div>
+                </div>
+                <p style="text-align: center; margin-top: 1rem; color: #94a3b8; font-style: italic;">
+                    juA.kalI explainer video showcasing how it supports healthcare services.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title animate-on-scroll">🌟 Key Features</h2>
+            <div class="features-grid">
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">🧠</div>
+                    <h3 class="feature-title">AI Diagnostic Engine</h3>
+                    <p class="feature-description">Powered by ONNX Runtime Web and Transformers.js, running directly in the browser—no server needed.</p>
+                </div>
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">🔬</div>
+                    <h3 class="feature-title">Medical Image & Symptom Analysis</h3>
+                    <p class="feature-description">Handles structured (forms) and unstructured (text/images) input with comprehensive analysis tools.</p>
+                </div>
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">📊</div>
+                    <h3 class="feature-title">Patient Data Visualization</h3>
+                    <p class="feature-description">Generates real-time visual summaries and charts based on user inputs and AI diagnostics.</p>
+                </div>
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">🌐</div>
+                    <h3 class="feature-title">Offline-Ready PWA</h3>
+                    <p class="feature-description">With Workbox and Webpack, the app functions offline, perfect for remote environments.</p>
+                </div>
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">🔒</div>
+                    <h3 class="feature-title">Local & Secure</h3>
+                    <p class="feature-description">No patient data leaves the device unless explicitly shared—privacy built in.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Stack Section -->
+    <section class="tech-stack">
+        <div class="container">
+            <h2 class="section-title animate-on-scroll">🧱 Tech Stack</h2>
+            <div class="animate-on-scroll">
+                <table class="tech-table">
+                    <thead>
+                        <tr>
+                            <th>Layer</th>
+                            <th>Tech Used</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Frontend</td>
+                            <td>React, JSX</td>
+                            <td>Dynamic user interface</td>
+                        </tr>
+                        <tr>
+                            <td>AI Runtime</td>
+                            <td>ONNX Runtime Web</td>
+                            <td>Local ML model execution</td>
+                        </tr>
+                        <tr>
+                            <td>NLP Engine</td>
+                            <td>Transformers.js</td>
+                            <td>Token classification, NER</td>
+                        </tr>
+                        <tr>
+                            <td>Bundling</td>
+                            <td>Webpack 5</td>
+                            <td>PWA and polyfills</td>
+                        </tr>
+                        <tr>
+                            <td>Styling</td>
+                            <td>CSS Modules, Tailwind</td>
+                            <td>Consistent UI design</td>
+                        </tr>
+                        <tr>
+                            <td>Offline/PWA</td>
+                            <td>Workbox</td>
+                            <td>Offline support</td>
+                        </tr>
+                        <tr>
+                            <td>Deployment</td>
+                            <td>Netlify, GitHub Pages, IPFS</td>
+                            <td>Decentralized, fast access</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Jua.Kali Innovations. Built with 🧠 for the world.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Scroll Animation
+        function animateOnScroll() {
+            const elements = document.querySelectorAll('.animate-on-scroll');
+            const windowHeight = window.innerHeight;
+
+            elements.forEach(element => {
+                const elementTop = element.getBoundingClientRect().top;
+                const elementVisible = 150;
+
+                if (elementTop < windowHeight - elementVisible) {
+                    element.classList.add('animated');
+                }
+            });
+        }
+
+        // Video Play Function
+        function playVideo() {
+            const playButton = document.querySelector('.play-button');
+            const videoPlayer = document.querySelector('.video-player');
+            
+            // Create a more dynamic "playing" state
+            playButton.innerHTML = '<i class="fas fa-pause"></i>';
+            playButton.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+            
+            // Simulate video playing with progress animation
+            const progressFill = document.querySelector('.progress-fill');
+            let progress = 35;
+            
+            const interval = setInterval(() => {
+                progress += 1;
+                progressFill.style.width = progress + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    playButton.innerHTML = '<i class="fas fa-play"></i>';
+                    playButton.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                    progressFill.style.width = '0%';
+                }
+            }, 100);
+            
+            // Add ripple effect
+            const ripple = document.createElement('div');
+            ripple.style.cssText = `
+                position: absolute;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.3);
+                transform: scale(0);
+                animation: ripple 0.6s linear;
+                width: 200px;
+                height: 200px;
+                left: 50%;
+                top: 50%;
+                margin-left: -100px;
+                margin-top: -100px;
+                pointer-events: none;
+            `;
+            
+            videoPlayer.appendChild(ripple);
+            
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+        }
+
+        // Add ripple animation keyframes
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple {
+                to {
+                    transform: scale(2);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Event Listeners
+        window.addEventListener('scroll', animateOnScroll);
+        window.addEventListener('load', animateOnScroll);
+
+        // Initialize animations on load
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('juA.kalI Health AI Platform loaded successfully');
+            animateOnScroll();
+        });
+    </script>
+</body>
+</html>

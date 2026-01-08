@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vacuum AI - Genomic Intelligence</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --dark-bg: #0f0f23;
+        --card-bg: rgba(255, 255, 255, 0.05);
+        --glass-bg: rgba(255, 255, 255, 0.1);
+        --text-primary: #ffffff;
+        --text-secondary: #b8b9cf;
+        --accent-neon: #00ffff;
+        --purple-neon: #8b5cf6;
+        --pink-neon: #ec4899;
+    }
+
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--dark-bg);
+        color: var(--text-primary);
+        min-height: 100vh;
+        overflow-x: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(ellipse at top, rgba(102, 126, 234, 0.1) 0%, transparent 70%),
+                    radial-gradient(ellipse at bottom right, rgba(236, 72, 153, 0.1) 0%, transparent 70%);
+        z-index: -1;
+        animation: backgroundShift 20s ease-in-out infinite;
+    }
+
+    @keyframes backgroundShift {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+    }
+
+    /* Navigation */
+    .navbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        backdrop-filter: blur(20px);
+        background: rgba(15, 15, 35, 0.8);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 1000;
+        padding: 1rem 2rem;
+    }
+
+    .nav-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .logo {
+        font-size: 1.5rem;
+        font-weight: 700;
+        background: linear-gradient(45deg, var(--accent-neon), var(--purple-neon));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .nav-tabs {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .nav-tab {
+        padding: 0.75rem 1.5rem;
+        background: transparent;
+        border: 2px solid transparent;
+        border-radius: 25px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .nav-tab::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: var(--primary-gradient);
+        transition: left 0.3s ease;
+        z-index: -1;
+    }
+
+    .nav-tab:hover::before,
+    .nav-tab.active::before {
+        left: 0;
+    }
+
+    .nav-tab:hover,
+    .nav-tab.active {
+        color: var(--text-primary);
+        border-color: var(--purple-neon);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
+    }
+
+    /* Main Content Container */
+    .main-container {
+        margin-top: 100px;
+        padding: 2rem;
+        max-width: 1400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    /* Page Modules */
+    .page-module {
+        display: none;
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .page-module.active {
+        display: block;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Run Prompt Module - Futuristic Neural Network Theme */
+    .prompt-module {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        border-radius: 20px;
+        padding: 3rem;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .prompt-module::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: conic-gradient(from 0deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+        animation: rotate 10s linear infinite;
+        z-index: -1;
+    }
+
+    .prompt-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+
+    .prompt-title {
+        font-size: 3rem;
+        font-weight: 800;
+        background: linear-gradient(45deg, var(--accent-neon), var(--purple-neon), var(--pink-neon));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 1rem;
+    }
+
+    .prompt-subtitle {
+        color: var(--text-secondary);
+        font-size: 1.2rem;
+    }
+
+    .prompt-input-container {
+        position: relative;
+        margin-bottom: 2rem;
+    }
+
+    .prompt-textarea {
+        width: 100%;
+        min-height: 150px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 1.5rem;
+        color: var(--text-primary);
+        font-size: 1.1rem;
+        resize: vertical;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+
+    .prompt-textarea:focus {
+        outline: none;
+        border-color: var(--purple-neon);
+        box-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+    }
+
+    .ai-button {
+        background: var(--primary-gradient);
+        border: none;
+        padding: 1rem 3rem;
+        border-radius: 50px;
+        color: white;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0 auto;
+    }
+
+    .ai-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+    }
+
+    .ai-button:active {
+        transform: translateY(-1px);
+    }
+
+    .results-container {
+        margin-top: 3rem;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .results-steps {
+        list-style: none;
+        margin-bottom: 2rem;
+    }
+
+    .results-steps li {
+        padding: 0.75rem 0;
+        border-left: 3px solid var(--accent-neon);
+        padding-left: 1rem;
+        margin-bottom: 0.5rem;
+        background: rgba(0, 255, 255, 0.05);
+        border-radius: 5px;
+    }
+
+    /* Analysis Results Module - Matrix Digital Rain Theme */
+    .results-module {
+        background: linear-gradient(135deg, rgba(0, 255, 0, 0.05) 0%, rgba(0, 100, 0, 0.1) 100%);
+        border-radius: 20px;
+        padding: 3rem;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(0, 255, 0, 0.2);
+    }
+
+    .results-module::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            linear-gradient(90deg, transparent 79px, rgba(0, 255, 0, 0.1) 81px, rgba(0, 255, 0, 0.1) 82px, transparent 84px),
+            linear-gradient(rgba(0, 255, 0, 0.05) 50%, transparent 50%);
+        background-size: 84px 4px;
+        animation: matrixRain 3s linear infinite;
+        z-index: -1;
+    }
+
+    @keyframes matrixRain {
+        0% { transform: translateY(-100px); }
+        100% { transform: translateY(100px); }
+    }
+
+    .results-title {
+        font-size: 2.5rem;
+        color: #00ff00;
+        text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        margin-bottom: 2rem;
+        font-family: 'Courier New', monospace;
+    }
+
+    .results-display {
+        background: rgba(0, 0, 0, 0.8);
+        border-radius: 10px;
+        padding: 2rem;
+        font-family: 'Courier New', monospace;
+        color: #00ff00;
+        white-space: pre-wrap;
+        border: 1px solid rgba(0, 255, 0, 0.3);
+        box-shadow: inset 0 0 20px rgba(0, 255, 0, 0.1);
+    }
+
+    /* Fetch Data Module - Cyberpunk Neon Theme */
+    .fetch-module {
+        background: linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+        border-radius: 20px;
+        padding: 3rem;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--pink-neon);
+    }
+
+    .fetch-module::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 98px,
+                rgba(236, 72, 153, 0.1) 100px
+            );
+        animation: neonScan 4s linear infinite;
+        z-index: -1;
+    }
+
+    @keyframes neonScan {
+        0% { transform: translateX(-100px); }
+        100% { transform: translateX(100px); }
+    }
+
+    .fetch-title {
+        font-size: 2.5rem;
+        background: linear-gradient(45deg, var(--pink-neon), var(--purple-neon));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 3rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    .fetch-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .fetch-card {
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 2px solid transparent;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .fetch-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 15px;
+        padding: 2px;
+        background: linear-gradient(45deg, var(--pink-neon), var(--purple-neon), var(--accent-neon));
+        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask-composite: exclude;
+        z-index: -1;
+    }
+
+    .fetch-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(236, 72, 153, 0.2);
+    }
+
+    .fetch-input {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        padding: 1rem;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .fetch-input:focus {
+        outline: none;
+        border-color: var(--pink-neon);
+        box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
+    }
+
+    .fetch-button {
+        background: linear-gradient(45deg, var(--pink-neon), var(--purple-neon));
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 25px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .fetch-button::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        transition: all 0.3s ease;
+    }
+
+    .fetch-button:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .fetch-button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 10px 25px rgba(236, 72, 153, 0.4);
+    }
+
+    .data-output {
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(236, 72, 153, 0.3);
+        font-family: 'Courier New', monospace;
+        color: var(--text-primary);
+        white-space: pre-wrap;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    /* Chart Styling */
+    .chart-container {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-top: 2rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Loading Animation */
+    .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: var(--accent-neon);
+        animation: spin 1s ease-in-out infinite;
+        margin-right: 10px;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .nav-tabs {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .main-container {
+            padding: 1rem;
+        }
+        
+        .prompt-title {
+            font-size: 2rem;
+        }
+        
+        .fetch-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">VACUUM AI</div>
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="showModule('prompt')">Neural Prompt</button>
+                <button class="nav-tab" onclick="showModule('results')">Matrix Results</button>
+                <button class="nav-tab" onclick="showModule('fetch')">Data Nexus</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        
+        <!-- Run Prompt Module -->
+        <div id="promptModule" class="page-module prompt-module active">
+            <div class="prompt-header">
+                <h1 class="prompt-title">NEURAL ANALYSIS</h1>
+                <p class="prompt-subtitle">Advanced Genomic Intelligence Processing</p>
+            </div>
+            
+            <div class="prompt-input-container">
+                <textarea id="promptInput" class="prompt-textarea" placeholder="Enter your genomic analysis query... (e.g., 'Analyze EGFR mutation and suggest treatment')">Analyze EGFR mutation and suggest treatment</textarea>
+            </div>
+            
+            <button onclick="runAgent()" id="runAgentBtn" class="ai-button">
+                <span id="runAgentLoader" class="loading" style="display: none;"></span>
+                <span>🧬 Execute AI Analysis</span>
+            </button>
+
+            <div id="pipelineResults" class="results-container" style="display: none;">
+                <h3 style="color: var(--accent-neon); margin-bottom: 1rem;">Pipeline Execution:</h3>
+                <ul id="pipelineSteps" class="results-steps"></ul>
+
+                <h3 style="color: var(--accent-neon); margin-bottom: 1rem;">Analysis Output:</h3>
+                <pre id="resultsOutput" style="background: rgba(0,0,0,0.5); padding: 1.5rem; border-radius: 10px; color: var(--text-primary); white-space: pre-wrap;"></pre>
+
+                <h3 style="color: var(--accent-neon); margin-bottom: 1rem;">Mutation Score Visualization</h3>
+                <div class="chart-container">
+                    <canvas id="mutationChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Results Module -->
+        <div id="resultsModule" class="page-module results-module">
+            <h1 class="results-title">&gt; ANALYSIS_RESULTS.exe</h1>
+            <div class="results-display" id="savedResults">
+                &gt; No analysis data found in memory banks...<br>
+                &gt; Execute neural prompt analysis first<br>
+                &gt; System status: READY
+            </div>
+        </div>
+
+        <!-- Fetch Data Module -->
+        <div id="fetchModule" class="page-module fetch-module">
+            <h1 class="fetch-title">Data Nexus Portal</h1>
+            
+            <div class="fetch-grid">
+                <div class="fetch-card">
+                    <h3 style="color: var(--pink-neon); margin-bottom: 1rem;">🧬 Ensembl Gene Database</h3>
+                    <input type="text" id="geneInput" class="fetch-input" value="EGFR" placeholder="Enter gene symbol">
+                    <button onclick="fetchEnsembl()" id="ensemblBtn" class="fetch-button">
+                        <span id="ensemblLoader" class="loading" style="display: none;"></span>
+                        <span>Query Ensembl</span>
+                    </button>
+                </div>
+
+                <div class="fetch-card">
+                    <h3 style="color: var(--purple-neon); margin-bottom: 1rem;">💊 PubChem Drug Database</h3>
+                    <input type="text" id="drugInput" class="fetch-input" value="Gefitinib" placeholder="Enter drug name">
+                    <button onclick="fetchPubchem()" id="pubchemBtn" class="fetch-button">
+                        <span id="pubchemLoader" class="loading" style="display: none;"></span>
+                        <span>Query PubChem</span>
+                    </button>
+                </div>
+
+                <div class="fetch-card">
+                    <h3 style="color: var(--accent-neon); margin-bottom: 1rem;">🔗 Reactome Pathways</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem;">Fetch pathway data for current gene</p>
+                    <button onclick="fetchReactome()" id="reactomeBtn" class="fetch-button">
+                        <span id="reactomeLoader" class="loading" style="display: none;"></span>
+                        <span>Query Reactome</span>
+                    </button>
+                </div>
+            </div>
+
+            <h3 style="color: var(--pink-neon); margin-bottom: 1rem;">External Data Stream:</h3>
+            <div id="externalDataOutput" class="data-output">
+                &gt; Awaiting external data query...<br>
+                &gt; Select a database and initiate connection<br>
+                &gt; All systems online
+            </div>
+        </div>
+    </div>
+
+<script>
+    // Global variables
+    let currentResults = null;
+    window.mutationChart = null;
+    
+    // Module navigation
+    function showModule(moduleId) {
+        // Hide all modules
+        document.querySelectorAll('.page-module').forEach(module => {
+            module.classList.remove('active');
+        });
+        
+        // Remove active class from all tabs
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Show selected module
+        document.getElementById(moduleId + 'Module').classList.add('active');
+        
+        // Add active class to selected tab
+        event.target.classList.add('active');
+    }
+    
+    // Main analysis function
+    async function runAgent() {
+        const prompt = document.getElementById('promptInput').value;
+        const btn = document.getElementById('runAgentBtn');
+        const loader = document.getElementById('runAgentLoader');
+        const output = document.getElementById('resultsOutput');
+        const pipelineSteps = document.getElementById('pipelineSteps');
+        const resultsContainer = document.getElementById('pipelineResults');
+        
+        // Reset UI
+        btn.disabled = true;
+        loader.style.display = 'inline-block';
+        pipelineSteps.innerHTML = '';
+        output.textContent = '';
+        resultsContainer.style.display = 'none';
+        if (window.mutationChart) {
+            window.mutationChart.destroy();
+        }
+        
+        try {
+            // 1. Validate input
+            if (!prompt?.trim()) throw new Error("Please enter an analysis prompt");
+            
+            // 2. Extract gene symbol
+            const geneSymbol = extractGeneSymbol(prompt);
+            if (!geneSymbol) throw new Error("Couldn't identify a gene symbol");
+            addPipelineStep(`🔍 Identified gene: ${geneSymbol}`);
+            
+            // 3. Fetch Ensembl data
+            addPipelineStep(`📡 Fetching data for ${geneSymbol} from Ensembl`);
+            const ensemblData = await fetchEnsemblData(geneSymbol);
+            if (!ensemblData?.id) throw new Error("No valid gene data found");
+            
+            // 4. Prepare results
+            addPipelineStep("⚡ Processing genomic data");
+            const results = {
+                gene_info: {
+                    id: ensemblData.id,
+                    symbol: geneSymbol,
+                    name: ensemblData.display_name,
+                    location: `${ensemblData.seq_region_name}:${ensemblData.start}-${ensemblData.end}`,
+                    biotype: ensemblData.biotype,
+                    strand: ensemblData.strand > 0 ? "+" : "-"
+                },
+                analysis: {
+                    confidence: calculateConfidence(ensemblData),
+                    last_updated: new Date().toISOString()
+                }
+            };
+            
+            // 5. Add mutation data
+            results.mutation_scores = generateMutationScores(geneSymbol);
+            addPipelineStep("🧬 Generated mutation analysis");
+            
+            // 6. Display results
+            currentResults = {
+                pipeline_steps: [
+                    `Gene identification: ${geneSymbol}`,
+                    "Ensembl data retrieval",
+                    "Genomic analysis",
+                    "Mutation scoring"
+                ],
+                results: results
+            };
+            
+            displayResults(currentResults);
+            document.getElementById('savedResults').textContent = `> ANALYSIS_COMPLETE\n> Timestamp: ${new Date().toISOString()}\n> Gene: ${geneSymbol}\n\n` + JSON.stringify(currentResults, null, 2);
+            resultsContainer.style.display = 'block';
+            
+            addPipelineStep("✅ Analysis complete - Results stored in Matrix");
+            
+        } catch (error) {
+            console.error("Analysis error:", error);
+            addPipelineStep("❌ Analysis failed");
+            output.textContent = `Error: ${error.message}`;
+        } finally {
+            btn.disabled = false;
+            loader.style.display = 'none';
+        }
+    }
+    
+    // Helper functions
+    function extractGeneSymbol(text) {
+        const match = text.match(/\b([A-Z][A-Z0-9]{1,5})\b/);
+        return match ? match[1] : null;
+    }
+    
+    async function fetchEnsemblData(geneSymbol) {
+        const response = await fetch(
+            `https://rest.ensembl.org/lookup/symbol/homo_sapiens/${geneSymbol}?content-type=application/json`
+        );
+        if (!response.ok) throw new Error(`Failed to fetch data for ${geneSymbol}`);
+        return await response.json();
+    }
+    
+    function calculateConfidence(geneData) {
+        let score = 0.7;
+        if (geneData.biotype === 'protein_coding') score += 0.15;
+        if (geneData.description) score += 0.1;
+        return Math.min(score, 0.95).toFixed(2);
+    }
+    
+    function generateMutationScores(geneSymbol) {
+        const mutations = {};
+        const mutationCount = 3 + Math.floor(Math.random() * 3);
+        
+        for (let i = 1; i <= mutationCount; i++) {
+            const score = 0.5 + Math.random() * 0.5; // Random score 0.5-1.0
+            mutations[`${geneSymbol}_MUT${i}`] = parseFloat(score.toFixed(2));
+        }
+        
+        return mutations;
+    }
+    
+    function addPipelineStep(step) {
+        const li = document.createElement('li');
+        li.textContent = step;
+        document.getElementById('pipelineSteps').appendChild(li);
+    }
+    
+    function displayResults(data) {
+        // Pipeline steps
+        const stepsList = document.getElementById('pipelineSteps');
+        stepsList.innerHTML = '';
+        data.pipeline_steps.forEach(step => {
+            const li = document.createElement('li');
+            li.textContent = step;
+            stepsList.appendChild(li);
+        });
+        
+        // Results
+        document.getElementById('resultsOutput').textContent = JSON.stringify(data.results, null, 2);
+        
+        // Mutation chart
+        if (data.results.mutation_scores) {
+            createMutationChart(data.results.mutation_scores);
+        }
+    }
+    
+    function createMutationChart(scores) {
+        const ctx = document.getElementById('mutationChart').getContext('2d');
+        
+        if (window.mutationChart) {
+            window.mutationChart.destroy();
+        }
+        
+        window.mutationChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(scores),
+                datasets: [{
+                    label: 'Mutation Impact Score',
+                    data: Object.values(scores),
+                    backgroundColor: 'rgba(0, 255, 255, 0.6)',
+                    borderColor: 'rgba(0, 255, 255, 1)',
+                    borderWidth: 2,
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#ffffff'
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1.0,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#ffffff'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#ffffff'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // External data fetching functions
+    async function fetchEnsembl() {
+        const geneSymbol = document.getElementById('geneInput').value;
+        const btn = document.getElementById('ensemblBtn');
+        const loader = document.getElementById('ensemblLoader');
+        const output = document.getElementById('externalDataOutput');
+        
+        btn.disabled = true;
+        loader.style.display = 'inline-block';
+        output.textContent = '> Connecting to Ensembl database...';
+        
+        try {
+            if (!geneSymbol?.trim()) throw new Error("Please enter a gene symbol");
+            
+            const response = await fetch(
+                `https://rest.ensembl.org/lookup/symbol/homo_sapiens/${geneSymbol}?content-type=application/json`
+            );
+            
+            if (!response.ok) throw new Error(`Gene ${geneSymbol} not found`);
+            
+            const data = await response.json();
+            output.textContent = `> ENSEMBL DATA FOR ${geneSymbol.toUpperCase()}:\n\n` + JSON.stringify(data, null, 2);
+            
+        } catch (error) {
+            console.error("Ensembl fetch error:", error);
+            output.textContent = `> ERROR: ${error.message}`;
+        } finally {
+            btn.disabled = false;
+            loader.style.display = 'none';
+        }
+    }
+    
+    async function fetchPubchem() {
+        const drugName = document.getElementById('drugInput').value;
+        const btn = document.getElementById('pubchemBtn');
+        const loader = document.getElementById('pubchemLoader');
+        const output = document.getElementById('externalDataOutput');
+        
+        btn.disabled = true;
+        loader.style.display = 'inline-block';
+        output.textContent = '> Connecting to PubChem database...';
+        
+        try {
+            if (!drugName?.trim()) throw new Error("Please enter a drug name");
+            
+            // Simulate API call (would be replaced with actual PubChem API call)
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Mock data
+            const mockData = {
+                drug: drugName,
+                cid: Math.floor(Math.random() * 1000000),
+                molecular_formula: "C₂₄H₂₅ClFN₅O₃",
+                molecular_weight: 485.94,
+                description: `${drugName} is a tyrosine kinase inhibitor which targets EGFR.`,
+                targets: ["EGFR", "HER2"],
+                side_effects: ["Diarrhea", "Skin rash", "Nausea"]
+            };
+            
+            output.textContent = `> PUBCHEM DATA FOR ${drugName.toUpperCase()}:\n\n` + JSON.stringify(mockData, null, 2);
+            
+        } catch (error) {
+            console.error("PubChem fetch error:", error);
+            output.textContent = `> ERROR: ${error.message}`;
+        } finally {
+            btn.disabled = false;
+            loader.style.display = 'none';
+        }
+    }
+    
+    async function fetchReactome() {
+        const geneSymbol = document.getElementById('geneInput').value || "EGFR";
+        const btn = document.getElementById('reactomeBtn');
+        const loader = document.getElementById('reactomeLoader');
+        const output = document.getElementById('externalDataOutput');
+        
+        btn.disabled = true;
+        loader.style.display = 'inline-block';
+        output.textContent = '> Connecting to Reactome pathways database...';
+        
+        try {
+            if (!geneSymbol?.trim()) throw new Error("Please enter a gene symbol");
+            
+            // Simulate API call (would be replaced with actual Reactome API call)
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Mock data
+            const mockData = {
+                gene: geneSymbol,
+                pathways: [
+                    "EGFR downregulation",
+                    "Signaling by EGFR",
+                    "EGFR tyrosine kinase inhibitor resistance",
+                    "PI3K/AKT Signaling in Cancer"
+                ],
+                reactions: [
+                    "EGFR binding to EGF",
+                    "EGFR autophosphorylation",
+                    "EGFR dimerization"
+                ]
+            };
+            
+            output.textContent = `> REACTOME PATHWAYS FOR ${geneSymbol.toUpperCase()}:\n\n` + JSON.stringify(mockData, null, 2);
+            
+        } catch (error) {
+            console.error("Reactome fetch error:", error);
+            output.textContent = `> ERROR: ${error.message}`;
+        } finally {
+            btn.disabled = false;
+            loader.style.display = 'none';
+        }
+    }
+</script>
+</body>
+</html>

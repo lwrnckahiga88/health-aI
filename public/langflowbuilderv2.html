@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Universal Flow Builder - Modular Workflow Editor</title>
+  <meta name="theme-color" content="#6366f1" />
+  <meta name="description" content="Universal parameter-driven workflow editor with AI capabilities" />
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <style>
+    :root {
+      --bg: #0f0f23;
+      --panel: #1a1a2e;
+      --node: #16213e;
+      --node-border: #3b4d6b;
+      --edge: #22d3ee;
+      --accent: #6366f1;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --text: #e2e8f0;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Node Styles */
+    .flow-node {
+      position: absolute;
+      min-width: 200px;
+      max-width: 280px;
+      background: var(--node);
+      border: 1px solid var(--node-border);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 10;
+    }
+
+    .flow-node:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+    }
+
+    .flow-node.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+    }
+
+    .flow-node.running {
+      border-color: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    }
+
+    .node-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--node-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .node-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .node-type {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--accent);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .node-body {
+      padding: 16px;
+    }
+
+    .node-config {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      resize: vertical;
+      min-height: 80px;
+      width: 100%;
+    }
+
+    .node-config:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .node-status {
+      margin-top: 12px;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
+    .status-idle { background: rgba(100, 116, 139, 0.1); color: #94a3b8; }
+    .status-running { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    .status-error { background: rgba(239, 68, 68, 0.1); color: var(--error); }
+    .status-success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+
+    /* Port Styles */
+    .node-port {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--node-border);
+      border: 3px solid var(--node);
+      cursor: crosshair;
+      transition: all 0.2s ease;
+      z-index: 20;
+    }
+
+    .node-port:hover {
+      background: var(--accent);
+      transform: scale(1.2);
+    }
+
+    .node-port.input {
+      left: -7px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .node-port.output {
+      right: -7px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .node-port.connected {
+      background: var(--success);
+    }
+
+    /* Canvas */
+    #canvas {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+      background: 
+        radial-gradient(circle at 25% 25%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+        linear-gradient(180deg, var(--bg) 0%, #0a0a1a 100%);
+    }
+
+    #canvas::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 20px 20px;
+      pointer-events: none;
+    }
+
+    #edges-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .flow-edge {
+      stroke: var(--edge);
+      stroke-width: 2;
+      fill: none;
+      filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.3));
+    }
+
+    .flow-edge.active {
+      stroke: var(--success);
+      stroke-width: 3;
+      animation: flow 2s linear infinite;
+    }
+
+    @keyframes flow {
+      0% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: 20; }
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 300px;
+      background: var(--panel);
+      border-right: 1px solid var(--node-border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-section {
+      padding: 20px;
+      border-bottom: 1px solid var(--node-border);
+    }
+
+    .sidebar-title {
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+
+    .node-palette {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .palette-item {
+      padding: 12px;
+      background: var(--node);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+      font-size: 0.8rem;
+    }
+
+    .palette-item:hover {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .palette-item i {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 1.2rem;
+      color: var(--accent);
+    }
+
+    /* Logs */
+    .logs-container {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      height: 200px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 12px;
+    }
+
+    .log-entry {
+      margin-bottom: 4px;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .log-info { color: #94a3b8; }
+    .log-success { color: var(--success); background: rgba(16, 185, 129, 0.1); }
+    .log-warning { color: var(--warning); background: rgba(245, 158, 11, 0.1); }
+    .log-error { color: var(--error); background: rgba(239, 68, 68, 0.1); }
+
+    /* API Config */
+    .api-config {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      padding: 12px;
+      width: 100%;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: var(--text);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--panel);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      transform: translateX(0);
+    }
+
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.error { border-left: 4px solid var(--error); }
+    .toast.warning { border-left: 4px solid var(--warning); }
+
+    /* PWA Install Prompt */
+    .pwa-install-prompt {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: var(--panel);
+      border: 1px solid var(--node-border);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      z-index: 1000;
+      max-width: 320px;
+      display: none;
+    }
+
+    .pwa-install-prompt.show {
+      display: block;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Offline Indicator */
+    .offline-indicator {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: var(--error);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      z-index: 1000;
+      display: none;
+    }
+
+    .offline-indicator.show {
+      display: block;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .app {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        max-height: 40vh;
+        overflow-y: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--node-border);
+      }
+
+      .flex-1 {
+        height: 60vh;
+      }
+
+      .btn span {
+        display: none;
+      }
+
+      .btn {
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="panel p-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <h1 class="text-xl font-bold text-white">
+          <i class="fa fa-project-diagram text-indigo-400"></i>
+          Universal Flow Builder
+        </h1>
+        <span class="text-sm text-gray-400">v3.0.0 | Modular Workflow Editor</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="btn-install" class="btn primary hidden">
+          <i class="fa fa-download"></i> Install App
+        </button>
+        <button id="btn-save" class="btn primary">
+          <i class="fa fa-save"></i> Save Flow
+        </button>
+        <button id="btn-deploy" class="btn success">
+          <i class="fa fa-rocket"></i> Deploy
+        </button>
+        <button id="btn-run" class="btn warning">
+          <i class="fa fa-play"></i> Execute
+        </button>
+        <button id="btn-stop" class="btn error" disabled>
+          <i class="fa fa-stop"></i> Stop
+        </button>
+        <button id="btn-auto-run" class="btn warn">
+          <i class="fa fa-spinner"></i> Auto-Run
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex flex-1">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Node Palette -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">Component Library</div>
+        <div class="node-palette">
+          <div class="palette-item" data-type="InputNode">
+            <i class="fa fa-sliders"></i>
+            Input
+          </div>
+          <div class="palette-item" data-type="PreprocessorNode">
+            <i class="fa fa-broom"></i>
+            Preprocessor
+          </div>
+          <div class="palette-item" data-type="FeatureExtractorNode">
+            <i class="fa fa-flask"></i>
+            Feature Extractor
+          </div>
+          <div class="palette-item" data-type="StatisticalAnalysisNode">
+            <i class="fa fa-chart-line"></i>
+            Statistical Analysis
+          </div>
+          <div class="palette-item" data-type="LLMNode">
+            <i class="fa fa-brain"></i>
+            LLM
+          </div>
+          <div class="palette-item" data-type="ValidationNode">
+            <i class="fa fa-check-circle"></i>
+            Validation
+          </div>
+          <div class="palette-item" data-type="OutputNode">
+            <i class="fa fa-file-export"></i>
+            Output
+          </div>
+          <div class="palette-item" data-type="CustomNode">
+            <i class="fa fa-cog"></i>
+            Custom
+          </div>
+        </div>
+      </div>
+
+      <!-- Workflow Schema -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">Workflow Schema</div>
+        <textarea id="workflow-schema" class="api-config" rows="6" placeholder="Workflow schema JSON"></textarea>
+        <div class="mt-2 flex gap-2">
+          <button id="btn-load-schema" class="btn flex-1">Load</button>
+          <button id="btn-export-schema" class="btn flex-1">Export</button>
+        </div>
+      </div>
+
+      <!-- API Configuration -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">API Configuration</div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">API Base URL</label>
+            <input id="api-url" class="api-config" value="https://api.example.com/v1" placeholder="API endpoint">
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">API Key</label>
+            <input id="api-key" class="api-config" type="password" placeholder="API key">
+          </div>
+          <div class="flex gap-2">
+            <button id="btn-test-api" class="btn flex-1">Test</button>
+            <button id="btn-list-workflows" class="btn flex-1">List</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Execution Logs -->
+      <div class="sidebar-section flex-1">
+        <div class="sidebar-title">Execution Logs</div>
+        <div id="logs" class="logs-container"></div>
+      </div>
+    </div>
+
+    <!-- Main Canvas -->
+    <div class="flex-1 flex flex-col">
+      <!-- Canvas Toolbar -->
+      <div class="panel p-3 border-b border-gray-700">
+        <div class="flex items-center gap-3">
+          <button id="btn-clear" class="btn">
+            <i class="fa fa-trash"></i> Clear
+          </button>
+          <button id="btn-zoom-fit" class="btn">
+            <i class="fa fa-expand"></i> Fit View
+          </button>
+          <button id="btn-connect" class="btn">
+            <i class="fa fa-plug"></i> Connect Mode
+          </button>
+          <button id="btn-export" class="btn">
+            <i class="fa fa-download"></i> Export JSON
+          </button>
+          <button id="btn-import" class="btn">
+            <i class="fa fa-upload"></i> Import
+          </button>
+          <div class="flex-1"></div>
+          <div class="text-sm text-gray-400">
+            <span id="node-count">0 nodes</span> • 
+            <span id="edge-count">0 connections</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas Area -->
+      <div id="canvas">
+        <svg id="edges-svg"></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="toast">
+  <div id="toast-message"></div>
+</div>
+
+<!-- PWA Install Prompt -->
+<div id="pwa-install-prompt" class="pwa-install-prompt">
+  <div class="font-medium mb-2">Install Universal Flow Builder</div>
+  <div class="text-sm text-gray-400 mb-3">Install this application on your home screen for quick and easy access</div>
+  <div class="flex gap-2">
+    <button id="pwa-install-cancel" class="btn flex-1">Not Now</button>
+    <button id="pwa-install-confirm" class="btn primary flex-1">Install</button>
+  </div>
+</div>
+
+<!-- Offline Indicator -->
+<div id="offline-indicator" class="offline-indicator">
+  <i class="fa fa-wifi"></i> Offline Mode
+</div>
+
+<script type="module">
+// =========================
+// MODULE: Core Application
+// =========================
+class FlowBuilderApp {
+  constructor() {
+    this.modules = {};
+    this.isInitialized = false;
+  }
+
+  async init() {
+    try {
+      // Initialize core modules
+      this.modules.stateManager = new StateManager();
+      this.modules.uiManager = new UIManager();
+      this.modules.nodeManager = new NodeManager();
+      this.modules.connectionManager = new ConnectionManager();
+      this.modules.executionEngine = new ExecutionEngine();
+      this.modules.apiClient = new APIClient();
+      this.modules.storageManager = new StorageManager();
+      this.modules.pwaManager = new PWAManager();
+
+      // Initialize modules
+      await Promise.all(Object.values(this.modules).map(module => module.init(this)));
+
+      // Set up module interconnections
+      this.setupModuleConnections();
+
+      this.isInitialized = true;
+      this.log('Application initialized successfully', 'success');
+    } catch (error) {
+      console.error('Failed to initialize application:', error);
+      this.toast('Application initialization failed', 'error');
+    }
+  }
+
+  setupModuleConnections() {
+    // Connect node manager with connection manager
+    this.modules.nodeManager.onNodeAdded = (node) => {
+      this.modules.connectionManager.setupNodeEvents(node);
+    };
+
+    this.modules.nodeManager.onNodeRemoved = (nodeId) => {
+      this.modules.connectionManager.removeNodeConnections(nodeId);
+    };
+
+    // Connect execution engine with node manager
+    this.modules.executionEngine.getNode = (nodeId) => {
+      return this.modules.nodeManager.getNode(nodeId);
+    };
+
+    // Connect UI with state manager
+    this.modules.uiManager.onSaveRequest = () => {
+      this.modules.storageManager.saveFlow(this.modules.stateManager.getState());
+    };
+
+    this.modules.uiManager.onLoadRequest = (data) => {
+      this.modules.stateManager.setState(data);
+      this.modules.nodeManager.loadNodes(data.nodes);
+      this.modules.connectionManager.loadConnections(data.edges);
+    };
+  }
+
+  log(message, type = 'info') {
+    this.modules.uiManager.log(message, type);
+  }
+
+  toast(message, type = 'info') {
+    this.modules.uiManager.toast(message, type);
+  }
+}
+
+// =========================
+// MODULE: State Management
+// =========================
+class StateManager {
+  constructor() {
+    this.state = {
+      nodes: [],
+      edges: [],
+      workflow: {
+        name: 'Untitled Workflow',
+        description: '',
+        version: '1.0.0'
+      },
+      settings: {
+        autoRun: false,
+        executionMode: 'client' // 'client' or 'server'
+      }
+    };
+  }
+
+  init(app) {
+    this.app = app;
+    return Promise.resolve();
+  }
+
+  getState() {
+    return JSON.parse(JSON.stringify(this.state));
+  }
+
+  setState(newState) {
+    this.state = { ...this.state, ...newState };
+    this.app.log('State updated', 'info');
+  }
+
+  addNode(node) {
+    this.state.nodes.push(node);
+  }
+
+  removeNode(nodeId) {
+    this.state.nodes = this.state.nodes.filter(n => n.id !== nodeId);
+    this.state.edges = this.state.edges.filter(e => e.from !== nodeId && e.to !== nodeId);
+  }
+
+  addEdge(edge) {
+    this.state.edges.push(edge);
+  }
+
+  removeEdge(edgeId) {
+    this.state.edges = this.state.edges.filter(e => e.id !== edgeId);
+  }
+}
+
+// =========================
+// MODULE: UI Management
+// =========================
+class UIManager {
+  constructor() {
+    this.uiElements = {};
+    this.eventHandlers = {};
+  }
+
+  init(app) {
+    this.app = app;
+    this.cacheElements();
+    this.setupEventListeners();
+    return Promise.resolve();
+  }
+
+  cacheElements() {
+    // Cache frequently used UI elements
+    this.uiElements.canvas = document.getElementById('canvas');
+    this.uiElements.edgesSvg = document.getElementById('edges-svg');
+    this.uiElements.logs = document.getElementById('logs');
+    this.uiElements.toast = document.getElementById('toast');
+    this.uiElements.toastMessage = document.getElementById('toast-message');
+  }
+
+  setupEventListeners() {
+    // Node palette events
+    document.querySelectorAll('.palette-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        const type = e.currentTarget.dataset.type;
+        this.app.modules.nodeManager.createNode(type);
+      });
+    });
+
+    // Toolbar events
+    document.getElementById('btn-clear').addEventListener('click', () => this.clearCanvas());
+    document.getElementById('btn-run').addEventListener('click', () => this.app.modules.executionEngine.execute());
+    document.getElementById('btn-stop').addEventListener('click', () => this.app.modules.executionEngine.stop());
+    document.getElementById('btn-connect').addEventListener('click', () => this.toggleConnectMode());
+    document.getElementById('btn-zoom-fit').addEventListener('click', () => this.zoomToFit());
+    document.getElementById('btn-export').addEventListener('click', () => this.exportFlow());
+    document.getElementById('btn-import').addEventListener('click', () => this.importFlow());
+    document.getElementById('btn-save').addEventListener('click', () => this.onSaveRequest());
+    document.getElementById('btn-auto-run').addEventListener('click', () => this.toggleAutoRun());
+
+    // API events
+    document.getElementById('btn-test-api').addEventListener('click', () => this.testAPI());
+    document.getElementById('btn-list-workflows').addEventListener('click', () => this.listWorkflows());
+    document.getElementById('btn-load-schema').addEventListener('click', () => this.loadSchema());
+    document.getElementById('btn-export-schema').addEventListener('click', () => this.exportSchema());
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+  }
+
+  log(message, type = 'info') {
+    const logEntry = document.createElement('div');
+    logEntry.className = `log-entry log-${type}`;
+    logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+
+    this.uiElements.logs.appendChild(logEntry);
+    this.uiElements.logs.scrollTop = this.uiElements.logs.scrollHeight;
+
+    // Keep only last 100 log entries
+    while (this.uiElements.logs.children.length > 100) {
+      this.uiElements.logs.removeChild(this.uiElements.logs.firstChild);
+    }
+  }
+
+  toast(message, type = 'info') {
+    this.uiElements.toastMessage.textContent = message;
+    this.uiElements.toast.className = `toast ${type} show`;
+
+    setTimeout(() => {
+      this.uiElements.toast.classList.remove('show');
+    }, 3000);
+  }
+
+  updateStats(nodesCount, edgesCount) {
+    document.getElementById('node-count').textContent = `${nodesCount} nodes`;
+    document.getElementById('edge-count').textContent = `${edgesCount} connections`;
+  }
+
+  // Other UI methods would be implemented here
+  clearCanvas() { /* Implementation */ }
+  toggleConnectMode() { /* Implementation */ }
+  zoomToFit() { /* Implementation */ }
+  exportFlow() { /* Implementation */ }
+  importFlow() { /* Implementation */ }
+  toggleAutoRun() { /* Implementation */ }
+  testAPI() { /* Implementation */ }
+  listWorkflows() { /* Implementation */ }
+  loadSchema() { /* Implementation */ }
+  exportSchema() { /* Implementation */ }
+  handleKeyboardShortcuts(e) { /* Implementation */ }
+
+  // Event callbacks
+  onSaveRequest() {
+    if (this.eventHandlers.saveRequest) {
+      this.eventHandlers.saveRequest();
+    }
+  }
+}
+
+// =========================
+// MODULE: Node Management
+// =========================
+class NodeManager {
+  constructor() {
+    this.nodes = new Map();
+    this.nodeCounter = 0;
+    this.nodeTemplates = {
+      // Node templates would be defined here
+    };
+  }
+
+  init(app) {
+    this.app = app;
+    this.loadNodeTemplates();
+    return Promise.resolve();
+  }
+
+  loadNodeTemplates() {
+    // Load node templates from configuration
+    this.nodeTemplates = {
+      InputNode: {
+        title: "Input Parameters",
+        config: { days: 120, seed: 42, source: "simulation" },
+        color: "#22c55e"
+      },
+      PreprocessorNode: {
+        title: "Data Preprocessor",
+        config: { deduplicate: true, fill_missing: "zero" },
+        color: "#0ea5e9"
+      },
+      // More node templates...
+    };
+  }
+
+  createNode(type, x = null, y = null) {
+    const nodeId = `node_${++this.nodeCounter}`;
+    const template = this.nodeTemplates[type] || this.nodeTemplates.GenericNode;
+    
+    const node = {
+      id: nodeId,
+      type: type,
+      title: template.title,
+      config: JSON.parse(JSON.stringify(template.config)),
+      position: { x: x || 100, y: y || 100 },
+      status: 'idle',
+      data: null,
+      element: this.createNodeElement(nodeId, type, template)
+    };
+
+    this.nodes.set(nodeId, node);
+    this.app.modules.stateManager.addNode(node);
+    this.setupNodeEvents(node);
+    this.app.modules.uiManager.updateStats(this.nodes.size, this.app.modules.stateManager.state.edges.length);
+    
+    return node;
+  }
+
+  createNodeElement(nodeId, type, template) {
+    // Create and return node DOM element
+    const div = document.createElement('div');
+    div.className = 'flow-node';
+    div.style.left = `${template.position.x}px`;
+    div.style.top = `${template.position.y}px`;
+    div.innerHTML = `
+      <div class="node-header">
+        <div class="node-title">${template.title}</div>
+        <div class="node-type">${type}</div>
+      </div>
+      <div class="node-body">
+        <textarea class="node-config" spellcheck="false">${JSON.stringify(template.config, null, 2)}</textarea>
+        <div class="node-status status-idle">
+          <i class="fa fa-circle"></i> Idle
+        </div>
+      </div>
+      <div class="node-port input" data-port="input"></div>
+      <div class="node-port output" data-port="output"></div>
+      <button class="absolute top-2 right-2 text-gray-400 hover:text-red-400 text-sm">
+        <i class="fa fa-times"></i>
+      </button>
+    `;
+    
+    this.app.modules.uiManager.uiElements.canvas.appendChild(div);
+    return div;
+  }
+
+  getNode(nodeId) {
+    return this.nodes.get(nodeId);
+  }
+
+  removeNode(nodeId) {
+    const node = this.nodes.get(nodeId);
+    if (node) {
+      node.element.remove();
+      this.nodes.delete(nodeId);
+      this.app.modules.stateManager.removeNode(nodeId);
+      this.app.modules.uiManager.updateStats(this.nodes.size, this.app.modules.stateManager.state.edges.length);
+    }
+  }
+
+  setupNodeEvents(node) {
+    // Set up node event handlers
+    node.element.querySelector('button').addEventListener('click', () => {
+      this.removeNode(node.id);
+    });
+
+    // Config change handler
+    node.element.querySelector('.node-config').addEventListener('input', (e) => {
+      try {
+        node.config = JSON.parse(e.target.value);
+        this.app.log(`Updated config for ${node.id}`, 'info');
+      } catch (err) {
+        this.app.log(`Invalid JSON in ${node.id}`, 'error');
+      }
+    });
+
+    // Make node draggable
+    this.makeNodeDraggable(node);
+
+    // Notify about new node
+    if (this.onNodeAdded) {
+      this.onNodeAdded(node);
+    }
+  }
+
+  makeNodeDraggable(node) {
+    // Implementation for draggable nodes
+    let isDragging = false;
+    let startX, startY;
+
+    const startDrag = (clientX, clientY) => {
+      isDragging = true;
+      startX = clientX - node.position.x;
+      startY = clientY - node.position.y;
+    };
+
+    const doDrag = (clientX, clientY) => {
+      if (!isDragging) return;
+      node.position.x = clientX - startX;
+      node.position.y = clientY - startY;
+      node.element.style.left = `${node.position.x}px`;
+      node.element.style.top = `${node.position.y}px`;
+      this.app.modules.connectionManager.updateEdges();
+    };
+
+    const endDrag = () => {
+      isDragging = false;
+    };
+
+    // Mouse events
+    node.element.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.node-config') || e.target.closest('.node-port') || e.target.closest('button')) {
+        return;
+      }
+      startDrag(e.clientX, e.clientY);
+    });
+
+    // Additional drag implementation...
+  }
+
+  loadNodes(nodesData) {
+    // Load nodes from data
+    nodesData.forEach(nodeData => {
+      const node = this.createNode(nodeData.type, nodeData.position.x, nodeData.position.y);
+      node.config = nodeData.config;
+      node.element.querySelector('.node-config').value = JSON.stringify(nodeData.config, null, 2);
+    });
+  }
+}
+
+// =========================
+// MODULE: Connection Management
+// =========================
+class ConnectionManager {
+  constructor() {
+    this.connecting = false;
+    this.connectionStart = null;
+  }
+
+  init(app) {
+    this.app = app;
+    return Promise.resolve();
+  }
+
+  setupNodeEvents(node) {
+    // Set up connection events for node ports
+    const outputPort = node.element.querySelector('.node-port.output');
+    outputPort.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      this.startConnection(node, e);
+    });
+
+    const inputPort = node.element.querySelector('.node-port.input');
+    inputPort.addEventListener('mouseup', (e) => {
+      if (this.connecting) {
+        this.completeConnection(node, e);
+      }
+    });
+  }
+
+  startConnection(fromNode, event) {
+    this.connecting = true;
+    this.connectionStart = fromNode;
+    // Create connection preview
+  }
+
+  completeConnection(toNode, event) {
+    if (!this.connecting || !this.connectionStart || this.connectionStart === toNode) {
+      this.cancelConnection();
+      return;
+    }
+
+    const edgeId = `edge_${this.connectionStart.id}_${toNode.id}`;
+    
+    // Check if connection already exists
+    const existingEdge = this.app.modules.stateManager.state.edges.find(
+      e => e.from === this.connectionStart.id && e.to === toNode.id
+    );
+    
+    if (existingEdge) {
+      this.cancelConnection();
+      this.app.toast('Connection already exists', 'warning');
+      return;
+    }
+
+    // Create edge
+    const edge = {
+      id: edgeId,
+      from: this.connectionStart.id,
+      to: toNode.id
+    };
+
+    this.app.modules.stateManager.addEdge(edge);
+    this.updateEdges();
+    this.app.modules.uiManager.updateStats(
+      this.app.modules.nodeManager.nodes.size, 
+      this.app.modules.stateManager.state.edges.length
+    );
+    
+    this.app.log(`Connected ${this.connectionStart.id} → ${toNode.id}`, 'success');
+    this.app.toast('Nodes connected', 'success');
+    this.cancelConnection();
+  }
+
+  updateEdges() {
+    // Update visual representation of edges
+    this.app.modules.uiManager.uiElements.edgesSvg.innerHTML = '';
+    
+    this.app.modules.stateManager.state.edges.forEach(edge => {
+      const fromNode = this.app.modules.nodeManager.getNode(edge.from);
+      const toNode = this.app.modules.nodeManager.getNode(edge.to);
+      
+      if (!fromNode || !toNode) return;
+      
+      const fromRect = fromNode.element.getBoundingClientRect();
+      const toRect = toNode.element.getBoundingClientRect();
+      const canvasRect = this.app.modules.uiManager.uiElements.canvas.getBoundingClientRect();
+      
+      const fromX = fromRect.right - canvasRect.left - 7;
+      const fromY = fromRect.top + fromRect.height / 2 - canvasRect.top;
+      const toX = toRect.left - canvasRect.left + 7;
+      const toY = toRect.top + toRect.height / 2 - canvasRect.top;
+      
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.classList.add('flow-edge');
+      path.setAttribute('d', this.createBezierPath(fromX, fromY, toX, toY));
+      path.setAttribute('id', edge.id);
+      
+      this.app.modules.uiManager.uiElements.edgesSvg.appendChild(path);
+    });
+  }
+
+  createBezierPath(x1, y1, x2, y2) {
+    const dx = Math.abs(x2 - x1);
+    const controlOffset = Math.min(dx * 0.5, 100);
+    const cx1 = x1 + controlOffset;
+    const cx2 = x2 - controlOffset;
+    return `M ${x1} ${y1} C ${cx1} ${y1} ${cx2} ${y2} ${x2} ${y2}`;
+  }
+
+  cancelConnection() {
+    this.connecting = false;
+    this.connectionStart = null;
+    // Remove connection preview
+  }
+
+  removeNodeConnections(nodeId) {
+    // Remove all connections related to a node
+    this.app.modules.stateManager.state.edges = this.app.modules.stateManager.state.edges.filter(
+      e => e.from !== nodeId && e.to !== nodeId
+    );
+    this.updateEdges();
+  }
+
+  loadConnections(edgesData) {
+    // Load connections from data
+    edgesData.forEach(edgeData => {
+      this.app.modules.stateManager.addEdge(edgeData);
+    });
+    this.updateEdges();
+  }
+}
+
+// =========================
+// MODULE: Execution Engine
+// =========================
+class ExecutionEngine {
+  constructor() {
+    this.isRunning = false;
+    this.autoRunInterval = null;
+  }
+
+  init(app) {
+    this.app = app;
+    return Promise.resolve();
+  }
+
+  async execute() {
+    if (this.isRunning) {
+      this.app.toast('Flow is already running', 'warning');
+      return;
+    }
+
+    this.isRunning = true;
+    this.app.modules.uiManager.updateRunButtons(true);
+    this.app.log('🚀 Starting flow execution...', 'info');
+
+    try {
+      if (this.app.modules.stateManager.state.settings.executionMode === 'client') {
+        await this.executeClient();
+      } else {
+        await this.executeServer();
+      }
+      
+      this.app.log('✅ Flow execution completed successfully', 'success');
+      this.app.toast('Flow executed successfully', 'success');
+    } catch (error) {
+      this.app.log(`❌ Flow execution failed: ${error.message}`, 'error');
+      this.app.toast('Flow execution failed', 'error');
+    } finally {
+      this.isRunning = false;
+      this.app.modules.uiManager.updateRunButtons(false);
+    }
+  }
+
+  async executeClient() {
+    // Client-side execution logic
+    const nodes = Array.from(this.app.modules.nodeManager.nodes.values());
+    const edges = this.app.modules.stateManager.state.edges;
+    
+    // Create execution graph
+    const executionOrder = this.calculateExecutionOrder(nodes, edges);
+    
+    // Execute nodes in order
+    for (const nodeId of executionOrder) {
+      const node = this.app.modules.nodeManager.getNode(nodeId);
+      if (node) {
+        await this.executeNode(node);
+      }
+    }
+  }
+
+  async executeServer() {
+    // Server-side execution logic
+    const workflowData = this.app.modules.stateManager.getState();
+    const result = await this.app.modules.apiClient.executeWorkflow(workflowData);
+    this.app.modules.uiManager.displayResult(result);
+  }
+
+  async executeNode(node) {
+    this.app.log(`▶️ Executing ${node.type}: ${node.id}`, 'info');
+    this.setNodeStatus(node, 'running');
+
+    try {
+      let result;
+      // Execute based on node type
+      switch (node.type) {
+        case 'InputNode':
+          result = await this.executeInputNode(node);
+          break;
+        case 'LLMNode':
+          result = await this.executeLLMNode(node);
+          break;
+        // More node type handlers...
+        default:
+          result = `Executed ${node.type}`;
+      }
+
+      node.data = result;
+      this.setNodeStatus(node, 'success');
+      this.app.log(`✅ ${node.id} completed`, 'success');
+      return result;
+    } catch (error) {
+      this.setNodeStatus(node, 'error');
+      this.app.log(`❌ ${node.id} failed: ${error.message}`, 'error');
+      throw error;
+    }
+  }
+
+  setNodeStatus(node, status) {
+    const statusElement = node.element.querySelector('.node-status');
+    const icons = {
+      idle: 'fa-circle',
+      running: 'fa-spinner fa-spin',
+      success: 'fa-check-circle',
+      error: 'fa-exclamation-circle'
+    };
+
+    const messages = {
+      idle: 'Idle',
+      running: 'Running...',
+      success: 'Completed',
+      error: 'Error'
+    };
+
+    statusElement.className = `node-status status-${status}`;
+    statusElement.innerHTML = `<i class="fa ${icons[status]}"></i> ${messages[status]}`;
+
+    if (status === 'running') {
+      node.element.classList.add('running');
+    } else {
+      node.element.classList.remove('running');
+    }
+
+    node.status = status;
+  }
+
+  calculateExecutionOrder(nodes, edges) {
+    // Calculate topological order for execution
+    const graph = {};
+    const inDegree = {};
+    
+    // Initialize graph and in-degree
+    nodes.forEach(node => {
+      graph[node.id] = [];
+      inDegree[node.id] = 0;
+    });
+    
+    // Build graph
+    edges.forEach(edge => {
+      graph[edge.from].push(edge.to);
+      inDegree[edge.to]++;
+    });
+    
+    // Find nodes with no incoming edges
+    const queue = nodes.filter(node => inDegree[node.id] === 0).map(node => node.id);
+    const order = [];
+    
+    // Process nodes
+    while (queue.length > 0) {
+      const nodeId = queue.shift();
+      order.push(nodeId);
+      
+      graph[nodeId].forEach(neighborId => {
+        inDegree[neighborId]--;
+        if (inDegree[neighborId] === 0) {
+          queue.push(neighborId);
+        }
+      });
+    }
+    
+    return order;
+  }
+
+  stop() {
+    if (!this.isRunning) {
+      this.app.toast('No execution to stop', 'warning');
+      return;
+    }
+
+    this.isRunning = false;
+    this.app.modules.uiManager.updateRunButtons(false);
+
+    // Reset all node statuses
+    this.app.modules.nodeManager.nodes.forEach(node => {
+      this.setNodeStatus(node, 'idle');
+    });
+
+    this.app.log('🛑 Flow execution stopped', 'warning');
+    this.app.toast('Execution stopped', 'warning');
+  }
+
+  toggleAutoRun() {
+    const autoRunOn = !this.app.modules.stateManager.state.settings.autoRun;
+    this.app.modules.stateManager.setState({
+      settings: { ...this.app.modules.stateManager.state.settings, autoRun: autoRunOn }
+    });
+
+    if (autoRunOn) {
+      this.autoRunInterval = setInterval(() => {
+        this.execute().catch(console.error);
+      }, 5000);
+      this.app.log('Auto-run started', 'info');
+    } else {
+      clearInterval(this.autoRunInterval);
+      this.app.log('Auto-run stopped', 'info');
+    }
+  }
+}
+
+// =========================
+// MODULE: API Client
+// =========================
+class APIClient {
+  constructor() {
+    this.baseURL = '';
+    this.apiKey = '';
+  }
+
+  init(app) {
+    this.app = app;
+    this.loadAPIConfig();
+    return Promise.resolve();
+  }
+
+  loadAPIConfig() {
+    this.baseURL = document.getElementById('api-url').value;
+    this.apiKey = document.getElementById('api-key').value;
+  }
+
+  async executeWorkflow(workflowData) {
+    this.loadAPIConfig();
+    
+    try {
+      const response = await fetch(`${this.baseURL}/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify(workflowData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      this.app.log(`API request failed: ${error.message}`, 'error');
+      throw error;
+    }
+  }
+
+  async saveWorkflow(workflowData) {
+    this.loadAPIConfig();
+    
+    try {
+      const response = await fetch(`${this.baseURL}/workflows`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify(workflowData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      this.app.log(`API save failed: ${error.message}`, 'error');
+      throw error;
+    }
+  }
+
+  async listWorkflows() {
+    this.loadAPIConfig();
+    
+    try {
+      const response = await fetch(`${this.baseURL}/workflows`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      this.app.log(`API list failed: ${error.message}`, 'error');
+      throw error;
+    }
+  }
+}
+
+// =========================
+// MODULE: Storage Management
+// =========================
+class StorageManager {
+  constructor() {
+    this.storageKey = 'flowbuilder-data';
+  }
+
+  init(app) {
+    this.app = app;
+    return Promise.resolve();
+  }
+
+  saveFlow(flowData) {
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(flowData));
+      this.app.log('💾 Flow saved to local storage', 'success');
+      return true;
+    } catch (error) {
+      this.app.log('❌ Failed to save flow to local storage', 'error');
+      return false;
+    }
+  }
+
+  loadFlow() {
+    try {
+      const data = localStorage.getItem(this.storageKey);
+      if (data) {
+        return JSON.parse(data);
+      }
+      return null;
+    } catch (error) {
+      this.app.log('❌ Failed to load flow from local storage', 'error');
+      return null;
+    }
+  }
+
+  clearFlow() {
+    try {
+      localStorage.removeItem(this.storageKey);
+      this.app.log('🗑️ Flow data cleared from local storage', 'info');
+      return true;
+    } catch (error) {
+      this.app.log('❌ Failed to clear flow data', 'error');
+      return false;
+    }
+  }
+
+  exportFlow(flowData) {
+    const dataStr = JSON.stringify(flowData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `${flowData.workflow.name.replace(/\s+/g, '_')}_flow.json`;
+    link.click();
+    
+    this.app.log('📤 Flow exported to JSON file', 'info');
+  }
+
+  importFlow(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          resolve(data);
+        } catch (error) {
+          reject(new Error('Invalid JSON file'));
+        }
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to read file'));
+      };
+      
+      reader.readAsText(file);
+    });
+  }
+}
+
+// =========================
+// MODULE: PWA Management
+// =========================
+class PWAManager {
+  constructor() {
+    this.deferredPrompt = null;
+  }
+
+  init(app) {
+    this.app = app;
+    this.setupPWAEvents();
+    return Promise.resolve();
+  }
+
+  setupPWAEvents() {
+    // Before install prompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      this.deferredPrompt = e;
+      this.showInstallButton();
+    });
+
+    // App installed
+    window.addEventListener('appinstalled', () => {
+      this.app.log('PWA installed successfully', 'success');
+      this.deferredPrompt = null;
+    });
+
+    // Service worker registration
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then((registration) => {
+          this.app.log('ServiceWorker registration successful', 'info');
+        })
+        .catch((error) => {
+          this.app.log('ServiceWorker registration failed', 'error');
+        });
+    }
+
+    // Online/offline detection
+    window.addEventListener('online', () => {
+      document.getElementById('offline-indicator').classList.remove('show');
+      this.app.log('Connection restored', 'success');
+      this.app.toast('Back online', 'success');
+    });
+
+    window.addEventListener('offline', () => {
+      document.getElementById('offline-indicator').classList.add('show');
+      this.app.log('Connection lost - working offline', 'warning');
+      this.app.toast('Working offline', 'warning');
+    });
+  }
+
+  showInstallButton() {
+    const installBtn = document.getElementById('btn-install');
+    if (installBtn) {
+      installBtn.classList.remove('hidden');
+      installBtn.addEventListener('click', () => {
+        this.installApp();
+      });
+    }
+  }
+
+  installApp() {
+    if (this.deferredPrompt) {
+      this.deferredPrompt.prompt();
+      
+      this.deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          this.app.log('User accepted the install prompt', 'info');
+        } else {
+          this.app.log('User dismissed the install prompt', 'info');
+        }
+        this.deferredPrompt = null;
+      });
+    }
+  }
+}
+
+// =========================
+// Application Initialization
+// =========================
+const app = new FlowBuilderApp();
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await app.init();
+  
+  // Load any saved data
+  const savedData = app.modules.storageManager.loadFlow();
+  if (savedData) {
+    app.modules.stateManager.setState(savedData);
+    app.modules.nodeManager.loadNodes(savedData.nodes);
+    app.modules.connectionManager.loadConnections(savedData.edges);
+    app.log('📝 Loaded saved flow from storage', 'info');
+  }
+  
+  // Add sample nodes for demonstration
+  setTimeout(() => {
+    if (app.modules.nodeManager.nodes.size === 0) {
+      const inputNode = app.modules.nodeManager.createNode('InputNode', 100, 100);
+      const processorNode = app.modules.nodeManager.createNode('PreprocessorNode', 350, 150);
+      const outputNode = app.modules.nodeManager.createNode('OutputNode', 600, 200);
+      
+      // Auto-connect sample nodes
+      setTimeout(() => {
+        app.modules.connectionManager.startConnection(inputNode, {});
+        app.modules.connectionManager.completeConnection(processorNode, {});
+        
+        app.modules.connectionManager.startConnection(processorNode, {});
+        app.modules.connectionManager.completeConnection(outputNode, {});
+      }, 500);
+    }
+  }, 1000);
+});
+</script>
+</body>
+</html>

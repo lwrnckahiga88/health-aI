@@ -1,0 +1,3263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BPU-T1 Nurse BPU System v4.2 - Enhanced Partograph</title>
+    <meta name="theme-color" content="#0ea5e9">
+    <!-- Chart.js for WHO Partograph -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --purple: #8b5cf6;
+            --pink: #ec4899;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--background) 0%, #1e3a8a 50%, var(--background) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .header {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(14, 165, 233, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .logo-text h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, #38bdf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo-text p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(14, 165, 233, 0.1);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(14, 165, 233, 0.3);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+        .status-dot.connected { background: var(--success); }
+        .status-dot.disconnected { background: var(--danger); }
+        .status-dot.connecting { background: var(--warning); }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .nav {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(14, 165, 233, 0.2);
+            position: sticky;
+            top: 80px;
+            z-index: 999;
+        }
+        .nav-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            gap: 0.25rem;
+            overflow-x: auto;
+        }
+        .nav-tab {
+            padding: 1rem 1.5rem;
+            border-bottom: 3px solid transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            font-size: 0.875rem;
+            font-weight: 600;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+        }
+        .nav-tab:hover {
+            color: var(--text-secondary);
+            background: rgba(14, 165, 233, 0.05);
+        }
+        .nav-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: rgba(14, 165, 233, 0.1);
+        }
+        .nav-tab .badge {
+            display: inline-block;
+            background: var(--danger);
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 10px;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .tab-content { 
+            display: none; 
+            animation: fadeIn 0.5s ease; 
+        }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .button {
+            background: var(--primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        .button.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .button.danger {
+            background: var(--danger);
+        }
+        .button.success {
+            background: var(--success);
+        }
+        .button.warning {
+            background: var(--warning);
+        }
+        .button.purple {
+            background: var(--purple);
+        }
+        .button.pink {
+            background: var(--pink);
+        }
+        .input, textarea, select {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            margin: 0.5rem 0;
+        }
+        textarea {
+            min-height: 100px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        .input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+        }
+        .output-box {
+            max-height: 400px;
+            overflow-y: auto;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        .output-box pre {
+            background: #1e293b;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            margin: 0.5rem 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.85rem;
+            color: #86efac;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+        .flex-row {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .success { color: #86efac; }
+        .warning { color: #fde047; }
+        .error { color: #fca5a5; }
+        .info { color: var(--primary); }
+        .purple { color: var(--purple); }
+        .pink { color: var(--pink); }
+        .hidden { display: none !important; }
+        
+        /* Partograph Section Styles */
+        .partograph-section {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .partograph-section .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .partograph-section .section-header .nav-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--pink);
+        }
+        .partograph-section .section-header .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--pink);
+        }
+        
+        /* WHO Partograph Container Styles */
+        .who-partograph-container {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            width: 100%;
+            height: 500px;
+            position: relative;
+        }
+        
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .partograph-title {
+            text-align: center;
+            color: #1e293b;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Partograph Controls */
+        .partograph-controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 0.75rem;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .control-group label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        
+        .control-input {
+            padding: 0.75rem;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 0.5rem;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+        
+        .control-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+        }
+        
+        .partograph-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        /* Status indicators for table */
+        .status-normal { color: var(--success); font-weight: 600; }
+        .status-warning { color: var(--warning); font-weight: 600; }
+        .status-critical { color: var(--danger); font-weight: 600; }
+        
+        /* Alerts */
+        .alert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid;
+        }
+        
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border-left-color: var(--success);
+            color: #86efac;
+        }
+        
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-left-color: var(--warning);
+            color: #fde047;
+        }
+        
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border-left-color: var(--danger);
+            color: #fca5a5;
+        }
+        
+        /* Table styles */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+        
+        .data-table th {
+            background: rgba(14, 165, 233, 0.1);
+            color: var(--primary);
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(14, 165, 233, 0.3);
+        }
+        
+        .data-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .data-table tr:hover {
+            background: rgba(148, 163, 184, 0.05);
+        }
+        
+        /* Button styles */
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning), #d97706);
+            color: white;
+        }
+        
+        .partograph-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+        
+        /* Patient Card Styles */
+        .patient-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1rem;
+        }
+        .patient-card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .patient-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(14, 165, 233, 0.4);
+            box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.1);
+        }
+        .patient-card.critical {
+            border-color: var(--danger);
+            background: linear-gradient(145deg, rgba(239, 68, 68, 0.1), rgba(15, 23, 42, 0.9));
+        }
+        .patient-card.warning {
+            border-color: var(--warning);
+            background: linear-gradient(145deg, rgba(245, 158, 11, 0.1), rgba(15, 23, 42, 0.9));
+        }
+        .patient-card.stable {
+            border-color: var(--success);
+            background: linear-gradient(145deg, rgba(16, 185, 129, 0.1), rgba(15, 23, 42, 0.9));
+        }
+        .patient-card.maternal {
+            border-color: var(--pink);
+            background: linear-gradient(145deg, rgba(236, 72, 153, 0.1), rgba(15, 23, 42, 0.9));
+        }
+        .patient-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        .patient-info h3 {
+            color: var(--primary);
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+        .patient-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .patient-risk-score {
+            background: rgba(14, 165, 233, 0.1);
+            border-radius: 0.75rem;
+            padding: 0.5rem 1rem;
+            text-align: center;
+            min-width: 4rem;
+        }
+        .risk-score {
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+        .risk-score.critical { color: var(--danger); }
+        .risk-score.warning { color: var(--warning); }
+        .risk-score.stable { color: var(--success); }
+        .risk-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .vitals-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .vital-item {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            text-align: center;
+        }
+        .vital-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+        .vital-value {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+        .vital-value.critical { color: var(--danger); }
+        .vital-value.warning { color: var(--warning); }
+        .vital-value.normal { color: var(--success); }
+        .vital-unit {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+        .patient-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .patient-tags {
+            display: flex;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+        }
+        .tag {
+            background: rgba(14, 165, 233, 0.1);
+            color: var(--primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+        }
+        .tag.allergy { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .tag.alert { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .tag.maternal { background: rgba(236, 72, 153, 0.1); color: var(--pink); }
+        .patient-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        /* Real-time Updates Panel */
+        .updates-panel {
+            position: fixed;
+            right: 1rem;
+            bottom: 1rem;
+            width: 300px;
+            max-height: 400px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            z-index: 1000;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .updates-header {
+            background: rgba(14, 165, 233, 0.1);
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(14, 165, 233, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .updates-content {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        .update-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.3s ease;
+        }
+        .update-item:hover {
+            background: rgba(14, 165, 233, 0.05);
+        }
+        .update-item.critical {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 3px solid var(--danger);
+        }
+        .update-item.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 3px solid var(--warning);
+        }
+        .update-item.maternal {
+            background: rgba(236, 72, 153, 0.1);
+            border-left: 3px solid var(--pink);
+        }
+        .update-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+        .update-message {
+            font-size: 0.85rem;
+            margin: 0.25rem 0;
+        }
+        .update-patient {
+            font-size: 0.75rem;
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        /* MedOS Connection Panel */
+        .medos-panel {
+            position: fixed;
+            left: 1rem;
+            top: 120px;
+            width: 300px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            z-index: 1000;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .medos-header {
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* Loading Animation */
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(14, 165, 233, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Partograph Input Form */
+        .partograph-input-form {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .partograph-input-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            align-items: end;
+        }
+        
+        /* Alert Styles */
+        .alert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid;
+        }
+        .alert.success {
+            background: rgba(16, 185, 129, 0.1);
+            border-left-color: var(--success);
+            color: #86efac;
+        }
+        .alert.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-left-color: var(--warning);
+            color: #fde047;
+        }
+        .alert.error {
+            background: rgba(239, 68, 68, 0.1);
+            border-left-color: var(--danger);
+            color: #fca5a5;
+        }
+        
+        @media (max-width: 768px) {
+            .patient-grid {
+                grid-template-columns: 1fr;
+            }
+            .vitals-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .grid-2, .grid-3, .grid-4 {
+                grid-template-columns: 1fr;
+            }
+            .main-content {
+                padding: 1rem;
+            }
+            .updates-panel, .medos-panel {
+                position: static;
+                width: 100%;
+                margin-bottom: 1rem;
+            }
+            .partograph-input-grid {
+                grid-template-columns: 1fr;
+            }
+            .partograph-grid {
+                grid-template-columns: 1fr;
+            }
+            .who-partograph-container {
+                height: 400px;
+                padding: 1rem;
+            }
+            .partograph-actions {
+                flex-direction: column;
+            }
+            .partograph-actions .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-text">
+                    <h1>BPU-T1 Nurse BPU System v4.2</h1>
+                    <p>Enhanced Partograph • Maternal Monitoring • MedOS Sync • AI Clinical Agents</p>
+                </div>
+            </div>
+            <div class="status-indicator">
+                <span id="connectionStatus">Connecting to MedOS...</span>
+                <div id="connectionDot" class="status-dot connecting"></div>
+            </div>
+        </div>
+    </header>
+
+    <nav class="nav">
+        <div class="nav-content">
+            <button class="nav-tab active" data-tab="monitoring">
+                Patient Monitoring
+                <span id="monitoringBadge" class="badge hidden">0</span>
+            </button>
+            <button class="nav-tab" data-tab="partograph">
+                Partograph
+                <span id="partographBadge" class="badge hidden">0</span>
+            </button>
+            <button class="nav-tab" data-tab="agent-admin">Agent Admin</button>
+            <button class="nav-tab" data-tab="lab-ai">Lab AI Stack</button>
+            <button class="nav-tab" data-tab="lab-logistics">Lab Logistics</button>
+            <button class="nav-tab" data-tab="orders">
+                Orders
+                <span id="ordersBadge" class="badge hidden">0</span>
+            </button>
+            <button class="nav-tab" data-tab="analytics">Analytics</button>
+            <button class="nav-tab" data-tab="medos-sync">MedOS Sync</button>
+        </div>
+    </nav>
+
+    <div class="medos-panel">
+        <div class="medos-header">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm3.5-7.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 8.5H11.5z"/>
+            </svg>
+            MedOS Integration
+        </div>
+        <div class="flex-row">
+            <button id="connectMedOS" class="button" style="flex: 1;">Connect</button>
+            <button id="syncNow" class="button secondary">Sync</button>
+        </div>
+        <div style="margin-top: 0.5rem; font-size: 0.8rem;">
+            <div>API: <span id="medosApiStatus" style="color: var(--text-muted);">Not connected</span></div>
+            <div>WebSocket: <span id="medosWsStatus" style="color: var(--text-muted);">Disconnected</span></div>
+            <div>Last sync: <span id="lastSyncTime" style="color: var(--text-muted);">Never</span></div>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <!-- Patient Monitoring Tab -->
+        <div id="monitoring" class="tab-content active">
+            <div class="card">
+                <div class="section-header">
+                    <div class="section-title">Patient Monitoring Dashboard</div>
+                    <div class="flex-row">
+                        <button id="refreshPatients" class="button secondary">Refresh</button>
+                        <button id="loadDemoPatients" class="button">Load Demo</button>
+                        <select id="filterUnit" class="input" style="width: auto; min-width: 150px;">
+                            <option value="">All Units</option>
+                            <option value="ICU">ICU</option>
+                            <option value="Ward-A">Ward A</option>
+                            <option value="Ward-B">Ward B</option>
+                            <option value="ED">Emergency Dept</option>
+                            <option value="L&D">Labor & Delivery</option>
+                        </select>
+                        <select id="filterStatus" class="input" style="width: auto; min-width: 150px;">
+                            <option value="">All Status</option>
+                            <option value="critical">Critical</option>
+                            <option value="warning">Warning</option>
+                            <option value="stable">Stable</option>
+                            <option value="maternal">Maternal</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="patientsGrid" class="patient-grid">
+                    <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                        <div class="loader" style="margin: 0 auto 1rem;"></div>
+                        <p>Loading patient data from MedOS...</p>
+                        <button id="loadFallbackData" class="button secondary" style="margin-top: 1rem;">Use Demo Data</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="section-header">
+                        <div class="section-title">AI Command Interface</div>
+                    </div>
+                    <div class="flex-row">
+                        <input type="text" id="commandInput" class="input" 
+                               placeholder="Enter command (e.g., 'monitor patient P001' or 'open partograph for P004')" 
+                               style="flex: 1;">
+                        <button id="executeCommand" class="button">Execute</button>
+                    </div>
+                    <div id="commandOutput" class="output-box" style="margin-top: 1rem; min-height: 100px;">
+                        <pre style="color: var(--text-muted);">
+🤖 Available Commands:
+• "monitor patient [ID]" - Monitor specific patient
+• "open partograph for [ID]" - Open partograph for maternal patient
+• "create agent [name]" - Create AI agent
+• "dispatch sample [ID]" - Create logistics
+• "search [query]" - Search samples
+• "refresh all" - Refresh all data
+• "medos status" - Check MedOS connection
+                        </pre>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-header">
+                        <div class="section-title">Active Alerts</div>
+                        <button id="acknowledgeAllAlerts" class="button secondary">Acknowledge All</button>
+                    </div>
+                    <div id="alertsList" class="output-box">
+                        <p style="color: var(--text-muted); text-align: center; padding: 1rem;">
+                            No active alerts
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Partograph Tab - UPDATED WITH WHO PARTOGRAPH -->
+        <div id="partograph" class="tab-content">
+            <!-- Partograph Section -->
+            <div class="partograph-section">
+                <div class="section-header">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18"/>
+                        <path d="M19 9L5 9"/>
+                        <path d="M19 14L5 14"/>
+                        <path d="M19 19L5 19"/>
+                    </svg>
+                    <div class="section-title">WHO Partograph - Labor Progress Monitoring</div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted);" id="partographTime"></div>
+                </div>
+
+                <div class="partograph-grid">
+                    <!-- WHO Partograph Container -->
+                    <div class="who-partograph-container">
+                        <div class="partograph-title">WHO Partograph - Cervical Dilation vs. Time</div>
+                        <div class="chart-container">
+                            <canvas id="partographChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="partograph-controls">
+                        <!-- Patient Information -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <h4 style="color: var(--pink); margin-bottom: 1rem;">Patient Information</h4>
+                            <div class="grid-2">
+                                <div class="control-group">
+                                    <label>Patient ID</label>
+                                    <input type="text" id="patientId" class="control-input" placeholder="P001" value="P004">
+                                </div>
+                                <div class="control-group">
+                                    <label>Patient Name</label>
+                                    <input type="text" id="patientName" class="control-input" placeholder="Sarah Williams" value="Sarah Williams">
+                                </div>
+                                <div class="control-group">
+                                    <label>Gravida/Para</label>
+                                    <input type="text" id="gravidaPara" class="control-input" placeholder="G2P1" value="G2P1">
+                                </div>
+                                <div class="control-group">
+                                    <label>Time Started</label>
+                                    <input type="time" id="laborStartTime" class="control-input" value="08:00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Data Entry Controls -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <h4 style="color: var(--primary); margin-bottom: 1rem;">Add Data Point</h4>
+                            <div class="partograph-controls-grid">
+                                <div class="control-group">
+                                    <label>Cervical Dilation (cm)</label>
+                                    <input type="number" id="cervicalDilation" class="control-input" min="0" max="10" step="0.5" placeholder="4.0">
+                                </div>
+                                <div class="control-group">
+                                    <label>Descent (station)</label>
+                                    <input type="number" id="descent" class="control-input" min="-5" max="5" step="1" placeholder="-2">
+                                </div>
+                                <div class="control-group">
+                                    <label>Contractions (/10min)</label>
+                                    <input type="number" id="contractions" class="control-input" min="0" max="10" step="1" placeholder="3">
+                                </div>
+                                <div class="control-group">
+                                    <label>Labor Hours</label>
+                                    <input type="number" id="laborHours" class="control-input" min="0" max="12" step="0.5" placeholder="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="partograph-actions">
+                            <button id="addPoint" class="btn btn-primary">
+                                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14M5 12h14"/>
+                                </svg>
+                                Add Data Point
+                            </button>
+                            <button id="clearPoints" class="btn btn-danger">
+                                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                                Clear All
+                            </button>
+                            <button id="loadPartographDemo" class="btn btn-warning">
+                                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Load Demo Data
+                            </button>
+                            <button id="exportPartograph" class="btn btn-success">
+                                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                Export Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Partograph Data Table -->
+            <div class="card">
+                <div class="section-header">
+                    <div class="section-title">Partograph Data Points</div>
+                    <button id="analyzePartograph" class="btn btn-primary">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                        </svg>
+                        Analyze Now
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table" id="partographData">
+                        <thead>
+                            <tr>
+                                <th>Time (hrs)</th>
+                                <th>Cervix (cm)</th>
+                                <th>Descent</th>
+                                <th>Contractions</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="partographDataBody">
+                            <!-- Data will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- AI Analysis & Guidelines -->
+            <div class="grid-2">
+                <div class="card">
+                    <div class="section-header">
+                        <div class="section-title">AI Clinical Analysis</div>
+                    </div>
+                    <div id="aiAnalysis" class="alert">
+                        <p class="text-muted">Add data points to receive AI analysis...</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="section-header">
+                        <div class="section-title">WHO Partograph Guidelines</div>
+                    </div>
+                    <div style="padding: 1rem;">
+                        <div class="alert alert-success mb-2">
+                            <strong>Normal Progress:</strong> ≥1 cm/hour after 4 cm dilation
+                        </div>
+                        <div class="alert alert-warning mb-2">
+                            <strong>Warning:</strong> &lt;0.5 cm/hour after 4 cm dilation
+                        </div>
+                        <div class="alert alert-danger mb-2">
+                            <strong>Critical:</strong> Crossing Action Line (4 hours right of Alert Line)
+                        </div>
+                        <ul style="font-size: 0.875rem; color: var(--text-secondary); padding-left: 1rem; margin-top: 1rem;">
+                            <li>Alert Line: 1 cm/hour from 4cm to 10cm (6 hours total)</li>
+                            <li>Action Line: 4 hours to the right of Alert Line</li>
+                            <li>Optimal contractions: 3-5 per 10 minutes</li>
+                            <li>Normal station: -3 (floating) to +3 (crowning)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Admin Tab -->
+        <div id="agent-admin" class="tab-content">
+            <div class="card">
+                <div class="section-header">
+                    <div class="section-title">Agent Admin Console</div>
+                </div>
+
+                <h4 style="color: var(--primary); margin-bottom: 1rem;">Create Agent</h4>
+                <input id="agentName" class="input" placeholder="Agent name (e.g., lab-triage-agent)"/>
+                <textarea id="agentManifest" class="input" placeholder='Manifest JSON (skills + flows + policies)
+Example:
+{
+  "owner_tenant": "nurse-bpu",
+  "skills": [
+    {"name": "monitor_patient", "type": "http", "spec": {"method": "POST", "url": "/api/patients/monitor"}},
+    {"name": "create_alert", "type": "http", "spec": {"method": "POST", "url": "/api/alerts"}},
+    {"name": "process_lab_result", "type": "http", "spec": {"method": "POST", "url": "/api/labs/process"}}
+  ],
+  "flows": [{
+    "id": "patient_monitoring",
+    "trigger": {"on": "patient_vital_update"},
+    "steps": [
+      {"llm": {"prompt": "Analyze vitals: {{vitals}}. Determine risk level."}},
+      {"conditional": {"if": "riskLevel === \"critical\"", "then": [
+        {"action": "create_alert", "input": {"patientId": "{{patientId}}", "message": "Critical vitals detected", "priority": "high"}}
+      ]}}
+    ]
+  }],
+  "policies": {"dryRunDefault": true, "allowedSkills": ["monitor_patient", "create_alert"]}
+}'></textarea>
+                <div class="flex-row">
+                    <button id="createAgentBtn" class="button">Create Agent</button>
+                    <button id="deployAgentBtn" class="button success">Deploy Selected</button>
+                    <select id="agentSelect" class="input" style="width: auto; min-width: 200px;">
+                        <option value="">-- select agent --</option>
+                    </select>
+                </div>
+                <p style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.5rem;">
+                    Tip: Agents can monitor patient vitals, trigger alerts, and automate lab workflows.
+                </p>
+            </div>
+
+            <div class="card">
+                <h4 style="color: var(--primary); margin-bottom: 1rem;">Actions</h4>
+                <div class="flex-row">
+                    <button id="refreshAgents" class="button">Refresh List</button>
+                    <button id="viewApprovals" class="button danger">View Approvals</button>
+                    <button id="viewAudit" class="button secondary">View Audit</button>
+                    <button id="testAgent" class="button warning">Test Agent</button>
+                    <button id="deleteAgent" class="button danger">Delete Selected</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h4 style="color: var(--primary); margin-bottom: 1rem;">Agent Output</h4>
+                <div id="adminOutput" class="output-box"></div>
+            </div>
+        </div>
+
+        <!-- Lab AI Stack Tab -->
+        <div id="lab-ai" class="tab-content">
+            <div class="card">
+                <div class="section-header">
+                    <div class="section-title">Lab AI Stack - Sample Management & Semantic Search</div>
+                </div>
+
+                <h4 style="color: var(--primary); margin-bottom: 1rem;">Sample Insertion</h4>
+                <div class="grid-2">
+                    <input id="samplePatient" class="input" placeholder="Patient ID (e.g., P001)"/>
+                    <input id="sampleType" class="input" placeholder="Sample Type (e.g., Blood, Urine)"/>
+                </div>
+                <input id="sampleTests" class="input" placeholder="Tests Requested (comma-separated, e.g., CBC, Glucose, Creatinine)"/>
+                <textarea id="sampleMetadata" class="input" placeholder='Additional Metadata (JSON):
+{
+  "priority": "urgent",
+  "clinical_notes": "Patient with malaria symptoms",
+  "collected_by": "Nurse Jane",
+  "temperature_requirement": "2-8°C",
+  "patient_location": "Ward 3A"
+}'></textarea>
+                <div class="flex-row">
+                    <button id="insertSample" class="button">Insert Sample</button>
+                    <button id="clearSampleForm" class="button secondary">Clear</button>
+                    <button id="linkToPatient" class="button warning">Link to Patient</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h4 style="color: var(--primary); margin-bottom: 1rem;">Semantic Search (Offline + Online Hybrid)</h4>
+                <input id="searchQuery" class="input" placeholder="Search query (e.g., 'urgent malaria samples' or 'hemoglobin < 10')"/>
+                <div class="flex-row">
+                    <button id="searchSamples" class="button">Search Samples</button>
+                    <button id="searchPatients" class="button secondary">Search Patients</button>
+                    <button id="searchOnline" class="button warning">Search Online (API)</button>
+                </div>
+                <div id="searchResults" class="output-box" style="margin-top: 1rem;"></div>
+            </div>
+
+            <div class="card">
+                <h4 style="color: var(--primary); margin-bottom: 1rem;">Lab AI Agent Integration</h4>
+                <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                    Trigger AI agents based on lab results or sample status. Agents can automate triage, dispatch, and alerts.
+                </p>
+                <div class="grid-2">
+                    <select id="labAgentSelect" class="input">
+                        <option value="">-- Select Agent --</option>
+                    </select>
+                    <input id="labAgentTrigger" class="input" placeholder="Trigger data (e.g., sample ID or lab result)"/>
+                </div>
+                <div class="flex-row">
+                    <button id="triggerLabAgent" class="button">Trigger Agent</button>
+                    <button id="simulateResult" class="button secondary">Simulate Result</button>
+                </div>
+                <div id="agentOutput" class="output-box" style="margin-top: 1rem;"></div>
+            </div>
+        </div>
+
+        <!-- Lab Logistics Tab -->
+        <div id="lab-logistics" class="tab-content">
+            <div class="card">
+                <div class="section-header">
+                    <div class="section-title">Universal Lab Logistics Dashboard</div>
+                </div>
+
+                <h4 style="color: var(--primary); margin-bottom: 1rem;">Create Logistics Request</h4>
+                <div class="grid-2">
+                    <input id="pickupLocation" class="input" placeholder="Pickup Location (e.g., Ward 3A)"/>
+                    <input id="dropoffLocation" class="input" placeholder="Dropoff Location (e.g., Central Lab)"/>
+                </div>
+                <div class="grid-2">
+                    <input id="logisticsSamples" class="input" placeholder="Sample IDs (comma-separated, e.g., SPX-001, SPX-002)"/>
+                    <input id="tempRequirement" class="input" placeholder="Temperature Requirement (e.g., 2-8°C, Room temp)"/>
+                </div>
+                <textarea id="logisticsNotes" class="input" placeholder="Additional notes or special instructions..."></textarea>
+                <div class="flex-row">
+                    <button id="createLogistics" class="button">Create Logistics</button>
+                    <button id="refreshLogistics" class="button secondary">Refresh</button>
+                    <button id="autoCreateLogistics" class="button warning">Auto-create from Samples</button>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h4 style="color: var(--primary); margin-bottom: 1rem;">Active Logistics Requests</h4>
+                    <div id="logisticsGrid" class="output-box">
+                        <p style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                            No logistics requests.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h4 style="color: var(--primary); margin-bottom: 1rem;">Lab Samples</h4>
+                    <div class="flex-row">
+                        <button id="createSample" class="button">Create Sample</button>
+                        <button id="refreshSamples" class="button secondary">Refresh</button>
+                        <button id="viewPendingSamples" class="button warning">View Pending</button>
+                    </div>
+                    <div id="samplesGrid" class="output-box" style="margin-top: 1rem;">
+                        <p style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                            No samples created yet.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orders Tab -->
+        <div id="orders" class="tab-content">
+            <div class="card">
+                <div class="section-header">
+                    <div class="section-title">Medication Order Verification</div>
+                    <div class="flex-row">
+                        <button id="refreshOrders" class="button">Refresh Orders</button>
+                        <button id="syncMedOSOrders" class="button secondary">Sync from MedOS</button>
+                        <button id="verifyAllOrders" class="button success">Verify All</button>
+                    </div>
+                </div>
+                <div id="ordersList" class="output-box">
+                    <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                        <div class="loader" style="margin: 0 auto 1rem;"></div>
+                        <p>Loading orders from MedOS...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h4 style="color: var(--primary); margin-bottom: 1rem;">Pending Verifications</h4>
+                    <div id="pendingVerifications" class="output-box">
+                        <p style="color: var(--text-muted); text-align: center; padding: 1rem;">
+                            No pending verifications
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h4 style="color: var(--primary); margin-bottom: 1rem;">Order Analytics</h4>
+                    <div class="grid-2" style="gap: 0.5rem;">
+                        <div style="background: rgba(14, 165, 233, 0.1); padding: 1rem; border-radius: 0.5rem; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);" id="orders-total">0</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Total Orders</div>
+                        </div>
+                        <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 0.5rem; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--success);" id="orders-verified">0</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Verified</div>
+                        </div>
+                        <div style="background: rgba(245, 158, 11, 0.1); padding: 1rem; border-radius: 0.5rem; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--warning);" id="orders-pending">0</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Pending</div>
+                        </div>
+                        <div style="background: rgba(239, 68, 68, 0.1); padding: 1rem; border-radius: 0.5rem; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--danger);" id="orders-critical">0</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Critical</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analytics" class="tab-content">
+            <div class="card">
+                <div class="section-header">
+                    <div class="section-title">System Analytics & Dashboard</div>
+                    <div class="flex-row">
+                        <select id="analyticsTimeRange" class="input" style="width: auto;">
+                            <option value="1h">Last Hour</option>
+                            <option value="24h" selected>Last 24 Hours</option>
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid-4">
+                    <div style="background: rgba(14, 165, 233, 0.1); padding: 1.5rem; border-radius: 0.75rem; text-align: center;">
+                        <div style="font-size: 2rem; font-weight: 800; color: var(--primary);" id="metric-patients">0</div>
+                        <div style="color: var(--text-muted); font-size: 0.875rem;">Active Patients</div>
+                    </div>
+                    <div style="background: rgba(16, 185, 129, 0.1); padding: 1.5rem; border-radius: 0.75rem; text-align: center;">
+                        <div style="font-size: 2rem; font-weight: 800; color: var(--success);" id="metric-samples">0</div>
+                        <div style="color: var(--text-muted); font-size: 0.875rem;">Lab Samples</div>
+                    </div>
+                    <div style="background: rgba(245, 158, 11, 0.1); padding: 1.5rem; border-radius: 0.75rem; text-align: center;">
+                        <div style="font-size: 2rem; font-weight: 800; color: var(--warning);" id="metric-logistics">0</div>
+                        <div style="color: var(--text-muted); font-size: 0.875rem;">Active Logistics</div>
+                        </div>
+                        <div style="background: rgba(239, 68, 68, 0.1); padding: 1.5rem; border-radius: 0.75rem; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: 800; color: var(--danger);" id="metric-alerts">0</div>
+                            <div style="color: var(--text-muted); font-size: 0.875rem;">Active Alerts</div>
+                        </div>
+                    </div>
+                    <div class="grid-2" style="margin-top: 1.5rem; gap: 1.5rem;">
+                        <div style="background: rgba(30, 41, 59, 0.8); padding: 1.5rem; border-radius: 0.75rem;">
+                            <h4 style="color: var(--primary); margin-bottom: 1rem;">Patient Risk Distribution</h4>
+                            <div id="riskDistribution" style="height: 200px; display: flex; align-items: flex-end; gap: 0.5rem; padding: 1rem;">
+                                <div style="text-align: center;">
+                                    <div style="height: 0; width: 40px; background: var(--success); border-radius: 0.25rem 0.25rem 0 0;" id="risk-stable-bar"></div>
+                                    <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">Stable</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="height: 0; width: 40px; background: var(--warning); border-radius: 0.25rem 0.25rem 0 0;" id="risk-warning-bar"></div>
+                                    <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">Warning</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="height: 0; width: 40px; background: var(--danger); border-radius: 0.25rem 0.25rem 0 0;" id="risk-critical-bar"></div>
+                                    <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">Critical</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="background: rgba(30, 41, 59, 0.8); padding: 1.5rem; border-radius: 0.75rem;">
+                            <h4 style="color: var(--primary); margin-bottom: 1rem;">System Health</h4>
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="color: var(--text-muted);">MedOS Connection</span>
+                                    <span id="health-medos" style="color: var(--success); font-weight: 600;">Healthy</span>
+                                </div>
+                                <div style="height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden;">
+                                    <div style="height: 100%; width: 100%; background: var(--success);"></div>
+                                </div>
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="color: var(--text-muted);">Agent System</span>
+                                    <span id="health-agents" style="color: var(--success); font-weight: 600;">Operational</span>
+                                </div>
+                                <div style="height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden;">
+                                    <div style="height: 100%; width: 100%; background: var(--success);"></div>
+                                </div>
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="color: var(--text-muted);">Lab Integration</span>
+                                    <span id="health-lab" style="color: var(--success); font-weight: 600;">Connected</span>
+                                </div>
+                                <div style="height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden;">
+                                    <div style="height: 100%; width: 100%; background: var(--success);"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h4 style="color: var(--primary); margin-bottom: 1rem;">Recent Activity Log</h4>
+                    <div id="activityLog" class="output-box" style="max-height: 300px;">
+                        <div style="text-align: center; padding: 1rem; color: var(--text-muted);">
+                            <div class="loader" style="margin: 0 auto 1rem;"></div>
+                            <p>Loading activity log...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MedOS Sync Tab -->
+            <div id="medos-sync" class="tab-content">
+                <div class="card">
+                    <div class="section-header">
+                        <div class="section-title">MedOS Integration & Synchronization</div>
+                    </div>
+                    
+                    <div class="grid-2">
+                        <div class="card">
+                            <h4 style="color: var(--primary); margin-bottom: 1rem;">Connection Settings</h4>
+                            <input id="medosApiUrl" class="input" placeholder="MedOS API URL" value="http://localhost:5000/api"/>
+                            <input id="medosWsUrl" class="input" placeholder="WebSocket URL" value="ws://localhost:5000/ws"/>
+                            <input id="medosApiKey" class="input" placeholder="API Key (optional)" type="password"/>
+                            
+                            <div class="flex-row" style="margin-top: 1rem;">
+                                <button id="saveMedOSSettings" class="button">Save Settings</button>
+                                <button id="testMedOSConnection" class="button secondary">Test Connection</button>
+                            </div>
+                            
+                            <div style="margin-top: 1rem; padding: 1rem; background: rgba(14, 165, 233, 0.1); border-radius: 0.5rem;">
+                                <h5 style="color: var(--primary); margin-bottom: 0.5rem;">Connection Status</h5>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.875rem;">
+                                    <span style="color: var(--text-muted);">REST API:</span>
+                                    <span id="sync-api-status" style="color: var(--danger); font-weight: 600;">Disconnected</span>
+                                    
+                                    <span style="color: var(--text-muted);">WebSocket:</span>
+                                    <span id="sync-ws-status" style="color: var(--danger); font-weight: 600;">Disconnected</span>
+                                    
+                                    <span style="color: var(--text-muted);">Last Sync:</span>
+                                    <span id="sync-last-sync" style="color: var(--text-muted);">Never</span>
+                                    
+                                    <span style="color: var(--text-muted);">Patients:</span>
+                                    <span id="sync-patient-count">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4 style="color: var(--primary); margin-bottom: 1rem;">Sync Configuration</h4>
+                            
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                                    <input type="checkbox" id="sync-patients" checked style="margin-right: 0.5rem;">
+                                    <span style="color: var(--text-primary);">Sync Patients</span>
+                                </label>
+                                <label style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                                    <input type="checkbox" id="sync-orders" checked style="margin-right: 0.5rem;">
+                                    <span style="color: var(--text-primary);">Sync Orders</span>
+                                </label>
+                                <label style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                                    <input type="checkbox" id="sync-vitals" checked style="margin-right: 0.5rem;">
+                                    <span style="color: var(--text-primary);">Real-time Vitals</span>
+                                </label>
+                                <label style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                                    <input type="checkbox" id="sync-alerts" checked style="margin-right: 0.5rem;">
+                                    <span style="color: var(--text-primary);">Sync Alerts</span>
+                                </label>
+                            </div>
+                            
+                            <div class="flex-row">
+                                <button id="forceSync" class="button warning">Force Full Sync</button>
+                                <button id="clearLocalData" class="button danger">Clear Local Data</button>
+                            </div>
+                            
+                            <div style="margin-top: 1rem;">
+                                <h5 style="color: var(--primary); margin-bottom: 0.5rem;">Sync Log</h5>
+                                <div id="syncLog" class="output-box" style="max-height: 150px; font-size: 0.8rem;">
+                                    <p style="color: var(--text-muted); text-align: center; padding: 1rem;">
+                                        No sync activity yet
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="margin-top: 1.5rem;">
+                        <h4 style="color: var(--primary); margin-bottom: 1rem;">Data Preview</h4>
+                        <div class="grid-3">
+                            <div>
+                                <h5 style="color: var(--warning); margin-bottom: 0.5rem;">Patients from MedOS</h5>
+                                <div id="medos-patients-preview" class="output-box" style="max-height: 200px;"></div>
+                            </div>
+                            <div>
+                                <h5 style="color: var(--success); margin-bottom: 0.5rem;">Orders from MedOS</h5>
+                                <div id="medos-orders-preview" class="output-box" style="max-height: 200px;"></div>
+                            </div>
+                            <div>
+                                <h5 style="color: var(--primary); margin-bottom: 0.5rem;">Recent Updates</h5>
+                                <div id="medos-updates-preview" class="output-box" style="max-height: 200px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Real-time Updates Panel -->
+        <div class="updates-panel" id="updatesPanel">
+            <div class="updates-header">
+                <span>Real-time Updates</span>
+                <button id="clearUpdates" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem;">
+                    Clear All
+                </button>
+            </div>
+            <div class="updates-content" id="updatesContent">
+                <div class="update-item">
+                    <div class="update-time">System initialized</div>
+                    <div class="update-message">Ready to receive real-time updates from MedOS</div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // ===== WHO PARTOGRAPH SYSTEM =====
+            class WHOPartographSystem {
+                constructor() {
+                    this.partographData = [];
+                    this.partographChart = null;
+                    this.currentPatientId = null;
+                    this.init();
+                }
+                
+                init() {
+                    this.initChart();
+                    this.setupEventListeners();
+                    this.updatePartographTime();
+                    setInterval(() => this.updatePartographTime(), 1000);
+                    this.log('WHO Partograph system initialized', 'info');
+                }
+                
+                initChart() {
+                    const ctx = document.getElementById('partographChart').getContext('2d');
+                    
+                    // Alert line data (4cm at 0 hours to 10cm at 6 hours)
+                    const alertLineData = [];
+                    for (let hour = 0; hour <= 10; hour += 0.5) {
+                        if (hour <= 6) {
+                            // Alert line: 4cm at 0h to 10cm at 6h (slope = 1 cm/hour)
+                            alertLineData.push({ x: hour, y: 4 + (hour * 1) });
+                        } else {
+                            // After 6 hours, maintain at 10cm
+                            alertLineData.push({ x: hour, y: 10 });
+                        }
+                    }
+                    
+                    // Action line data (4 hours to the right of alert line)
+                    const actionLineData = [];
+                    for (let hour = 4; hour <= 10; hour += 0.5) {
+                        if (hour <= 10) {
+                            // Action line starts at 4 hours
+                            const alertLineY = hour <= 6 ? (4 + (hour * 1)) : 10;
+                            actionLineData.push({ x: hour, y: alertLineY });
+                        }
+                    }
+                    
+                    this.partographChart = new Chart(ctx, {
+                        type: 'scatter',
+                        data: {
+                            datasets: [
+                                {
+                                    label: 'Alert Line',
+                                    data: alertLineData,
+                                    borderColor: '#ef4444',
+                                    backgroundColor: 'transparent',
+                                    borderWidth: 3,
+                                    pointRadius: 0,
+                                    fill: false,
+                                    showLine: true,
+                                    tension: 0
+                                },
+                                {
+                                    label: 'Action Line',
+                                    data: actionLineData,
+                                    borderColor: '#f59e0b',
+                                    backgroundColor: 'transparent',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5],
+                                    pointRadius: 0,
+                                    fill: false,
+                                    showLine: true,
+                                    tension: 0
+                                },
+                                {
+                                    label: 'Cervical Dilation',
+                                    data: [],
+                                    borderColor: '#0ea5e9',
+                                    backgroundColor: '#0ea5e9',
+                                    borderWidth: 2,
+                                    pointRadius: 6,
+                                    showLine: true,
+                                    tension: 0.1
+                                },
+                                {
+                                    label: 'Descent',
+                                    data: [],
+                                    borderColor: '#10b981',
+                                    backgroundColor: '#10b981',
+                                    borderWidth: 2,
+                                    pointRadius: 6,
+                                    showLine: true,
+                                    tension: 0.1,
+                                    yAxisID: 'y1'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'WHO Partograph - Labor Progress Monitoring',
+                                    color: '#1e293b',
+                                    font: {
+                                        size: 16,
+                                        weight: 'bold'
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            if (context.dataset.label === 'Cervical Dilation') {
+                                                return `Cervix: ${context.parsed.y}cm at ${context.parsed.x}hrs`;
+                                            } else if (context.dataset.label === 'Descent') {
+                                                return `Station: ${context.parsed.y} at ${context.parsed.x}hrs`;
+                                            }
+                                            return context.dataset.label;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Time (hours)',
+                                        color: '#64748b'
+                                    },
+                                    min: 0,
+                                    max: 10,
+                                    grid: {
+                                        color: 'rgba(203, 213, 225, 0.3)'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Cervical Dilation (cm)',
+                                        color: '#64748b'
+                                    },
+                                    min: 0,
+                                    max: 10,
+                                    grid: {
+                                        color: 'rgba(203, 213, 225, 0.3)'
+                                    }
+                                },
+                                y1: {
+                                    position: 'right',
+                                    title: {
+                                        display: true,
+                                        text: 'Descent (station)',
+                                        color: '#64748b'
+                                    },
+                                    min: -5,
+                                    max: 5,
+                                    grid: {
+                                        drawOnChartArea: false
+                                    }
+                                }
+                            },
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            }
+                        }
+                    });
+                }
+                
+                setupEventListeners() {
+                    // Add data point button
+                    document.getElementById('addPoint')?.addEventListener('click', () => {
+                        this.addDataPoint();
+                    });
+                    
+                    // Clear all points button
+                    document.getElementById('clearPoints')?.addEventListener('click', () => {
+                        this.clearAllPoints();
+                    });
+                    
+                    // Load demo data button
+                    document.getElementById('loadPartographDemo')?.addEventListener('click', () => {
+                        this.loadDemoData();
+                    });
+                    
+                    // Export data button
+                    document.getElementById('exportPartograph')?.addEventListener('click', () => {
+                        this.exportData();
+                    });
+                    
+                    // Analyze partograph button
+                    document.getElementById('analyzePartograph')?.addEventListener('click', () => {
+                        this.analyzePartograph();
+                    });
+                    
+                    // Enter key support for inputs
+                    const inputs = ['cervicalDilation', 'descent', 'contractions', 'laborHours'];
+                    inputs.forEach(id => {
+                        const input = document.getElementById(id);
+                        if (input) {
+                            input.addEventListener('keypress', (e) => {
+                                if (e.key === 'Enter') {
+                                    this.addDataPoint();
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                addDataPoint() {
+                    const dilation = parseFloat(document.getElementById('cervicalDilation').value);
+                    const descent = parseInt(document.getElementById('descent').value);
+                    const contractions = parseInt(document.getElementById('contractions').value);
+                    const hours = parseFloat(document.getElementById('laborHours').value);
+                    
+                    if (isNaN(dilation) || isNaN(descent) || isNaN(contractions) || isNaN(hours)) {
+                        this.showAlert('Please fill all fields with valid numbers', 'warning');
+                        return;
+                    }
+                    
+                    if (dilation < 0 || dilation > 10) {
+                        this.showAlert('Cervical dilation must be between 0 and 10 cm', 'warning');
+                        return;
+                    }
+                    
+                    if (hours < 0 || hours > 12) {
+                        this.showAlert('Labor hours must be between 0 and 12', 'warning');
+                        return;
+                    }
+                    
+                    const dataPoint = {
+                        time: hours,
+                        dilation: dilation,
+                        descent: descent,
+                        contractions: contractions,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    this.partographData.push(dataPoint);
+                    this.partographData.sort((a, b) => a.time - b.time);
+                    
+                    this.updateChart();
+                    this.updateDataTable();
+                    this.analyzePartograph();
+                    
+                    document.getElementById('cervicalDilation').value = '';
+                    document.getElementById('descent').value = '';
+                    document.getElementById('contractions').value = '';
+                    document.getElementById('laborHours').value = (hours + 0.5).toFixed(1);
+                    
+                    this.showAlert(`Data point added: ${dilation}cm at ${hours}hrs`, 'success');
+                    this.checkPartographAlerts(dataPoint);
+                }
+                
+                clearAllPoints() {
+                    if (this.partographData.length === 0) {
+                        this.showAlert('No data to clear', 'warning');
+                        return;
+                    }
+                    
+                    if (confirm('Are you sure you want to clear all partograph data?')) {
+                        this.partographData = [];
+                        this.updateChart();
+                        this.updateDataTable();
+                        this.analyzePartograph();
+                        document.getElementById('laborHours').value = '0';
+                        document.getElementById('partographBadge').classList.add('hidden');
+                        this.showAlert('All partograph data cleared', 'success');
+                    }
+                }
+                
+                updateChart() {
+                    const dilationData = this.partographData.map(p => ({ x: p.time, y: p.dilation }));
+                    const descentData = this.partographData.map(p => ({ x: p.time, y: p.descent }));
+                    
+                    this.partographChart.data.datasets[2].data = dilationData;
+                    this.partographChart.data.datasets[3].data = descentData;
+                    this.partographChart.update();
+                }
+                
+                updateDataTable() {
+                    const tbody = document.getElementById('partographDataBody');
+                    tbody.innerHTML = '';
+                    
+                    this.partographData.forEach((point, index) => {
+                        const status = this.getPointStatus(point);
+                        const row = document.createElement('tr');
+                        
+                        row.innerHTML = `
+                            <td>${point.time.toFixed(1)}</td>
+                            <td class="status-${status}">${point.dilation.toFixed(1)} cm</td>
+                            <td>${point.descent}</td>
+                            <td>${point.contractions}/10min</td>
+                            <td><span class="status-${status}">${status.toUpperCase()}</span></td>
+                            <td>
+                                <button onclick="window.nurseBPU.deletePartographPoint(${index})" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">
+                                    Delete
+                                </button>
+                            </td>
+                        `;
+                        
+                        tbody.appendChild(row);
+                    });
+                }
+                
+                getPointStatus(point) {
+                    const expectedDilation = 4 + (point.time * 1);
+                    
+                    if (point.time <= 4) {
+                        return 'normal';
+                    }
+                    
+                    if (point.dilation >= expectedDilation) {
+                        return 'normal';
+                    } else if (point.dilation >= expectedDilation - 1) {
+                        return 'warning';
+                    } else {
+                        return 'critical';
+                    }
+                }
+                
+                analyzePartograph() {
+                    const analysisDiv = document.getElementById('aiAnalysis');
+                    
+                    if (this.partographData.length === 0) {
+                        analysisDiv.innerHTML = '<p class="text-muted">Add data points to receive AI analysis...</p>';
+                        return;
+                    }
+                    
+                    const latest = this.partographData[this.partographData.length - 1];
+                    const hours = latest.time;
+                    const dilation = latest.dilation;
+                    
+                    let analysis = '';
+                    let status = 'normal';
+                    
+                    if (hours <= 4 && dilation < 4) {
+                        analysis = '🕒 <strong>Latent Phase:</strong> Labor in early stage (0-4cm dilation). Normal progress.';
+                        status = 'normal';
+                    } else if (dilation >= 4) {
+                        const dilationRate = (dilation - 4) / (hours - 4);
+                        
+                        if (dilationRate >= 1) {
+                            analysis = `✅ <strong>Normal Active Phase:</strong> Excellent progress (${dilationRate.toFixed(1)} cm/hour). Continue current management.`;
+                            status = 'success';
+                        } else if (dilationRate >= 0.5) {
+                            analysis = `⚠️ <strong>Slow Progress:</strong> Moderate progress (${dilationRate.toFixed(1)} cm/hour). Monitor closely.`;
+                            status = 'warning';
+                        } else {
+                            analysis = `🚨 <strong>Prolonged Labor:</strong> Slow progress (${dilationRate.toFixed(1)} cm/hour). Consider intervention.`;
+                            status = 'danger';
+                        }
+                    }
+                    
+                    if (latest.contractions < 2) {
+                        analysis += '<br>⚠️ <strong>Low Contractions:</strong> Consider augmentation.';
+                        status = 'warning';
+                    } else if (latest.contractions > 5) {
+                        analysis += '<br>⚠️ <strong>High Contractions:</strong> Monitor for fetal distress.';
+                        status = 'warning';
+                    }
+                    
+                    if (dilation >= 7 && latest.descent < 0) {
+                        analysis += '<br>⚠️ <strong>Descent Delay:</strong> Head not descending with dilation.';
+                        status = 'warning';
+                    }
+                    
+                    analysisDiv.innerHTML = `
+                        <div class="alert alert-${status}">
+                            <h4>AI Clinical Analysis</h4>
+                            <p>${analysis}</p>
+                            <hr>
+                            <p><strong>Current Status:</strong> ${dilation}cm dilation at ${hours} hours</p>
+                            <p><strong>Contractions:</strong> ${latest.contractions} per 10 minutes</p>
+                            <p><strong>Descent:</strong> Station ${latest.descent}</p>
+                        </div>
+                    `;
+                }
+                
+                checkPartographAlerts(point) {
+                    if (point.time <= 4) return;
+                    
+                    const expectedDilation = 4 + (point.time * 1);
+                    const deviation = expectedDilation - point.dilation;
+                    
+                    if (deviation >= 2) {
+                        this.showAlert(`🚨 ACTION REQUIRED: Patient crossing action line at ${point.time} hours`, 'danger');
+                        document.getElementById('partographBadge').classList.remove('hidden');
+                        document.getElementById('partographBadge').textContent = '!';
+                    } else if (deviation >= 1) {
+                        this.showAlert(`⚠️ Warning: Patient crossing alert line at ${point.time} hours`, 'warning');
+                        document.getElementById('partographBadge').classList.remove('hidden');
+                        document.getElementById('partographBadge').textContent = '!';
+                    }
+                }
+                
+                deletePartographPoint(index) {
+                    this.partographData.splice(index, 1);
+                    this.updateChart();
+                    this.updateDataTable();
+                    this.analyzePartograph();
+                    this.showAlert('Data point deleted', 'warning');
+                }
+                
+                loadDemoData() {
+                    this.partographData = [
+                        { time: 0, dilation: 4, descent: -2, contractions: 3, timestamp: new Date().toISOString() },
+                        { time: 1, dilation: 5, descent: -1, contractions: 3, timestamp: new Date().toISOString() },
+                        { time: 2, dilation: 6, descent: 0, contractions: 4, timestamp: new Date().toISOString() },
+                        { time: 3, dilation: 7, descent: 1, contractions: 4, timestamp: new Date().toISOString() },
+                        { time: 4, dilation: 8, descent: 1, contractions: 5, timestamp: new Date().toISOString() },
+                        { time: 5, dilation: 9, descent: 2, contractions: 5, timestamp: new Date().toISOString() },
+                        { time: 6, dilation: 10, descent: 3, contractions: 6, timestamp: new Date().toISOString() }
+                    ];
+                    
+                    this.updateChart();
+                    this.updateDataTable();
+                    this.analyzePartograph();
+                    document.getElementById('laborHours').value = '6.5';
+                    
+                    this.showAlert('Demo partograph data loaded', 'success');
+                }
+                
+                exportData() {
+                    if (this.partographData.length === 0) {
+                        this.showAlert('No data to export', 'warning');
+                        return;
+                    }
+                    
+                    const patientId = document.getElementById('patientId').value;
+                    const patientName = document.getElementById('patientName').value;
+                    
+                    const data = {
+                        patientId: patientId,
+                        patientName: patientName,
+                        gravidaPara: document.getElementById('gravidaPara').value,
+                        laborStartTime: document.getElementById('laborStartTime').value,
+                        createdAt: new Date().toISOString(),
+                        dataPoints: this.partographData
+                    };
+                    
+                    const dataStr = JSON.stringify(data, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `partograph_${patientId}_${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    
+                    this.showAlert('Partograph data exported successfully', 'success');
+                }
+                
+                updatePartographTime() {
+                    const now = new Date();
+                    document.getElementById('partographTime').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+                }
+                
+                showAlert(message, type) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = `alert ${type}`;
+                    alertDiv.textContent = message;
+                    
+                    const output = document.getElementById('commandOutput');
+                    if (output) {
+                        output.prepend(alertDiv);
+                        
+                        setTimeout(() => {
+                            if (alertDiv.parentNode) {
+                                alertDiv.parentNode.removeChild(alertDiv);
+                            }
+                        }, 5000);
+                    }
+                    
+                    this.log(message, type);
+                }
+                
+                log(message, type = 'info') {
+                    console.log(`[WHO PARTOGRAPH - ${type.toUpperCase()}] ${message}`);
+                }
+            }
+            
+            // ===== INTEGRATED NURSE BPU SYSTEM =====
+            class NurseBPUSystem {
+                constructor() {
+                    this.agents = [];
+                    this.samples = [];
+                    this.logistics = [];
+                    this.orders = [];
+                    this.patients = [];
+                    this.alerts = [];
+                    this.activityLog = [];
+                    this.realTimeUpdates = [];
+                    
+                    // Initialize WHO partograph system
+                    this.partograph = new WHOPartographSystem();
+                    
+                    // MedOS Integration
+                    this.medosApiUrl = 'http://localhost:5000/api';
+                    this.medosWsUrl = 'ws://localhost:5000/ws';
+                    this.medosApiKey = '';
+                    this.webSocket = null;
+                    this.isMedOSConnected = false;
+                    this.isWebSocketConnected = false;
+                    this.syncInterval = null;
+                    this.lastSyncTime = null;
+                    
+                    // Initialize system
+                    this.init();
+                }
+                
+                init() {
+                    console.log('🚀 Nurse BPU System v4.2 with WHO Partograph Initialized');
+                    this.log('System initialized with WHO partograph module', 'success');
+                    
+                    this.loadSettings();
+                    this.updateMetrics();
+                    this.setupEventListeners();
+                    
+                    setTimeout(() => {
+                        this.connectToMedOS();
+                    }, 1000);
+                    
+                    setTimeout(() => {
+                        this.loadDemoData();
+                    }, 2000);
+                }
+                
+                // ===== MEDOS INTEGRATION =====
+                async connectToMedOS() {
+                    try {
+                        this.updateConnectionStatus('Connecting to MedOS API...', 'connecting');
+                        
+                        const response = await fetch(`${this.medosApiUrl}/status`, {
+                            headers: this.getMedOSHeaders()
+                        }).catch(() => null);
+                        
+                        if (response && response.ok) {
+                            this.isMedOSConnected = true;
+                            this.updateConnectionStatus('Connected to MedOS', 'connected');
+                            this.updateSyncStatus('API', 'connected');
+                            
+                            await this.syncFromMedOS();
+                            this.connectWebSocket();
+                            this.startSyncInterval();
+                            
+                            this.log('MedOS integration active', 'success');
+                        } else {
+                            this.updateConnectionStatus('MedOS API unavailable', 'disconnected');
+                            this.updateSyncStatus('API', 'disconnected');
+                            this.log('MedOS API not available - running in offline mode', 'warning');
+                        }
+                    } catch (error) {
+                        console.error('MedOS connection error:', error);
+                        this.updateConnectionStatus('Connection failed', 'disconnected');
+                        this.updateSyncStatus('API', 'disconnected');
+                        this.log(`MedOS connection failed: ${error.message}`, 'error');
+                    }
+                }
+                
+                connectWebSocket() {
+                    try {
+                        this.webSocket = new WebSocket(this.medosWsUrl);
+                        
+                        this.webSocket.onopen = () => {
+                            this.isWebSocketConnected = true;
+                            this.updateSyncStatus('WebSocket', 'connected');
+                            this.log('WebSocket connected for real-time updates', 'success');
+                            
+                            this.webSocket.send(JSON.stringify({
+                                type: 'subscribe',
+                                channels: ['patients', 'vitals', 'alerts', 'orders', 'maternal']
+                            }));
+                        };
+                        
+                        this.webSocket.onmessage = (event) => {
+                            const data = JSON.parse(event.data);
+                            this.handleRealTimeUpdate(data);
+                        };
+                        
+                        this.webSocket.onclose = () => {
+                            this.isWebSocketConnected = false;
+                            this.updateSyncStatus('WebSocket', 'disconnected');
+                            this.log('WebSocket disconnected - attempting reconnect in 5s', 'warning');
+                            
+                            setTimeout(() => this.connectWebSocket(), 5000);
+                        };
+                        
+                        this.webSocket.onerror = (error) => {
+                            console.error('WebSocket error:', error);
+                        };
+                    } catch (error) {
+                        console.error('WebSocket setup error:', error);
+                    }
+                }
+                
+                async syncFromMedOS() {
+                    try {
+                        this.log('Syncing data from MedOS...', 'info');
+                        
+                        if (document.getElementById('sync-patients')?.checked) {
+                            await this.syncPatients();
+                        }
+                        
+                        if (document.getElementById('sync-orders')?.checked) {
+                            await this.syncOrders();
+                        }
+                        
+                        this.lastSyncTime = new Date();
+                        this.updateLastSyncTime();
+                        this.updateSyncPatientCount();
+                        
+                        this.log('MedOS sync completed', 'success');
+                    } catch (error) {
+                        this.log(`Sync failed: ${error.message}`, 'error');
+                    }
+                }
+                
+                async syncPatients() {
+                    try {
+                        const response = await fetch(`${this.medosApiUrl}/patients?active=true`, {
+                            headers: this.getMedOSHeaders()
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.patients = data.patients || [];
+                            this.renderPatients();
+                            this.log(`Synced ${this.patients.length} patients from MedOS`, 'success');
+                        }
+                    } catch (error) {
+                        console.error('Failed to sync patients:', error);
+                    }
+                }
+                
+                async syncOrders() {
+                    try {
+                        const response = await fetch(`${this.medosApiUrl}/orders/pending`, {
+                            headers: this.getMedOSHeaders()
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.orders = data.orders || [];
+                            this.renderOrders();
+                            this.log(`Synced ${this.orders.length} orders from MedOS`, 'success');
+                        }
+                    } catch (error) {
+                        console.error('Failed to sync orders:', error);
+                    }
+                }
+                
+                handleRealTimeUpdate(data) {
+                    const { type, payload } = data;
+                    
+                    switch (type) {
+                        case 'patient_update':
+                            this.updatePatientData(payload);
+                            break;
+                        case 'vital_update':
+                            this.updatePatientVitals(payload);
+                            break;
+                        case 'new_alert':
+                            this.addAlert(payload);
+                            break;
+                        case 'order_update':
+                            this.updateOrder(payload);
+                            break;
+                        case 'maternal_update':
+                            this.handleMaternalUpdate(payload);
+                            break;
+                    }
+                    
+                    this.addRealTimeUpdate(type, payload);
+                }
+                
+                updatePatientData(patientData) {
+                    const index = this.patients.findIndex(p => p.id === patientData.id);
+                    if (index !== -1) {
+                        this.patients[index] = { ...this.patients[index], ...patientData };
+                    } else {
+                        this.patients.push(patientData);
+                    }
+                    this.renderPatients();
+                }
+                
+                updatePatientVitals(vitalData) {
+                    const { patientId, vitals } = vitalData;
+                    const patient = this.patients.find(p => p.id === patientId);
+                    
+                    if (patient) {
+                        patient.vitals = { ...patient.vitals, ...vitals };
+                        patient.lastVitalUpdate = new Date().toISOString();
+                        patient.riskScore = this.calculateRiskScore(vitals);
+                        this.renderPatients();
+                        this.checkVitalAlerts(patientId, vitals);
+                    }
+                }
+                
+                handleMaternalUpdate(maternalData) {
+                    const { patientId, cervicalDilation, descent, contractions, laborHours } = maternalData;
+                    
+                    const patient = this.patients.find(p => p.id === patientId);
+                    if (patient) {
+                        patient.cervicalDilation = cervicalDilation;
+                        patient.descent = descent;
+                        patient.contractions = contractions;
+                        patient.laborHours = laborHours;
+                        this.renderPatients();
+                    }
+                }
+                
+                // ===== CORE SYSTEM FUNCTIONS =====
+                calculateRiskScore(vitals) {
+                    let score = 0;
+                    
+                    if (vitals.hr < 50 || vitals.hr > 120) score += 2;
+                    else if (vitals.hr < 60 || vitals.hr > 100) score += 1;
+                    
+                    const [sys, dia] = vitals.bp.split('/').map(Number);
+                    if (sys < 90 || sys > 180 || dia < 60 || dia > 110) score += 2;
+                    else if (sys < 100 || sys > 160 || dia < 70 || dia > 100) score += 1;
+                    
+                    if (vitals.temp > 38.5 || vitals.temp < 36) score += 2;
+                    else if (vitals.temp > 37.8 || vitals.temp < 36.5) score += 1;
+                    
+                    if (vitals.spo2 < 92) score += 2;
+                    else if (vitals.spo2 < 95) score += 1;
+                    
+                    return Math.min(score, 5);
+                }
+                
+                checkVitalAlerts(patientId, vitals) {
+                    const patient = this.patients.find(p => p.id === patientId);
+                    if (!patient) return;
+                    
+                    const alerts = [];
+                    
+                    if (vitals.hr > 130 || vitals.hr < 40) {
+                        alerts.push({
+                            patientId,
+                            patientName: patient.name,
+                            type: 'critical',
+                            message: `Critical heart rate: ${vitals.hr} bpm`,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                    
+                    if (vitals.temp > 39.5) {
+                        alerts.push({
+                            patientId,
+                            patientName: patient.name,
+                            type: 'warning',
+                            message: `High fever: ${vitals.temp}°C`,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                    
+                    if (vitals.spo2 < 90) {
+                        alerts.push({
+                            patientId,
+                            patientName: patient.name,
+                            type: 'critical',
+                            message: `Low SpO2: ${vitals.spo2}%`,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                    
+                    alerts.forEach(alert => this.addAlert(alert));
+                }
+                
+                addAlert(alert) {
+                    alert.id = `alert-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    alert.acknowledged = false;
+                    this.alerts.unshift(alert);
+                    this.renderAlerts();
+                    this.updateBadge('monitoringBadge', this.alerts.filter(a => !a.acknowledged).length);
+                    this.log(`New alert: ${alert.message}`, alert.type === 'critical' ? 'error' : 'warning');
+                }
+                
+                addRealTimeUpdate(type, payload) {
+                    const update = {
+                        id: `update-${Date.now()}`,
+                        type,
+                        payload,
+                        timestamp: new Date().toISOString(),
+                        displayTime: new Date().toLocaleTimeString()
+                    };
+                    
+                    this.realTimeUpdates.unshift(update);
+                    
+                    if (this.realTimeUpdates.length > 50) {
+                        this.realTimeUpdates.pop();
+                    }
+                    
+                    this.renderRealTimeUpdates();
+                }
+                
+                // ===== UI RENDERING FUNCTIONS =====
+                renderPatients() {
+                    const grid = document.getElementById('patientsGrid');
+                    if (!grid) return;
+                    
+                    if (this.patients.length === 0) {
+                        grid.innerHTML = `
+                            <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                                <p>No patient data available.</p>
+                                <button id="loadFallbackData" class="button secondary" style="margin-top: 1rem;">Use Demo Data</button>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    const unitFilter = document.getElementById('filterUnit')?.value;
+                    const statusFilter = document.getElementById('filterStatus')?.value;
+                    
+                    let filteredPatients = this.patients;
+                    
+                    if (unitFilter) {
+                        filteredPatients = filteredPatients.filter(p => p.unit === unitFilter);
+                    }
+                    
+                    if (statusFilter) {
+                        filteredPatients = filteredPatients.filter(p => {
+                            if (statusFilter === 'critical') return p.riskScore >= 4;
+                            if (statusFilter === 'warning') return p.riskScore === 3;
+                            if (statusFilter === 'stable') return p.riskScore <= 2;
+                            if (statusFilter === 'maternal') return p.category === 'maternal' || p.unit === 'L&D';
+                            return true;
+                        });
+                    }
+                    
+                    grid.innerHTML = filteredPatients.map(patient => {
+                        const isMaternal = patient.category === 'maternal' || patient.unit === 'L&D';
+                        const riskClass = patient.riskScore >= 4 ? 'critical' : patient.riskScore === 3 ? 'warning' : 'stable';
+                        const cardClass = isMaternal ? 'maternal' : riskClass;
+                        const lastUpdate = patient.lastVitalUpdate ? 
+                            new Date(patient.lastVitalUpdate).toLocaleTimeString() : 
+                            'No recent updates';
+                        
+                        return `
+                            <div class="patient-card ${cardClass}">
+                                <div class="patient-header">
+                                    <div class="patient-info">
+                                        <h3>${patient.name}</h3>
+                                        <div class="patient-meta">
+                                            ${patient.age} yrs • ${patient.mrn} • ${patient.room} • ${patient.unit || 'N/A'}
+                                            ${isMaternal && patient.edd ? ` • EDD: ${patient.edd}` : ''}
+                                        </div>
+                                        <div class="patient-tags">
+                                            <span class="tag">${patient.diagnosis || 'No diagnosis'}</span>
+                                            ${isMaternal ? `<span class="tag maternal">Labor</span>` : ''}
+                                            ${patient.allergies?.map(allergy => 
+                                                `<span class="tag allergy">${allergy}</span>`
+                                            ).join('') || ''}
+                                        </div>
+                                    </div>
+                                    <div class="patient-risk-score">
+                                        <div class="risk-score ${riskClass}">${patient.riskScore}</div>
+                                        <div class="risk-label">EWS Score</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="vitals-grid">
+                                    <div class="vital-item">
+                                        <div class="vital-label">HR</div>
+                                        <div class="vital-value ${patient.vitals?.hr > 100 || patient.vitals?.hr < 60 ? 'critical' : 'normal'}">
+                                            ${patient.vitals?.hr || '--'}
+                                        </div>
+                                        <div class="vital-unit">bpm</div>
+                                    </div>
+                                    <div class="vital-item">
+                                        <div class="vital-label">BP</div>
+                                        <div class="vital-value ${this.isBPCritical(patient.vitals?.bp) ? 'critical' : 'normal'}">
+                                            ${patient.vitals?.bp || '--/--'}
+                                        </div>
+                                        <div class="vital-unit">mmHg</div>
+                                    </div>
+                                    <div class="vital-item">
+                                        <div class="vital-label">TEMP</div>
+                                        <div class="vital-value ${patient.vitals?.temp > 37.8 ? 'warning' : 'normal'}">
+                                            ${patient.vitals?.temp || '--'}
+                                        </div>
+                                        <div class="vital-unit">°C</div>
+                                    </div>
+                                    <div class="vital-item">
+                                        <div class="vital-label">SpO2</div>
+                                        <div class="vital-value ${patient.vitals?.spo2 < 95 ? 'warning' : 'normal'}">
+                                            ${patient.vitals?.spo2 || '--'}
+                                        </div>
+                                        <div class="vital-unit">%</div>
+                                    </div>
+                                </div>
+                                
+                                ${isMaternal && patient.cervicalDilation ? `
+                                    <div style="margin: 1rem 0; padding: 0.75rem; background: rgba(236, 72, 153, 0.1); border-radius: 0.5rem;">
+                                        <div style="font-size: 0.8rem; color: var(--pink); margin-bottom: 0.25rem;">Maternal Status</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                            Cervix: ${patient.cervicalDilation} cm • 
+                                            Station: ${patient.descent || '?'} • 
+                                            Contractions: ${patient.contractions || '?'}/10min
+                                            ${patient.laborHours ? ` • Labor: ${patient.laborHours} hrs` : ''}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                
+                                ${patient.labs ? `
+                                    <div style="margin: 1rem 0; padding: 0.75rem; background: rgba(245, 158, 11, 0.1); border-radius: 0.5rem;">
+                                        <div style="font-size: 0.8rem; color: var(--warning); margin-bottom: 0.25rem;">Recent Labs</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                            ${Object.entries(patient.labs).slice(0, 3).map(([key, value]) => 
+                                                `${key}: ${value}`
+                                            ).join(' • ')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                
+                                <div class="patient-footer">
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                        Updated: ${lastUpdate}
+                                    </div>
+                                    <div class="patient-actions">
+                                        <button class="button secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" 
+                                                onclick="window.nurseBPU.viewPatientDetails('${patient.id}')">
+                                            View
+                                        </button>
+                                        ${isMaternal ? `
+                                            <button class="button pink" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" 
+                                                    onclick="window.nurseBPU.openPartographForPatient('${patient.id}')">
+                                                Partograph
+                                            </button>
+                                        ` : `
+                                            <button class="button" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" 
+                                                    onclick="window.nurseBPU.monitorPatient('${patient.id}')">
+                                                Monitor
+                                            </button>
+                                        `}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    this.updateMetric('patients', filteredPatients.length);
+                }
+                
+                renderOrders() {
+                    const container = document.getElementById('ordersList');
+                    if (!container || !this.orders.length) {
+                        container.innerHTML = `
+                            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                <p>No pending orders</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    const pendingOrders = this.orders.filter(o => o.status === 'pending');
+                    const verifiedOrders = this.orders.filter(o => o.status === 'verified');
+                    const criticalOrders = this.orders.filter(o => o.priority === 'high');
+                    
+                    this.updateMetric('orders', this.orders.length);
+                    this.updateBadge('ordersBadge', pendingOrders.length);
+                    
+                    document.getElementById('orders-total').textContent = this.orders.length;
+                    document.getElementById('orders-verified').textContent = verifiedOrders.length;
+                    document.getElementById('orders-pending').textContent = pendingOrders.length;
+                    document.getElementById('orders-critical').textContent = criticalOrders.length;
+                    
+                    container.innerHTML = pendingOrders.map(order => `
+                        <div style="padding: 1rem; margin-bottom: 0.75rem; background: rgba(30, 41, 59, 0.6); border-radius: 0.5rem; border-left: 3px solid ${
+                            order.priority === 'high' ? 'var(--danger)' : 'var(--warning)'
+                        };">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                <div>
+                                    <strong style="color: var(--primary);">${order.medication}</strong>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">
+                                        Patient: ${order.patientName} • Room: ${order.room}
+                                    </div>
+                                </div>
+                                <span style="font-size: 0.75rem; padding: 0.25rem 0.5rem; background: ${
+                                    order.priority === 'high' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'
+                                }; color: ${
+                                    order.priority === 'high' ? 'var(--danger)' : 'var(--warning)'
+                                }; border-radius: 0.25rem;">
+                                    ${order.priority}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.85rem; margin-bottom: 0.5rem;">
+                                ${order.dosage} • ${order.frequency} • ${order.route}
+                            </div>
+                            <div class="flex-row" style="justify-content: flex-end;">
+                                <button class="button success" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;" 
+                                        onclick="window.nurseBPU.verifyOrder('${order.id}')">
+                                    Verify
+                                </button>
+                                <button class="button secondary" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;" 
+                                        onclick="window.nurseBPU.viewOrderDetails('${order.id}')">
+                                    Details
+                                </button>
+                                <button class="button warning" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;" 
+                                        onclick="window.nurseBPU.flagOrder('${order.id}')">
+                                    Flag
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                renderAlerts() {
+                    const container = document.getElementById('alertsList');
+                    const unacknowledged = this.alerts.filter(a => !a.acknowledged);
+                    
+                    if (!unacknowledged.length) {
+                        container.innerHTML = `
+                            <p style="color: var(--text-muted); text-align: center; padding: 1rem;">
+                                No active alerts
+                            </p>
+                        `;
+                        return;
+                    }
+                    
+                    container.innerHTML = unacknowledged.slice(0, 10).map(alert => `
+                        <div class="update-item ${alert.type}" style="margin-bottom: 0.5rem;">
+                            <div class="update-time">${new Date(alert.timestamp).toLocaleTimeString()}</div>
+                            <div class="update-patient">${alert.patientName || 'System Alert'}</div>
+                            <div class="update-message">${alert.message}</div>
+                            <div class="flex-row" style="justify-content: flex-end; margin-top: 0.5rem;">
+                                <button class="button secondary" style="padding: 0.1rem 0.5rem; font-size: 0.7rem;" 
+                                        onclick="window.nurseBPU.acknowledgeAlert('${alert.id}')">
+                                    Acknowledge
+                                </button>
+                                <button class="button" style="padding: 0.1rem 0.5rem; font-size: 0.7rem;" 
+                                        onclick="window.nurseBPU.viewPatientDetails('${alert.patientId}')">
+                                    View Patient
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    this.updateMetric('alerts', unacknowledged.length);
+                }
+                
+                renderRealTimeUpdates() {
+                    const container = document.getElementById('updatesContent');
+                    if (!container) return;
+                    
+                    container.innerHTML = this.realTimeUpdates.slice(0, 10).map(update => {
+                        let message = '';
+                        let patientName = '';
+                        
+                        switch (update.type) {
+                            case 'patient_update':
+                                message = `Patient updated: ${update.payload.name}`;
+                                patientName = update.payload.name;
+                                break;
+                            case 'vital_update':
+                                message = `Vitals updated: HR ${update.payload.vitals.hr}, Temp ${update.payload.vitals.temp}`;
+                                patientName = this.patients.find(p => p.id === update.payload.patientId)?.name || 'Unknown';
+                                break;
+                            case 'new_alert':
+                                message = update.payload.message;
+                                patientName = update.payload.patientName;
+                                break;
+                            case 'order_update':
+                                message = `Order ${update.payload.status}: ${update.payload.medication}`;
+                                patientName = update.payload.patientName;
+                                break;
+                            case 'maternal_update':
+                                message = `Maternal update: Cervix ${update.payload.cervicalDilation}cm at ${update.payload.laborHours}hrs`;
+                                patientName = this.patients.find(p => p.id === update.payload.patientId)?.name || 'Unknown';
+                                break;
+                            default:
+                                message = `Update: ${update.type}`;
+                        }
+                        
+                        const updateClass = update.payload?.type || 
+                                          (update.type === 'maternal_update' ? 'maternal' : 
+                                          update.payload?.priority === 'critical' ? 'critical' : '');
+                        
+                        return `
+                            <div class="update-item ${updateClass}">
+                                <div class="update-time">${update.displayTime}</div>
+                                ${patientName ? `<div class="update-patient">${patientName}</div>` : ''}
+                                <div class="update-message">${message}</div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+                // ===== UTILITY FUNCTIONS =====
+                log(message, type = 'info') {
+                    const timestamp = new Date().toLocaleTimeString();
+                    const entry = { timestamp, message, type };
+                    this.activityLog.unshift(entry);
+                    
+                    if (this.activityLog.length > 100) this.activityLog.pop();
+                    
+                    this.updateActivityLog();
+                    this.updateMetrics();
+                }
+                
+                updateActivityLog() {
+                    const container = document.getElementById('activityLog');
+                    if (!container) return;
+                    
+                    container.innerHTML = this.activityLog.slice(0, 20).map(entry => `
+                        <div style="padding: 0.5rem; border-left: 3px solid ${
+                            entry.type === 'success' ? 'var(--success)' :
+                            entry.type === 'error' ? 'var(--danger)' :
+                            entry.type === 'warning' ? 'var(--warning)' :
+                            entry.type === 'info' ? 'var(--primary)' :
+                            'var(--pink)'
+                        }; margin-bottom: 0.5rem; background: rgba(15, 23, 42, 0.5); border-radius: 0.25rem;">
+                            <span style="color: var(--text-muted); font-size: 0.75rem;">[${entry.timestamp}]</span>
+                            <span style="color: var(--text-primary); margin-left: 0.5rem;">${entry.message}</span>
+                        </div>
+                    `).join('');
+                }
+                
+                updateMetrics() {
+                    this.updateMetric('patients', this.patients.length);
+                    this.updateMetric('samples', this.samples.length);
+                    this.updateMetric('logistics', this.logistics.length);
+                    this.updateMetric('alerts', this.alerts.filter(a => !a.acknowledged).length);
+                    
+                    const stable = this.patients.filter(p => p.riskScore <= 2).length;
+                    const warning = this.patients.filter(p => p.riskScore === 3).length;
+                    const critical = this.patients.filter(p => p.riskScore >= 4).length;
+                    
+                    this.updateRiskDistribution(stable, warning, critical);
+                }
+                
+                updateMetric(metric, value) {
+                    const element = document.getElementById(`metric-${metric}`);
+                    if (element) {
+                        element.textContent = value;
+                    }
+                }
+                
+                updateRiskDistribution(stable, warning, critical) {
+                    const max = Math.max(stable, warning, critical, 1);
+                    
+                    const stableBar = document.getElementById('risk-stable-bar');
+                    const warningBar = document.getElementById('risk-warning-bar');
+                    const criticalBar = document.getElementById('risk-critical-bar');
+                    
+                    if (stableBar) stableBar.style.height = `${(stable / max) * 100}px`;
+                    if (warningBar) warningBar.style.height = `${(warning / max) * 100}px`;
+                    if (criticalBar) criticalBar.style.height = `${(critical / max) * 100}px`;
+                }
+                
+                updateBadge(badgeId, count) {
+                    const badge = document.getElementById(badgeId);
+                    if (!badge) return;
+                    
+                    if (count > 0) {
+                        badge.textContent = count;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                }
+                
+                updateConnectionStatus(message, status) {
+                    const statusElement = document.getElementById('connectionStatus');
+                    const dotElement = document.getElementById('connectionDot');
+                    
+                    if (statusElement) statusElement.textContent = message;
+                    if (dotElement) {
+                        dotElement.className = 'status-dot ' + status;
+                    }
+                }
+                
+                updateSyncStatus(type, status) {
+                    const element = document.getElementById(`sync-${type}-status`);
+                    if (element) {
+                        element.textContent = status;
+                        element.style.color = status === 'connected' ? 'var(--success)' : 'var(--danger)';
+                    }
+                    
+                    const medosElement = document.getElementById(`medos${type === 'API' ? 'Api' : 'Ws'}Status`);
+                    if (medosElement) {
+                        medosElement.textContent = status;
+                        medosElement.style.color = status === 'connected' ? 'var(--success)' : 'var(--danger)';
+                    }
+                }
+                
+                updateLastSyncTime() {
+                    const element = document.getElementById('lastSyncTime');
+                    if (element && this.lastSyncTime) {
+                        element.textContent = this.lastSyncTime.toLocaleTimeString();
+                    }
+                    
+                    const syncElement = document.getElementById('sync-last-sync');
+                    if (syncElement && this.lastSyncTime) {
+                        syncElement.textContent = this.lastSyncTime.toLocaleTimeString();
+                    }
+                }
+                
+                updateSyncPatientCount() {
+                    const element = document.getElementById('sync-patient-count');
+                    if (element) {
+                        element.textContent = this.patients.length;
+                    }
+                }
+                
+                getMedOSHeaders() {
+                    const headers = {
+                        'Content-Type': 'application/json',
+                        'X-Nurse-BPU': 'true'
+                    };
+                    
+                    if (this.medosApiKey) {
+                        headers['Authorization'] = `Bearer ${this.medosApiKey}`;
+                    }
+                    
+                    return headers;
+                }
+                
+                // ===== DEMO DATA =====
+                loadDemoData() {
+                    if (this.patients.length > 0 && this.isMedOSConnected) {
+                        return;
+                    }
+                    
+                    const demoPatients = [
+                        {
+                            id: 'P001',
+                            name: 'Alice Johnson',
+                            age: 34,
+                            mrn: 'MRN-001',
+                            room: '301',
+                            unit: 'Ward-A',
+                            diagnosis: 'Suspected Malaria',
+                            vitals: { hr: 88, bp: '120/80', temp: 38.5, rr: 18, spo2: 96 },
+                            riskScore: 3,
+                            allergies: ['Penicillin'],
+                            labs: { hgb: '11.2', wbc: '8.5', plt: '220' },
+                            lastVitalUpdate: new Date().toISOString()
+                        },
+                        {
+                            id: 'P002',
+                            name: 'Robert Chen',
+                            age: 67,
+                            mrn: 'MRN-002',
+                            room: 'ICU-04',
+                            unit: 'ICU',
+                            diagnosis: 'Post-op CABG',
+                            vitals: { hr: 112, bp: '90/60', temp: 37.8, rr: 22, spo2: 92 },
+                            riskScore: 4,
+                            allergies: ['NSAIDs', 'Sulfa'],
+                            labs: { hgb: '9.8', wbc: '12.3', plt: '180', creatinine: '1.8' },
+                            lastVitalUpdate: new Date().toISOString()
+                        },
+                        {
+                            id: 'P004',
+                            name: 'Sarah Williams',
+                            age: 28,
+                            mrn: 'MRN-004',
+                            room: 'LDR-01',
+                            unit: 'L&D',
+                            category: 'maternal',
+                            diagnosis: 'Term Pregnancy in Active Labor',
+                            gravida: 2,
+                            para: 1,
+                            edd: '2024-06-15',
+                            cervicalDilation: 6,
+                            descent: 0,
+                            contractions: 4,
+                            laborHours: 3,
+                            vitals: { hr: 92, bp: '118/76', temp: 37.1, rr: 18, spo2: 98 },
+                            riskScore: 2,
+                            allergies: [],
+                            lastVitalUpdate: new Date().toISOString()
+                        }
+                    ];
+                    
+                    const demoOrders = [
+                        {
+                            id: 'ORD-001',
+                            patientId: 'P001',
+                            patientName: 'Alice Johnson',
+                            medication: 'Artemether-Lumefantrine',
+                            dosage: '80mg/480mg',
+                            frequency: 'Twice daily',
+                            route: 'Oral',
+                            priority: 'high',
+                            status: 'pending',
+                            room: '301'
+                        }
+                    ];
+                    
+                    const demoAlerts = [
+                        {
+                            id: 'alert-001',
+                            patientId: 'P002',
+                            patientName: 'Robert Chen',
+                            type: 'critical',
+                            message: 'Critical vitals: HR 112, BP 90/60',
+                            timestamp: new Date(Date.now() - 300000).toISOString(),
+                            acknowledged: false
+                        }
+                    ];
+                    
+                    this.patients = [...this.patients, ...demoPatients];
+                    this.orders = [...this.orders, ...demoOrders];
+                    this.alerts = [...this.alerts, ...demoAlerts];
+                    
+                    this.partograph.loadDemoData();
+                    
+                    this.renderPatients();
+                    this.renderOrders();
+                    this.renderAlerts();
+                    this.updateMetrics();
+                    
+                    this.log('Demo data loaded for offline mode', 'warning');
+                }
+                
+                // ===== UI INTERACTION METHODS =====
+                viewPatientDetails(patientId) {
+                    const patient = this.patients.find(p => p.id === patientId);
+                    if (!patient) return;
+                    
+                    const isMaternal = patient.category === 'maternal' || patient.unit === 'L&D';
+                    
+                    let details = `Patient Details:\n\nName: ${patient.name}\nAge: ${patient.age}\nMRN: ${patient.mrn}\nRoom: ${patient.room}\nUnit: ${patient.unit}\nDiagnosis: ${patient.diagnosis}\nRisk Score: ${patient.riskScore}\nAllergies: ${patient.allergies?.join(', ') || 'None'}`;
+                    
+                    if (isMaternal) {
+                        details += `\n\nMaternal Information:\nGravida: ${patient.gravida || '?'}\nPara: ${patient.para || '?'}\nEDD: ${patient.edd || 'Not specified'}\nCervical Dilation: ${patient.cervicalDilation || '?'} cm\nDescent/Station: ${patient.descent || '?'}\nContractions: ${patient.contractions || '?'}/10min\nLabor Hours: ${patient.laborHours || '?'}`;
+                    }
+                    
+                    if (patient.labs) {
+                        details += `\n\nLab Results:\n${Object.entries(patient.labs).map(([key, value]) => `${key}: ${value}`).join('\n')}`;
+                    }
+                    
+                    alert(details);
+                }
+                
+                monitorPatient(patientId) {
+                    const patient = this.patients.find(p => p.id === patientId);
+                    if (!patient) return;
+                    
+                    this.log(`Starting continuous monitoring for ${patient.name}`, 'info');
+                    this.showAlert(`Continuous monitoring started for ${patient.name}. You will receive real-time updates for this patient.`, 'success');
+                }
+                
+                openPartographForPatient(patientId) {
+                    const patient = this.patients.find(p => p.id === patientId);
+                    if (!patient) return;
+                    
+                    document.getElementById('patientId').value = patient.id;
+                    document.getElementById('patientName').value = patient.name;
+                    document.getElementById('gravidaPara').value = `G${patient.gravida || '?'}P${patient.para || '?'}`;
+                    
+                    this.showAlert(`Opened partograph for ${patient.name}. Ready to record labor progress.`, 'success');
+                    
+                    this.switchTab('partograph');
+                }
+                
+                verifyOrder(orderId) {
+                    const order = this.orders.find(o => o.id === orderId);
+                    if (!order) return;
+                    
+                    order.status = 'verified';
+                    order.verifiedBy = 'Nurse BPU System';
+                    order.verifiedAt = new Date().toISOString();
+                    
+                    this.renderOrders();
+                    this.log(`Order verified: ${order.medication} for ${order.patientName}`, 'success');
+                    
+                    this.sendOrderVerification(order);
+                }
+                
+                acknowledgeAlert(alertId) {
+                    const alert = this.alerts.find(a => a.id === alertId);
+                    if (!alert) return;
+                    
+                    alert.acknowledged = true;
+                    alert.acknowledgedAt = new Date().toISOString();
+                    alert.acknowledgedBy = 'Nurse';
+                    
+                    this.renderAlerts();
+                    this.updateBadge('monitoringBadge', this.alerts.filter(a => !a.acknowledged).length);
+                    this.log(`Alert acknowledged: ${alert.message}`, 'info');
+                }
+                
+                deletePartographPoint(index) {
+                    this.partograph.deletePartographPoint(index);
+                }
+                
+                // ===== SETTINGS MANAGEMENT =====
+                loadSettings() {
+                    const settings = localStorage.getItem('nurseBpuSettings');
+                    if (settings) {
+                        const parsed = JSON.parse(settings);
+                        this.medosApiUrl = parsed.medosApiUrl || this.medosApiUrl;
+                        this.medosWsUrl = parsed.medosWsUrl || this.medosWsUrl;
+                        
+                        const apiUrlInput = document.getElementById('medosApiUrl');
+                        const wsUrlInput = document.getElementById('medosWsUrl');
+                        if (apiUrlInput) apiUrlInput.value = this.medosApiUrl;
+                        if (wsUrlInput) wsUrlInput.value = this.medosWsUrl;
+                    }
+                }
+                
+                saveSettings() {
+                    const settings = {
+                        medosApiUrl: this.medosApiUrl,
+                        medosWsUrl: this.medosWsUrl,
+                        lastUpdated: new Date().toISOString()
+                    };
+                    
+                    localStorage.setItem('nurseBpuSettings', JSON.stringify(settings));
+                    this.log('Settings saved', 'success');
+                }
+                
+                // ===== SYSTEM CONTROLS =====
+                startSyncInterval() {
+                    if (this.syncInterval) clearInterval(this.syncInterval);
+                    
+                    this.syncInterval = setInterval(() => {
+                        this.syncFromMedOS();
+                    }, 30000);
+                }
+                
+                clearLocalData() {
+                    if (confirm('Clear all local data? This will remove patients, orders, and alerts.')) {
+                        this.patients = [];
+                        this.orders = [];
+                        this.alerts = [];
+                        this.realTimeUpdates = [];
+                        this.partograph.partographData = [];
+                        this.partograph.updateChart();
+                        this.partograph.updateDataTable();
+                        
+                        this.renderPatients();
+                        this.renderOrders();
+                        this.renderAlerts();
+                        this.renderRealTimeUpdates();
+                        this.updateMetrics();
+                        
+                        this.log('Local data cleared', 'warning');
+                    }
+                }
+                
+                // ===== HELPER FUNCTIONS =====
+                isBPCritical(bp) {
+                    if (!bp) return false;
+                    const [sys, dia] = bp.split('/').map(Number);
+                    return sys < 90 || sys > 180 || dia < 60 || dia > 110;
+                }
+                
+                showAlert(message, type) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = `alert ${type}`;
+                    alertDiv.textContent = message;
+                    
+                    const output = document.getElementById('commandOutput');
+                    if (output) {
+                        output.prepend(alertDiv);
+                        
+                        setTimeout(() => {
+                            if (alertDiv.parentNode) {
+                                alertDiv.parentNode.removeChild(alertDiv);
+                            }
+                        }, 5000);
+                    }
+                }
+                
+                setupEventListeners() {
+                    document.querySelectorAll('.nav-tab').forEach(tab => {
+                        tab.addEventListener('click', () => {
+                            const tabId = tab.getAttribute('data-tab');
+                            this.switchTab(tabId);
+                        });
+                    });
+                    
+                    const executeCommand = () => {
+                        const cmd = document.getElementById('commandInput').value;
+                        if (cmd.trim()) {
+                            this.processCommand(cmd);
+                            document.getElementById('commandInput').value = '';
+                        }
+                    };
+                    
+                    document.getElementById('executeCommand')?.addEventListener('click', executeCommand);
+                    document.getElementById('commandInput')?.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') executeCommand();
+                    });
+                    
+                    document.getElementById('refreshPatients')?.addEventListener('click', () => {
+                        this.syncPatients();
+                    });
+                    
+                    document.addEventListener('click', (e) => {
+                        if (e.target.id === 'loadFallbackData') {
+                            this.loadDemoData();
+                        }
+                    });
+                    
+                    document.getElementById('filterUnit')?.addEventListener('change', () => {
+                        this.renderPatients();
+                    });
+                    
+                    document.getElementById('filterStatus')?.addEventListener('change', () => {
+                        this.renderPatients();
+                    });
+                    
+                    document.getElementById('acknowledgeAllAlerts')?.addEventListener('click', () => {
+                        this.alerts.forEach(alert => alert.acknowledged = true);
+                        this.renderAlerts();
+                        this.updateBadge('monitoringBadge', 0);
+                        this.log('All alerts acknowledged', 'info');
+                    });
+                    
+                    document.getElementById('clearUpdates')?.addEventListener('click', () => {
+                        this.realTimeUpdates = [];
+                        this.renderRealTimeUpdates();
+                    });
+                    
+                    document.getElementById('connectMedOS')?.addEventListener('click', () => {
+                        this.connectToMedOS();
+                    });
+                    
+                    document.getElementById('syncNow')?.addEventListener('click', () => {
+                        this.syncFromMedOS();
+                    });
+                    
+                    document.getElementById('saveMedOSSettings')?.addEventListener('click', () => {
+                        this.medosApiUrl = document.getElementById('medosApiUrl').value;
+                        this.medosWsUrl = document.getElementById('medosWsUrl').value;
+                        this.saveSettings();
+                        this.log('MedOS settings updated', 'success');
+                    });
+                    
+                    document.getElementById('testMedOSConnection')?.addEventListener('click', () => {
+                        this.connectToMedOS();
+                    });
+                    
+                    document.getElementById('forceSync')?.addEventListener('click', () => {
+                        this.syncFromMedOS();
+                    });
+                    
+                    document.getElementById('clearLocalData')?.addEventListener('click', () => {
+                        this.clearLocalData();
+                    });
+                }
+                
+                switchTab(tabId) {
+                    document.querySelectorAll('.nav-tab').forEach(tab => {
+                        tab.classList.toggle('active', tab.getAttribute('data-tab') === tabId);
+                    });
+                    
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.toggle('active', content.id === tabId);
+                    });
+                    
+                    if (tabId === 'monitoring') {
+                        this.renderPatients();
+                        this.renderAlerts();
+                    } else if (tabId === 'partograph') {
+                        this.partograph.updateChart();
+                        this.partograph.updateDataTable();
+                        this.partograph.updatePartographTime();
+                    } else if (tabId === 'orders') {
+                        this.renderOrders();
+                    } else if (tabId === 'analytics') {
+                        this.updateActivityLog();
+                    }
+                }
+                
+                processCommand(command) {
+                    const output = document.getElementById('commandOutput');
+                    const cmd = command.toLowerCase().trim();
+                    
+                    output.innerHTML = `<pre class="info">Processing: ${command}</pre>`;
+                    
+                    if (cmd.includes('open partograph for') || cmd.includes('partograph for')) {
+                        const match = cmd.match(/(?:open partograph for|partograph for)\s+(\w+)/i);
+                        if (match) {
+                            const patientId = match[1];
+                            this.openPartographForPatient(patientId);
+                            output.innerHTML += `<pre class="success">✓ Opening partograph for patient ${patientId}</pre>`;
+                        }
+                    } else if (cmd.includes('update partograph')) {
+                        document.getElementById('cervicalDilation').value = '6';
+                        document.getElementById('descent').value = '0';
+                        document.getElementById('contractions').value = '4';
+                        document.getElementById('laborHours').value = '3';
+                        this.partograph.addDataPoint();
+                        output.innerHTML += `<pre class="success">✓ Partograph updated with demo values</pre>`;
+                    } else if (cmd.includes('reset partograph')) {
+                        this.partograph.clearAllPoints();
+                        output.innerHTML += `<pre class="success">✓ Partograph reset</pre>`;
+                    } else if (cmd.includes('monitor patient')) {
+                        const match = cmd.match(/monitor patient (\w+)/i);
+                        if (match) {
+                            const patientId = match[1];
+                            this.monitorPatient(patientId);
+                            output.innerHTML += `<pre class="success">✓ Monitoring patient ${patientId}</pre>`;
+                        }
+                    } else if (cmd.includes('medos status')) {
+                        output.innerHTML += `<pre class="${this.isMedOSConnected ? 'success' : 'error'}">MedOS Status: ${this.isMedOSConnected ? 'Connected' : 'Disconnected'}
+WebSocket: ${this.isWebSocketConnected ? 'Connected' : 'Disconnected'}
+Patients: ${this.patients.length}
+Partograph Entries: ${this.partograph.partographData.length}
+Active Alerts: ${this.alerts.filter(a => !a.acknowledged).length}
+Last Sync: ${this.lastSyncTime ? this.lastSyncTime.toLocaleTimeString() : 'Never'}</pre>`;
+                    } else if (cmd.includes('refresh all')) {
+                        this.syncFromMedOS();
+                        output.innerHTML += `<pre class="success">✓ Refreshing all data from MedOS</pre>`;
+                    } else if (cmd.includes('demo data') || cmd.includes('load demo')) {
+                        this.loadDemoData();
+                        output.innerHTML += `<pre class="success">✓ Demo data loaded. Check all tabs!</pre>`;
+                    } else if (cmd.includes('clear data')) {
+                        this.clearLocalData();
+                        output.innerHTML += `<pre class="warning">✓ Local data cleared</pre>`;
+                    } else if (cmd.includes('help') || cmd === '?') {
+                        output.innerHTML += `<pre class="info">Available Commands:
+1. Patient & Partograph:
+   • "monitor patient [ID]" - Monitor specific patient
+   • "open partograph for [ID]" - Open partograph for maternal patient
+   • "update partograph" - Add demo partograph entry
+   • "reset partograph" - Clear partograph data
+
+2. System Management:
+   • "medos status" - Check MedOS connection
+   • "refresh all" - Refresh all data from MedOS
+   • "demo data" - Load demo data
+   • "clear data" - Clear local data
+
+3. Navigation:
+   • Type "help" for available commands</pre>`;
+                    } else {
+                        output.innerHTML += `<pre class="error">Command not recognized. Type "help" for available commands.</pre>`;
+                    }
+                }
+                
+                sendOrderVerification(order) {
+                    if (!this.isMedOSConnected) return;
+                    
+                    fetch(`${this.medosApiUrl}/orders/${order.id}/verify`, {
+                        method: 'POST',
+                        headers: this.getMedOSHeaders(),
+                        body: JSON.stringify({
+                            verifiedBy: 'Nurse BPU System',
+                            verifiedAt: order.verifiedAt,
+                            timestamp: new Date().toISOString()
+                        })
+                    }).then(response => {
+                        if (response.ok) {
+                            this.log(`Order verification sent to MedOS: ${order.medication}`, 'success');
+                        }
+                    }).catch(error => {
+                        console.error('Failed to send verification to MedOS:', error);
+                    });
+                }
+            }
+            
+            // ===== INITIALIZATION =====
+            let nurseBPU;
+            
+            document.addEventListener('DOMContentLoaded', () => {
+                nurseBPU = new NurseBPUSystem();
+                window.nurseBPU = nurseBPU;
+                
+                window.viewPatientDetails = (patientId) => nurseBPU.viewPatientDetails(patientId);
+                window.monitorPatient = (patientId) => nurseBPU.monitorPatient(patientId);
+                window.openPartographForPatient = (patientId) => nurseBPU.openPartographForPatient(patientId);
+                window.verifyOrder = (orderId) => nurseBPU.verifyOrder(orderId);
+                window.acknowledgeAlert = (alertId) => nurseBPU.acknowledgeAlert(alertId);
+                window.deletePartographPoint = (index) => nurseBPU.deletePartographPoint(index);
+                
+                if ('serviceWorker' in navigator) {
+                    window.addEventListener('load', () => {
+                        navigator.serviceWorker.register('/service-worker.js').then(registration => {
+                            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        }).catch(error => {
+                            console.log('ServiceWorker registration failed: ', error);
+                        });
+                    });
+                }
+                
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        const key = e.key;
+                        const tabMap = {
+                            '1': 'monitoring',
+                            '2': 'partograph',
+                            '3': 'agent-admin',
+                            '4': 'lab-ai',
+                            '5': 'lab-logistics',
+                            '6': 'orders',
+                            '7': 'analytics',
+                            '8': 'medos-sync'
+                        };
+                        
+                        if (tabMap[key]) {
+                            e.preventDefault();
+                            nurseBPU.switchTab(tabMap[key]);
+                        }
+                    }
+                    
+                    if (e.key === 'Escape') {
+                        const commandInput = document.getElementById('commandInput');
+                        if (commandInput && document.activeElement === commandInput) {
+                            commandInput.value = '';
+                        }
+                    }
+                    
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                        e.preventDefault();
+                        const commandInput = document.getElementById('commandInput');
+                        if (commandInput) {
+                            commandInput.focus();
+                            commandInput.select();
+                        }
+                    }
+                });
+                
+                let deferredPrompt;
+                const installButton = document.createElement('button');
+                installButton.innerHTML = '📱 Install App';
+                installButton.className = 'button success';
+                installButton.style.position = 'fixed';
+                installButton.style.bottom = '80px';
+                installButton.style.right = '20px';
+                installButton.style.zIndex = '1001';
+                installButton.style.display = 'none';
+                
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    deferredPrompt = e;
+                    installButton.style.display = 'block';
+                    
+                    installButton.onclick = () => {
+                        installButton.style.display = 'none';
+                        deferredPrompt.prompt();
+                        deferredPrompt.userChoice.then((choiceResult) => {
+                            if (choiceResult.outcome === 'accepted') {
+                                console.log('User accepted the install prompt');
+                            } else {
+                                console.log('User dismissed the install prompt');
+                            }
+                            deferredPrompt = null;
+                        });
+                    };
+                    
+                    document.body.appendChild(installButton);
+                });
+                
+                if (window.matchMedia('(display-mode: standalone)').matches) {
+                    console.log('Running as PWA');
+                }
+                
+                window.addEventListener('online', () => {
+                    nurseBPU.log('Internet connection restored', 'success');
+                    nurseBPU.updateConnectionStatus('Reconnecting to MedOS...', 'connecting');
+                    setTimeout(() => nurseBPU.connectToMedOS(), 1000);
+                });
+                
+                window.addEventListener('offline', () => {
+                    nurseBPU.log('Internet connection lost - running in offline mode', 'warning');
+                    nurseBPU.updateConnectionStatus('Offline mode', 'disconnected');
+                    nurseBPU.updateSyncStatus('API', 'disconnected');
+                    nurseBPU.updateSyncStatus('WebSocket', 'disconnected');
+                });
+            });
+        </script>
+    </body>
+    </html>

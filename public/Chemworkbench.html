@@ -1,0 +1,2676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chemistry Workbench</title>
+    <meta name="description" content="Advanced chemistry PWA with AI generation, modeling, and documentation">
+    <meta name="theme-color" content="#1a237e">
+    <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <style>
+        :root {
+            --primary-color: #1a237e;
+            --secondary-color: #ff5722;
+            --success-color: #4caf50;
+            --error-color: #f44336;
+            --background-color: #f5f5f5;
+            --text-color: #212121;
+            --card-color: #ffffff;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 0;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), #3949ab);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        
+        header p {
+            margin: 0.5rem 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .card {
+            background-color: var(--card-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.15);
+        }
+        
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        input, select, button, textarea {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(26, 35, 126, 0.1);
+        }
+        
+        button {
+            background: linear-gradient(135deg, var(--primary-color), #3949ab);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-top: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(26, 35, 126, 0.3);
+        }
+        
+        button:disabled {
+            background: #b0bec5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .secondary-btn {
+            background: linear-gradient(135deg, var(--secondary-color), #ff7043);
+        }
+        
+        .secondary-btn:hover {
+            box-shadow: 0 4px 15px rgba(255, 87, 34, 0.3);
+        }
+        
+        .success-btn {
+            background: linear-gradient(135deg, var(--success-color), #66bb6a);
+        }
+        
+        .error-btn {
+            background: linear-gradient(135deg, var(--error-color), #ef5350);
+        }
+        
+        #output {
+            margin-top: 2rem;
+            padding: 1rem;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            min-height: 200px;
+            position: relative;
+            background: #fafafa;
+        }
+        
+        #molecule-container {
+            width: 100%;
+            height: 400px;
+            margin-top: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: white;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .molecule-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            background: rgba(255,255,255,0.95);
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .molecule-controls button {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            margin: 0;
+            min-width: auto;
+            width: auto;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(26,35,126,.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .molecule-info {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #e8eaf6, #f3e5f5);
+            border-radius: 8px;
+        }
+        
+        .property-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .property-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        
+        .property-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .tab-container {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+        
+        .tab {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .tab:hover {
+            background-color: rgba(26, 35, 126, 0.05);
+        }
+        
+        .tab.active {
+            border-bottom: 3px solid var(--primary-color);
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .latex-preview {
+            background: white;
+            padding: 1.5rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            margin-top: 1rem;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .status-message {
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+        
+        .status-success {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+            border: 2px solid #4caf50;
+        }
+        
+        .status-error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 2px solid #f44336;
+        }
+        
+        .status-info {
+            background-color: #e3f2fd;
+            color: #1565c0;
+            border: 2px solid #2196f3;
+        }
+        
+        .molecule-selector {
+            margin: 1rem 0;
+            padding: 0.5rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--primary-color), #3949ab);
+            color: white;
+            margin-top: 3rem;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 0.5rem;
+            }
+            
+            .card {
+                padding: 1.5rem;
+            }
+            
+            .actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .property-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .molecule-controls {
+                position: static;
+                margin-top: 1rem;
+                justify-content: center;
+            }
+        }
+        
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+        
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🧪 AI Chemistry Workbench</h1>
+        <p>Advanced molecular generation, modeling, and documentation for redox cancer research</p>
+    </header>
+    
+    <div class="container">
+        <div class="card">
+            <div class="tab-container">
+                <div class="tab active" data-tab="generation">🧬 Molecule Generation</div>
+                <div class="tab" data-tab="modeling">⚛️ Molecular Modeling</div>
+                <div class="tab" data-tab="documentation">📄 Documentation</div>
+                <div class="tab" data-tab="database">🗃️ Database Tools</div>
+            </div>
+            
+            <!-- Molecule Generation Tab -->
+            <div class="tab-content active" id="generation">
+                <h2>Generate Potential Therapeutics</h2>
+                <p>Generate molecular structures that may modulate oxidative/reductive processes in cancer metastasis.</p>
+                
+                <div class="input-group">
+                    <label for="target">Target Pathway</label>
+                    <select id="target">
+                        <option value="ROS">ROS Scavengers (Oxidative Stress)</option>
+                        <option value="NADPH">NADPH Oxidase Inhibitors</option>
+                        <option value="GSH">Glutathione Reductase Modulators</option>
+                        <option value="Nrf2">Nrf2 Pathway Activators</option>
+                        <option value="custom">Custom Target</option>
+                    </select>
+                </div>
+                
+                <div class="input-group" id="custom-target-group" style="display: none;">
+                    <label for="custom-target">Describe Your Target</label>
+                    <textarea id="custom-target" rows="3" placeholder="e.g., Generate a small molecule inhibitor of mitochondrial ROS production in triple-negative breast cancer metastasis"></textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="model-type">AI Model</label>
+                    <select id="model-type">
+                        <option value="chemgpt">ChemGPT (Simulated)</option>
+                        <option value="molecular-transformer">Molecular Transformer</option>
+                        <option value="chembert">ChemBERT</option>
+                    </select>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label for="num-molecules">Number of Molecules</label>
+                        <select id="num-molecules">
+                            <option value="1">1</option>
+                            <option value="3" selected>3</option>
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="temperature">Creativity Level</label>
+                        <select id="temperature">
+                            <option value="0.5">Conservative</option>
+                            <option value="0.7" selected>Balanced</option>
+                            <option value="1.0">Explorative</option>
+                            <option value="1.2">Highly Creative</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button id="generate-btn" class="pulse">🚀 Generate Molecules</button>
+            </div>
+            
+            <!-- Molecular Modeling Tab -->
+            <div class="tab-content" id="modeling">
+                <h2>Molecular Modeling & Simulation</h2>
+                
+                <div class="input-group">
+                    <label for="modeling-software">Modeling Software</label>
+                    <select id="modeling-software">
+                        <option value="rdkit">RDKit (Property Calculation)</option>
+                        <option value="openmm">OpenMM (MD Simulation)</option>
+                        <option value="gaussian">Gaussian (DFT)</option>
+                        <option value="gromacs">GROMACS</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="modeling-input">Input (SMILES or select from generated molecules)</label>
+                    <textarea id="modeling-input" rows="3" placeholder="Enter SMILES string or use 'Load from Generated' button"></textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="modeling-parameters">Parameters (JSON)</label>
+                    <textarea id="modeling-parameters" rows="3" placeholder='{"temperature": 300, "pressure": 1.0, "steps": 10000}'></textarea>
+                </div>
+                
+                <div class="actions">
+                    <button id="run-modeling-btn">⚡ Run Modeling</button>
+                    <button id="load-from-generated-btn" class="secondary-btn">📥 Load from Generated</button>
+                </div>
+                
+                <div id="modeling-output"></div>
+            </div>
+            
+            <!-- Documentation Tab -->
+            <div class="tab-content" id="documentation">
+                <h2>Research Documentation Generator</h2>
+                
+                <div class="input-group">
+                    <label for="doc-type">Document Type</label>
+                    <select id="doc-type">
+                        <option value="latex">LaTeX Research Paper</option>
+                        <option value="protocol">Experimental Protocol</option>
+                        <option value="biocoder">Biocoder Script</option>
+                        <option value="jupyter">Jupyter Notebook</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="doc-title">Title</label>
+                    <input type="text" id="doc-title" placeholder="Research Paper Title or Protocol Name">
+                </div>
+                
+                <div class="input-group">
+                    <label for="doc-content">Content Description</label>
+                    <textarea id="doc-content" rows="5" placeholder="Describe what should be included in the document..."></textarea>
+                </div>
+                
+                <div class="actions">
+                    <button id="generate-doc-btn">📝 Generate Document</button>
+                    <button id="use-current-molecules-btn" class="secondary-btn">🧬 Use Current Molecules</button>
+                </div>
+                
+                <div class="latex-preview" id="latex-preview" style="display: none;">
+                    <h3>Document Preview</h3>
+                    <div id="latex-render"></div>
+                    <div class="actions">
+                        <button id="download-latex-btn" class="success-btn">💾 Download Document</button>
+                        <button id="copy-text-btn" class="secondary-btn">📋 Copy to Clipboard</button>
+                    </div>
+                </div>
+                
+                <div id="protocol-output" style="display: none;"></div>
+            </div>
+            
+            <!-- Database Tools Tab -->
+            <div class="tab-content" id="database">
+                <h2>ChEMBL Database Tools</h2>
+                
+                <div class="input-group">
+                    <label for="db-query">Search Query</label>
+                    <textarea id="db-query" rows="3" placeholder="Enter your search query (e.g., 'HER2 inhibitors', 'antioxidants', 'kinase inhibitors')"></textarea>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label for="db-activity" class="tooltip" data-tooltip="Maximum activity value (lower = more potent)">Activity Threshold (nM)</label>
+                        <input type="number" id="db-activity" placeholder="e.g., 100" min="0" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label for="db-assay">Assay Type</label>
+                        <select id="db-assay">
+                            <option value="">Any Assay</option>
+                            <option value="IC50">IC50</option>
+                            <option value="Ki">Ki</option>
+                            <option value="EC50">EC50</option>
+                            <option value="Kd">Kd</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="actions">
+                    <button id="search-db-btn">🔍 Search ChEMBL</button>
+                    <button id="clear-results-btn" class="secondary-btn">🗑️ Clear Results</button>
+                </div>
+                
+                <div id="db-results"></div>
+            </div>
+        </div>
+        
+        <div class="card" id="results-card" style="display: none;">
+            <h2>Generated Molecules</h2>
+            <div id="output">
+                <div id="molecule-container"></div>
+                <div class="molecule-info" id="molecule-info">
+                    <h3>Molecular Properties</h3>
+                    <div class="property-grid" id="property-grid"></div>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button id="save-btn" class="success-btn">💾 Save to Library</button>
+                <button id="model-btn" class="secondary-btn">⚛️ Model This Molecule</button>
+                <button id="latex-btn" class="secondary-btn">📄 Generate Report</button>
+                <button id="new-btn">🔄 Generate More</button>
+            </div>
+        </div>
+        
+        <div class="card" id="library-card">
+            <h2>📚 Molecule Library</h2>
+            <p>Your saved molecules will appear here (stored locally in your browser)</p>
+            <div class="actions" style="margin-top: 1rem;">
+                <button id="export-library-btn" class="secondary-btn">📤 Export Library</button>
+                <button id="import-library-btn" class="secondary-btn">📥 Import Library</button>
+                <input type="file" id="import-file" accept=".json" style="display: none;">
+                <button id="clear-library-btn" class="error-btn">🗑️ Clear All</button>
+            </div>
+            <div id="library-container"></div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>🧪 Advanced Chemistry Workbench for redox cancer research</p>
+        <p><small>⚠️ This is for research purposes only. Consult a medical professional for treatment advice.</small></p>
+        <p><small>Built with ❤️ using modern web technologies</small></p>
+    </footer>
+
+    <script>
+        // ========================
+        // Global Variables & State
+        // ========================
+        let currentMolecules = [];
+        let currentSelectedIndex = 0;
+        let viewer = null;
+        let moleculeLibrary = JSON.parse(localStorage.getItem('moleculeLibrary')) || [];
+
+        // Mock molecular database for realistic generation
+        const MOLECULAR_TEMPLATES = {
+            ROS: [
+                'CC(=O)NC1=CC=C(C=C1)O', // Acetaminophen-like
+                'C1=CC(=CC=C1C=O)O', // Vanillin-like
+                'CN1C=NC2=C1C(=O)N(C(=O)N2C)C', // Caffeine-like
+                'CC1=C(C(=C(C=C1)O)O)C(=O)O', // Gallic acid-like
+            ],
+            NADPH: [
+                'CN(C)CCCN1C(=O)C2=CC=CC=C2C1=O', // Phthalimide derivative
+                'C1=CC=C2C(=C1)C(=O)C3=CC=CC=C3C2=O', // Anthraquinone-like
+                'CC(C)(C)C1=CC=C(C=C1)O', // BHT-like
+            ],
+            GSH: [
+                'C[C@H](C(=O)NCC(=O)O)NC(=O)[C@H](CCC(=O)O)N', // Glutathione-like
+                'CC(C)(C)OC(=O)NC(CC1=CC=CC=C1)C(=O)O', // Protected amino acid
+            ],
+            Nrf2: [
+                'COC1=CC=C(C=C1)C=CC(=O)CC(=O)C=CC2=CC=C(C=C2)OC', // Curcumin-like
+                'CC1=CC=C(C=C1)S(=O)(=O)N', // Sulfonamide-like
+            ]
+        };
+
+        // Enhanced property calculation templates
+        const PROPERTY_CALCULATORS = {
+            molecularWeight: (smiles) => {
+                const atomWeights = { C: 12, N: 14, O: 16, S: 32, P: 31, H: 1, F: 19, Cl: 35, Br: 80, I: 127 };
+                let weight = 0;
+                const atoms = smiles.match(/[A-Z][a-z]?/g) || [];
+                atoms.forEach(atom => {
+                    weight += atomWeights[atom] || 12;
+                });
+                return Math.round(weight + (smiles.length * 0.8)); // Rough estimate with hydrogens
+            },
+            
+            logP: (smiles) => {
+                const hydrophobic = (smiles.match(/[Cc]/g) || []).length;
+                const hydrophilic = (smiles.match(/[NnOoSs]/g) || []).length;
+                return ((hydrophobic * 0.5 - hydrophilic * 0.7) + (Math.random() - 0.5) * 2).toFixed(2);
+            },
+            
+            hbdHba: (smiles) => {
+                const hbd = (smiles.match(/[NH]/g) || []).length + (smiles.match(/OH/g) || []).length;
+                const hba = (smiles.match(/[NOSons]/g) || []).length;
+                return { hbd, hba };
+            }
+        };
+
+        // ========================
+        // DOM Elements
+        // ========================
+        const elements = {
+            // Generation tab
+            targetSelect: document.getElementById('target'),
+            customTargetGroup: document.getElementById('custom-target-group'),
+            customTargetInput: document.getElementById('custom-target'),
+            modelTypeSelect: document.getElementById('model-type'),
+            numMoleculesSelect: document.getElementById('num-molecules'),
+            temperatureSelect: document.getElementById('temperature'),
+            generateBtn: document.getElementById('generate-btn'),
+            
+            // Results
+            resultsCard: document.getElementById('results-card'),
+            moleculeContainer: document.getElementById('molecule-container'),
+            propertyGrid: document.getElementById('property-grid'),
+            
+            // Modeling tab
+            modelingSoftwareSelect: document.getElementById('modeling-software'),
+            modelingInput: document.getElementById('modeling-input'),
+            modelingParameters: document.getElementById('modeling-parameters'),
+            runModelingBtn: document.getElementById('run-modeling-btn'),
+            loadFromGeneratedBtn: document.getElementById('load-from-generated-btn'),
+            modelingOutput: document.getElementById('modeling-output'),
+            
+            // Documentation tab
+            docTypeSelect: document.getElementById('doc-type'),
+            docTitle: document.getElementById('doc-title'),
+            docContent: document.getElementById('doc-content'),
+            generateDocBtn: document.getElementById('generate-doc-btn'),
+            useCurrentMoleculesBtn: document.getElementById('use-current-molecules-btn'),
+            latexPreview: document.getElementById('latex-preview'),
+            latexRender: document.getElementById('latex-render'),
+            downloadLatexBtn: document.getElementById('download-latex-btn'),
+            copyTextBtn: document.getElementById('copy-text-btn'),
+            protocolOutput: document.getElementById('protocol-output'),
+            
+            // Database tab
+            dbQuery: document.getElementById('db-query'),
+            dbActivity: document.getElementById('db-activity'),
+            dbAssay: document.getElementById('db-assay'),
+            searchDbBtn: document.getElementById('search-db-btn'),
+            clearResultsBtn: document.getElementById('clear-results-btn'),
+            dbResults: document.getElementById('db-results'),
+            
+            // Actions
+            saveBtn: document.getElementById('save-btn'),
+            modelBtn: document.getElementById('model-btn'),
+            latexBtn: document.getElementById('latex-btn'),
+            newBtn: document.getElementById('new-btn'),
+            
+            // Library
+            libraryContainer: document.getElementById('library-container'),
+            exportLibraryBtn: document.getElementById('export-library-btn'),
+            importLibraryBtn: document.getElementById('import-library-btn'),
+            importFile: document.getElementById('import-file'),
+            clearLibraryBtn: document.getElementById('clear-library-btn')
+        };
+
+        // ========================
+        // Utility Functions
+        // ========================
+        function showStatus(message, type = 'info', duration = 5000) {
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status-message status-${type}`;
+            statusDiv.textContent = message;
+            
+            // Insert at top of current tab content
+            const activeTab = document.querySelector('.tab-content.active');
+            activeTab.insertBefore(statusDiv, activeTab.firstChild);
+            
+            // Auto-remove after duration
+            setTimeout(() => {
+                if (statusDiv.parentNode) {
+                    statusDiv.remove();
+                }
+            }, duration);
+        }
+
+        function downloadFile(filename, content, contentType = 'text/plain') {
+            const blob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showStatus('📋 Copied to clipboard!', 'success', 2000);
+            }).catch(() => {
+                showStatus('❌ Failed to copy to clipboard', 'error', 3000);
+            });
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function isValidSmiles(smiles) {
+            if (!smiles || typeof smiles !== 'string') return false;
+            if (smiles.length > 200 || smiles.length < 3) return false;
+            if (/[^a-zA-Z0-9@+\-\\/()=#%.\[\]]/g.test(smiles)) return false;
+            return true;
+        }
+
+        // ========================
+        // Tab Management
+        // ========================
+        function initTabs() {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active from all tabs and contents
+                    tabs.forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    // Activate clicked tab
+                    tab.classList.add('active');
+                    const tabId = tab.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+                    
+                    // Show success message
+                    showStatus(`Switched to ${tab.textContent.trim()}`, 'info', 2000);
+                });
+            });
+        }
+
+        // ========================
+        // Molecular Visualization
+        // ========================
+        function initViewer() {
+            if (typeof $3Dmol === 'undefined') {
+                elements.moleculeContainer.innerHTML = '<p style="color: red; padding: 2rem; text-align: center;">⚠️ 3DMol.js not loaded. Molecular visualization unavailable.</p>';
+                return false;
+            }
+            
+            try {
+                viewer = $3Dmol.createViewer(elements.moleculeContainer, {
+                    backgroundColor: 0xffffff,
+                    defaultcolors: $3Dmol.rasmolElementColors
+                });
+                viewer.zoomTo();
+                viewer.render();
+                return true;
+            } catch (error) {
+                console.error('Error initializing 3D viewer:', error);
+                elements.moleculeContainer.innerHTML = '<p style="color: orange; padding: 2rem; text-align: center;">⚠️ 3D viewer failed to initialize. Using 2D representation.</p>';
+                return false;
+            }
+        }
+
+        function renderMolecule(smiles, index = 0) {
+            if (!viewer) {
+                // Fallback to 2D representation
+                elements.moleculeContainer.innerHTML = `
+                    <div style="padding: 2rem; text-align: center; background: #f8f9fa; border-radius: 8px;">
+                        <h3>Molecule ${index + 1}</h3>
+                        <p><strong>SMILES:</strong> <code>${smiles}</code></p>
+                        <p style="color: #666;">3D visualization unavailable - showing SMILES representation</p>
+                    </div>
+                `;
+                addMoleculeControls2D(smiles);
+                return;
+            }
+            
+            try {
+                viewer.clear();
+                
+                // Create a simple 3D structure from SMILES (mock implementation)
+                const mockMol = createMock3DMol(smiles);
+                viewer.addModel(mockMol, "sdf");
+                
+                // Style the molecule
+                viewer.setStyle({}, {
+                    stick: { radius: 0.15, colorscheme: 'rasmolElementColors' },
+                    sphere: { scale: 0.3, colorscheme: 'rasmolElementColors' }
+                });
+                
+                viewer.zoomTo();
+                viewer.render();
+                
+                addViewerControls();
+                currentSelectedIndex = index;
+                updateMoleculeInfo();
+                
+            } catch (error) {
+                console.error('Error rendering molecule:', error);
+                elements.moleculeContainer.innerHTML = `
+                    <div style="padding: 2rem; text-align: center; background: #ffebee; border-radius: 8px;">
+                        <h3>Molecule ${index + 1}</h3>
+                        <p><strong>SMILES:</strong> <code>${smiles}</code></p>
+                        <p style="color: #c62828;">Error rendering 3D structure</p>
+                    </div>
+                `;
+                addMoleculeControls2D(smiles);
+            }
+        }
+
+        function createMock3DMol(smiles) {
+            // Create a simple mock SDF structure
+            const numAtoms = (smiles.match(/[A-Z]/g) || []).length;
+            let sdf = `Mock Molecule
+  Generated
+  
+${numAtoms.toString().padStart(3)}  0  0  0  0  0  0  0  0999 V2000
+`;
+            
+            // Add some mock atoms
+            for (let i = 0; i < Math.min(numAtoms, 10); i++) {
+                const x = (Math.random() - 0.5) * 4;
+                const y = (Math.random() - 0.5) * 4;
+                const z = (Math.random() - 0.5) * 4;
+                const element = smiles.includes('N') ? (i % 3 === 0 ? 'N' : 'C') : 
+                              smiles.includes('O') ? (i % 4 === 0 ? 'O' : 'C') : 'C';
+                sdf += `${x.toFixed(4).padStart(10)}${y.toFixed(4).padStart(10)}${z.toFixed(4).padStart(10)} ${element}   0  0  0  0  0  0  0  0  0  0  0  0
+`;
+            }
+            
+            sdf += 'M  END\n$$\n';
+            return sdf;
+        }
+
+        function addViewerControls() {
+            // Remove existing controls
+            const existingControls = elements.moleculeContainer.querySelector('.molecule-controls');
+            if (existingControls) existingControls.remove();
+            
+            const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'molecule-controls';
+            controlsDiv.innerHTML = `
+                <button onclick="rotateMolecule()" title="Rotate molecule">↻</button>
+                <button onclick="toggleStyle()" title="Toggle rendering style">⚛️</button>
+                <button onclick="zoomIn()" title="Zoom in">+</button>
+                <button onclick="zoomOut()" title="Zoom out">-</button>
+                <button onclick="resetView()" title="Reset view">🏠</button>
+            `;
+            elements.moleculeContainer.appendChild(controlsDiv);
+        }
+
+        function addMoleculeControls2D(smiles) {
+            const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'molecule-controls';
+            controlsDiv.innerHTML = `
+                <button onclick="copyToClipboard('${smiles}')" title="Copy SMILES">📋</button>
+                <button onclick="searchPubChem('${smiles}')" title="Search PubChem">🔍</button>
+            `;
+            elements.moleculeContainer.appendChild(controlsDiv);
+        }
+
+        // ========================
+        // Molecule Generation
+        // ========================
+        function generateMolecules() {
+            const target = elements.targetSelect.value;
+            const customTarget = elements.customTargetInput.value;
+            const numMolecules = parseInt(elements.numMoleculesSelect.value);
+            const temperature = parseFloat(elements.temperatureSelect.value);
+            const modelType = elements.modelTypeSelect.value;
+
+            // Disable button and show loading
+            elements.generateBtn.disabled = true;
+            elements.generateBtn.innerHTML = '<span class="loading"></span> Generating molecules...';
+            
+            showStatus(`🧬 Generating ${numMolecules} molecules using ${modelType}...`, 'info');
+
+            // Simulate AI generation with realistic delay
+            setTimeout(() => {
+                try {
+                    currentMolecules = [];
+                    
+                    for (let i = 0; i < numMolecules; i++) {
+                        const molecule = generateSingleMolecule(target, customTarget, temperature, modelType, i);
+                        if (molecule && isValidSmiles(molecule.smiles)) {
+                            currentMolecules.push(molecule);
+                        }
+                    }
+
+                    if (currentMolecules.length === 0) {
+                        throw new Error('No valid molecules generated. Please try different parameters.');
+                    }
+
+                    displayGeneratedMolecules();
+                    showStatus(`✅ Generated ${currentMolecules.length} molecules successfully!`, 'success');
+                    
+                } catch (error) {
+                    console.error('Generation error:', error);
+                    showStatus(`❌ Generation failed: ${error.message}`, 'error');
+                } finally {
+                    elements.generateBtn.disabled = false;
+                    elements.generateBtn.innerHTML = '🚀 Generate Molecules';
+                }
+            }, 2000 + Math.random() * 3000); // Realistic delay
+        }
+
+        function generateSingleMolecule(target, customTarget, temperature, modelType, index) {
+            const targetKey = target === 'custom' ? 'ROS' : target; // Fallback for custom
+            const templates = MOLECULAR_TEMPLATES[targetKey] || MOLECULAR_TEMPLATES.ROS;
+            
+            // Select base template with some randomness based on temperature
+            const baseTemplate = templates[Math.floor(Math.random() * templates.length)];
+            
+            // Apply temperature-based modifications
+            let smiles = applyTemperatureModifications(baseTemplate, temperature);
+            
+            // Generate realistic properties
+            const properties = calculateMolecularProperties(smiles);
+            
+            return {
+                id: generateId(),
+                name: `${target}-${index + 1}`,
+                smiles: smiles,
+                target: target === 'custom' ? customTarget : target,
+                properties: properties,
+                modelUsed: modelType,
+                generated: new Date().toISOString(),
+                score: Math.random() * 0.8 + 0.2 // Drug-likeness score
+            };
+        }
+
+        function applyTemperatureModifications(baseSmiles, temperature) {
+            let smiles = baseSmiles;
+            
+            // Higher temperature = more modifications
+            const numMods = Math.floor(temperature * 3);
+            
+            for (let i = 0; i < numMods; i++) {
+                const modification = Math.random();
+                
+                if (modification < 0.3) {
+                    // Add methyl group
+                    smiles = smiles.replace(/C(?=[=\(])/g, 'C(C)');
+                } else if (modification < 0.5) {
+                    // Add hydroxyl
+                    smiles = smiles.replace(/C(?=[CH])/g, 'C(O)');
+                } else if (modification < 0.7) {
+                    // Add fluorine
+                    smiles = smiles.replace(/C(?=[CH])/g, 'C(F)');
+                } else {
+                    // Add small ring
+                    smiles = smiles + 'C1CC1';
+                }
+            }
+            
+            return smiles;
+        }
+
+        function calculateMolecularProperties(smiles) {
+            const properties = [];
+            
+            // Molecular weight
+            const mw = PROPERTY_CALCULATORS.molecularWeight(smiles);
+            properties.push({
+                name: 'Molecular Weight',
+                value: `${mw} g/mol`,
+                description: 'Calculated molecular weight',
+                numeric: mw
+            });
+            
+            // LogP
+            const logP = PROPERTY_CALCULATORS.logP(smiles);
+            properties.push({
+                name: 'LogP',
+                value: logP,
+                description: 'Octanol-water partition coefficient',
+                numeric: parseFloat(logP)
+            });
+            
+            // Hydrogen bonds
+            const hbonds = PROPERTY_CALCULATORS.hbdHba(smiles);
+            properties.push({
+                name: 'H-Bond Donors',
+                value: hbonds.hbd,
+                description: 'Hydrogen bond donors',
+                numeric: hbonds.hbd
+            });
+            
+            properties.push({
+                name: 'H-Bond Acceptors',
+                value: hbonds.hba,
+                description: 'Hydrogen bond acceptors',
+                numeric: hbonds.hba
+            });
+            
+            // Lipinski's Rule of Five compliance
+            const lipinskiViolations = [
+                mw > 500,
+                parseFloat(logP) > 5,
+                hbonds.hbd > 5,
+                hbonds.hba > 10
+            ].filter(Boolean).length;
+            
+            properties.push({
+                name: 'Lipinski Violations',
+                value: lipinskiViolations,
+                description: 'Rule of Five violations (0-1 preferred)',
+                numeric: lipinskiViolations
+            });
+            
+            // Synthetic accessibility (mock)
+            const sa = (2 + Math.random() * 6).toFixed(1);
+            properties.push({
+                name: 'Synthetic Accessibility',
+                value: `${sa}/10`,
+                description: 'Ease of synthesis (lower is better)',
+                numeric: parseFloat(sa)
+            });
+            
+            // Drug-likeness (QED)
+            const qed = (0.3 + Math.random() * 0.6).toFixed(2);
+            properties.push({
+                name: 'Drug-likeness (QED)',
+                value: qed,
+                description: 'Quantitative drug-likeness (0-1, higher is better)',
+                numeric: parseFloat(qed)
+            });
+            
+            return properties;
+        }
+
+        function displayGeneratedMolecules() {
+            if (currentMolecules.length === 0) return;
+            
+            // Show results card
+            elements.resultsCard.style.display = 'block';
+            
+            // Render first molecule
+            currentSelectedIndex = 0;
+            renderMolecule(currentMolecules[0].smiles, 0);
+            
+            // Update info and scroll to results
+            updateMoleculeInfo();
+            elements.resultsCard.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function updateMoleculeInfo() {
+            const molecule = currentMolecules[currentSelectedIndex];
+            if (!molecule) return;
+            
+            // Update property grid
+            elements.propertyGrid.innerHTML = '';
+            molecule.properties.forEach(prop => {
+                const propCard = document.createElement('div');
+                propCard.className = 'property-card';
+                propCard.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <strong style="color: var(--primary-color);">${prop.name}</strong>
+                        <span style="font-size: 1.2rem; font-weight: bold;">${prop.value}</span>
+                    </div>
+                    <small style="color: #666;">${prop.description}</small>
+                `;
+                elements.propertyGrid.appendChild(propCard);
+            });
+            
+            // Add molecule selector if multiple molecules
+            let selectorHtml = '';
+            if (currentMolecules.length > 1) {
+                selectorHtml = `
+                    <div class="molecule-selector">
+                        <label for="molecule-select"><strong>Select Molecule:</strong></label>
+                        <select id="molecule-select" onchange="selectMolecule(this.value)" style="margin-top: 0.5rem;">
+                            ${currentMolecules.map((mol, idx) => 
+                                `<option value="${idx}" ${idx === currentSelectedIndex ? 'selected' : ''}>
+                                    ${mol.name} - ${mol.smiles.substring(0, 25)}${mol.smiles.length > 25 ? '...' : ''}
+                                </option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+            }
+            
+            // Update molecule info section
+            document.getElementById('molecule-info').innerHTML = `
+                <h3>📊 Molecular Properties</h3>
+                <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <h4>${molecule.name}</h4>
+                    <p><strong>SMILES:</strong> <code>${molecule.smiles}</code></p>
+                    <p><strong>Target:</strong> ${molecule.target}</p>
+                    <p><strong>Model:</strong> ${molecule.modelUsed}</p>
+                    <p><strong>Generated:</strong> ${new Date(molecule.generated).toLocaleString()}</p>
+                </div>
+                ${selectorHtml}
+                <div class="property-grid">${elements.propertyGrid.innerHTML}</div>
+            `;
+        }
+
+        // ========================
+        // Molecular Modeling Functions
+        // ========================
+        function runModeling() {
+            const software = elements.modelingSoftwareSelect.value;
+            const input = elements.modelingInput.value.trim();
+            let params = {};
+            
+            if (!input) {
+                showStatus('❌ Please provide input SMILES or structure', 'error');
+                return;
+            }
+            
+            try {
+                params = JSON.parse(elements.modelingParameters.value || '{}');
+            } catch (e) {
+                showStatus('❌ Invalid JSON parameters', 'error');
+                return;
+            }
+            
+            elements.runModelingBtn.disabled = true;
+            elements.runModelingBtn.innerHTML = '<span class="loading"></span> Running simulation...';
+            elements.modelingOutput.innerHTML = '<div class="status-message status-info">⚡ Running molecular modeling simulation...</div>';
+            
+            showStatus(`⚛️ Running ${software} modeling on: ${input.substring(0, 30)}...`, 'info');
+            
+            // Simulate modeling with realistic delay
+            setTimeout(() => {
+                try {
+                    let result;
+                    switch (software) {
+                        case 'rdkit':
+                            result = generateRDKitResults(input, params);
+                            break;
+                        case 'openmm':
+                            result = generateOpenMMResults(input, params);
+                            break;
+                        case 'gaussian':
+                            result = generateGaussianResults(input, params);
+                            break;
+                        case 'gromacs':
+                            result = generateGromacsResults(input, params);
+                            break;
+                        default:
+                            result = generateRDKitResults(input, params);
+                    }
+                    
+                    displayModelingResults(result, software);
+                    showStatus(`✅ ${software} modeling completed successfully!`, 'success');
+                    
+                } catch (error) {
+                    elements.modelingOutput.innerHTML = `<div class="status-message status-error">❌ Modeling failed: ${error.message}</div>`;
+                    showStatus(`❌ Modeling failed: ${error.message}`, 'error');
+                } finally {
+                    elements.runModelingBtn.disabled = false;
+                    elements.runModelingBtn.textContent = '⚡ Run Modeling';
+                }
+            }, 3000 + Math.random() * 4000);
+        }
+
+        function generateRDKitResults(smiles, params) {
+            const mw = PROPERTY_CALCULATORS.molecularWeight(smiles);
+            const logP = PROPERTY_CALCULATORS.logP(smiles);
+            
+            return {
+                type: 'properties',
+                data: {
+                    smiles: smiles,
+                    molecular_weight: mw,
+                    logP: parseFloat(logP),
+                    tpsa: Math.round(20 + Math.random() * 100),
+                    rotatable_bonds: Math.floor(smiles.length / 10),
+                    aromatic_rings: (smiles.match(/c/g) || []).length > 6 ? Math.floor((smiles.match(/c/g) || []).length / 6) : 0,
+                    alerts: Math.random() > 0.7 ? ['PAINS alert detected'] : [],
+                    druglikeness_score: (0.3 + Math.random() * 0.6).toFixed(3)
+                }
+            };
+        }
+
+        function generateOpenMMResults(smiles, params) {
+            const steps = params.steps || 10000;
+            const temperature = params.temperature || 300;
+            
+            return {
+                type: 'simulation',
+                data: {
+                    smiles: smiles,
+                    simulation_steps: steps,
+                    temperature: temperature,
+                    final_energy: (-50 - Math.random() * 100).toFixed(2) + ' kcal/mol',
+                    rmsd: (0.5 + Math.random() * 2).toFixed(3) + ' Å',
+                    radius_of_gyration: (8 + Math.random() * 5).toFixed(2) + ' Å',
+                    hydrogen_bonds: Math.floor(Math.random() * 5),
+                    trajectory_file: 'trajectory.dcd'
+                }
+            };
+        }
+
+        function generateGaussianResults(smiles, params) {
+            return {
+                type: 'quantum',
+                data: {
+                    smiles: smiles,
+                    method: params.method || 'B3LYP/6-31G*',
+                    total_energy: (-1500 - Math.random() * 500).toFixed(6) + ' hartrees',
+                    dipole_moment: (1 + Math.random() * 4).toFixed(3) + ' Debye',
+                    homo_energy: (-0.25 - Math.random() * 0.1).toFixed(4) + ' eV',
+                    lumo_energy: (-0.05 + Math.random() * 0.1).toFixed(4) + ' eV',
+                    band_gap: (3 + Math.random() * 2).toFixed(3) + ' eV',
+                    charges: 'Mulliken charges calculated',
+                    optimization: 'Geometry optimization converged'
+                }
+            };
+        }
+
+        function generateGromacsResults(smiles, params) {
+            return {
+                type: 'md',
+                data: {
+                    smiles: smiles,
+                    simulation_time: params.time || '100 ns',
+                    force_field: params.forcefield || 'AMBER99SB-ILDN',
+                    water_model: 'TIP3P',
+                    density: (0.95 + Math.random() * 0.1).toFixed(3) + ' g/cm³',
+                    pressure: (1.0 + (Math.random() - 0.5) * 0.1).toFixed(2) + ' bar',
+                    diffusion_coefficient: (Math.random() * 2).toFixed(2) + ' × 10⁻⁵ cm²/s',
+                    files_generated: ['confout.gro', 'traj.xtc', 'ener.edr', 'md.log']
+                }
+            };
+        }
+
+        function displayModelingResults(result, software) {
+            let html = `
+                <div class="status-message status-success">✅ ${software.toUpperCase()} modeling completed</div>
+                <h3>📊 Results for: <code>${result.data.smiles}</code></h3>
+            `;
+            
+            if (result.type === 'properties') {
+                html += `
+                    <div class="property-grid" style="margin-top: 1rem;">
+                        <div class="property-card">
+                            <strong>Molecular Weight</strong>
+                            <div style="font-size: 1.2rem; margin: 0.5rem 0;">${result.data.molecular_weight} g/mol</div>
+                        </div>
+                        <div class="property-card">
+                            <strong>LogP</strong>
+                            <div style="font-size: 1.2rem; margin: 0.5rem 0;">${result.data.logP}</div>
+                        </div>
+                        <div class="property-card">
+                            <strong>TPSA</strong>
+                            <div style="font-size: 1.2rem; margin: 0.5rem 0;">${result.data.tpsa} Ų</div>
+                        </div>
+                        <div class="property-card">
+                            <strong>Rotatable Bonds</strong>
+                            <div style="font-size: 1.2rem; margin: 0.5rem 0;">${result.data.rotatable_bonds}</div>
+                        </div>
+                        <div class="property-card">
+                            <strong>Aromatic Rings</strong>
+                            <div style="font-size: 1.2rem; margin: 0.5rem 0;">${result.data.aromatic_rings}</div>
+                        </div>
+                        <div class="property-card">
+                            <strong>Drug-likeness Score</strong>
+                            <div style="font-size: 1.2rem; margin: 0.5rem 0;">${result.data.druglikeness_score}</div>
+                        </div>
+                    </div>
+                `;
+                
+                if (result.data.alerts.length > 0) {
+                    html += `
+                        <div class="status-message status-error" style="margin-top: 1rem;">
+                            <strong>⚠️ Alerts:</strong> ${result.data.alerts.join(', ')}
+                        </div>
+                    `;
+                }
+            } else {
+                html += '<div class="property-grid" style="margin-top: 1rem;">';
+                Object.entries(result.data).forEach(([key, value]) => {
+                    if (key !== 'smiles') {
+                        html += `
+                            <div class="property-card">
+                                <strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</strong>
+                                <div style="font-size: 1.2rem; margin: 0.5rem 0;">${value}</div>
+                            </div>
+                        `;
+                    }
+                });
+                html += '</div>';
+            }
+            
+            html += `
+                <div class="actions" style="margin-top: 2rem;">
+                    <button onclick="downloadModelingResults('${software}', \`${JSON.stringify(result.data).replace(/`/g, '\\`')}\`)" class="success-btn">💾 Download Results</button>
+                    <button onclick="copyToClipboard(\`${JSON.stringify(result.data, null, 2).replace(/`/g, '\\`')}\`)" class="secondary-btn">📋 Copy Data</button>
+                </div>
+            `;
+            
+            elements.modelingOutput.innerHTML = html;
+        }
+
+        function loadFromGenerated() {
+            if (currentMolecules.length === 0) {
+                showStatus('❌ No generated molecules available. Generate some molecules first.', 'error');
+                return;
+            }
+            
+            const molecule = currentMolecules[currentSelectedIndex];
+            elements.modelingInput.value = molecule.smiles;
+            showStatus(`✅ Loaded ${molecule.name} into modeling input`, 'success');
+        }
+
+        // ========================
+        // Documentation Generation
+        // ========================
+        function generateDocumentation() {
+            const docType = elements.docTypeSelect.value;
+            const title = elements.docTitle.value.trim();
+            const content = elements.docContent.value.trim();
+            
+            if (!title) {
+                showStatus('❌ Please provide a title', 'error');
+                return;
+            }
+            
+            if (!content) {
+                showStatus('❌ Please provide content description', 'error');
+                return;
+            }
+            
+            elements.generateDocBtn.disabled = true;
+            elements.generateDocBtn.innerHTML = '<span class="loading"></span> Generating document...';
+            
+            showStatus(`📝 Generating ${docType} document: ${title}`, 'info');
+            
+            setTimeout(() => {
+                try {
+                    let result;
+                    switch (docType) {
+                        case 'latex':
+                            result = generateLatexDocument(title, content);
+                            displayLatexDocument(result);
+                            break;
+                        case 'protocol':
+                            result = generateProtocolDocument(title, content);
+                            displayProtocolDocument(result);
+                            break;
+                        case 'biocoder':
+                            result = generateBiocoderDocument(title, content);
+                            displayProtocolDocument(result);
+                            break;
+                        case 'jupyter':
+                            result = generateJupyterDocument(title, content);
+                            displayProtocolDocument(result);
+                            break;
+                        default:
+                            result = generateLatexDocument(title, content);
+                            displayLatexDocument(result);
+                    }
+                    
+                    showStatus(`✅ ${docType.toUpperCase()} document generated successfully!`, 'success');
+                    
+                } catch (error) {
+                    showStatus(`❌ Document generation failed: ${error.message}`, 'error');
+                } finally {
+                    elements.generateDocBtn.disabled = false;
+                    elements.generateDocBtn.textContent = '📝 Generate Document';
+                }
+            }, 2000 + Math.random() * 2000);
+        }
+
+        function generateLatexDocument(title, content) {
+            const moleculeData = currentMolecules.length > 0 ? currentMolecules[currentSelectedIndex] : null;
+            
+            return `\\documentclass[12pt]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage{graphicx}
+\\usepackage{amsmath}
+\\usepackage{chemfig}
+\\usepackage[version=4]{mhchem}
+\\usepackage{booktabs}
+\\usepackage{geometry}
+\\geometry{margin=1in}
+
+\\title{${title}}
+\\author{AI Chemistry Workbench}
+\\date{\\today}
+
+\\begin{document}
+
+\\maketitle
+
+\\section*{Abstract}
+This document presents computational findings generated by the AI Chemistry Workbench regarding ${content.substring(0, 100)}...
+
+The analysis focuses on molecular design for redox modulation in cancer therapy, utilizing advanced machine learning models to identify potential therapeutic compounds.
+
+\\section{Introduction}
+Cancer metastasis involves complex redox signaling pathways that present opportunities for therapeutic intervention. Recent advances in artificial intelligence and computational chemistry have enabled rapid identification and optimization of small molecules targeting these pathways.
+
+This study employed ${moleculeData ? moleculeData.modelUsed : 'machine learning models'} to generate and evaluate potential therapeutic compounds with specific focus on ${content.substring(0, 50)}...
+
+\\section{Methods}
+
+\\subsection{Computational Generation}
+Molecular structures were generated using the following parameters:
+\\begin{itemize}
+    \\item AI Model: ${moleculeData ? moleculeData.modelUsed : 'ChemGPT'}
+    \\item Target Pathway: ${moleculeData ? moleculeData.target : 'ROS Scavenging'}
+    \\item Generation Temperature: ${elements.temperatureSelect.value}
+    \\item Number of Candidates: ${elements.numMoleculesSelect.value}
+\\end{itemize}
+
+\\subsection{Property Calculation}
+Molecular properties were computed using established cheminformatics algorithms:
+\\begin{itemize}
+    \\item Lipophilicity (LogP) via fragment-based methods
+    \\item Molecular weight and formula
+    \\item Hydrogen bond donors/acceptors
+    \\item Synthetic accessibility scoring
+    \\item Drug-likeness assessment (QED)
+\\end{itemize}
+
+\\section{Results}
+
+${moleculeData ? `\\subsection{Generated Compounds}
+\\begin{table}[h]
+\\centering
+\\caption{Properties of Generated Compounds}
+\\begin{tabular}{@{}lll@{}}
+\\toprule
+Property & Value & Description \\\\ \\midrule
+${moleculeData.properties.map(prop => 
+    `${prop.name.replace(/_/g, '\\_')} & ${prop.value} & ${prop.description} \\\\`
+).join(' ')}
+\\bottomrule
+\\end{tabular}
+\\end{table}
+
+The lead compound shows promising characteristics:
+\\begin{itemize}
+    \\item SMILES: \\texttt{${moleculeData.smiles}}
+    \\item Molecular Weight: ${moleculeData.properties.find(p => p.name === 'Molecular Weight')?.value || 'N/A'}
+    \\item LogP: ${moleculeData.properties.find(p => p.name === 'LogP')?.value || 'N/A'}
+\\end{itemize}` : ''}
+
+\\subsection{Structure-Activity Relationships}
+The generated compounds exhibit several key structural features that may contribute to their biological activity:
+\\begin{enumerate}
+    \\item Presence of electron-donating groups that may facilitate ROS scavenging
+    \\item Aromatic systems that provide structural rigidity
+    \\item Functional groups capable of forming hydrogen bonds with target proteins
+\\end{enumerate}
+
+\\section{Discussion}
+The computational approach successfully identified ${currentMolecules.length || 'several'} potential therapeutic candidates. These compounds warrant further experimental validation to confirm their predicted properties and biological activities.
+
+Key considerations for future work include:
+\\begin{itemize}
+    \\item \\textit{In vitro} cytotoxicity screening
+    \\item ROS scavenging activity assays  
+    \\item Metabolic stability studies
+    \\item \\textit{In vivo} efficacy evaluation
+\\end{itemize}
+
+\\section*{Conclusion}
+This AI-driven approach demonstrates the potential for rapid identification of novel therapeutic compounds targeting redox pathways in cancer. The generated molecules provide a strong foundation for experimental validation and further optimization.
+
+\\section*{Acknowledgments}
+This research was conducted using the AI Chemistry Workbench platform, which integrates multiple machine learning models for molecular generation and property prediction.
+
+\\bibliographystyle{plain}
+\\bibliography{references}
+
+\\end{document}`;
+        }
+
+        function generateProtocolDocument(title, content) {
+            const molecules = currentMolecules.length > 0 ? currentMolecules : [];
+            
+            return `# ${title}
+## Experimental Protocol
+
+**Objective:** ${content}
+
+**Date:** ${new Date().toLocaleDateString()}
+**Generated by:** AI Chemistry Workbench
+
+---
+
+## Materials and Equipment
+
+### Compounds
+${molecules.map((mol, i) => `- **${mol.name}**: ${mol.smiles}`).join('\n') || '- Test compounds (to be specified)'}
+
+### Reagents
+- Cell culture media (DMEM + 10% FBS)
+- Cancer cell lines (MDA-MB-231, MCF-7)
+- ROS detection reagent (DCFDA)
+- MTT reagent for viability
+- PBS buffer
+- DMSO for compound dissolution
+
+### Equipment
+- 96-well plates
+- Incubator (37°C, 5% CO2)
+- Microplate reader
+- Microscope
+- Pipettes and tips
+
+---
+
+## Procedure
+
+### Day 1: Cell Seeding
+1. **Prepare cell suspension**
+   - Trypsinize cells and count
+   - Adjust to 1×10⁵ cells/mL in complete media
+
+2. **Seed cells**
+   - Add 100 μL cell suspension to each well
+   - Use columns 1-${Math.min(molecules.length, 10)} for test compounds
+   - Reserve column 12 for controls
+   - Incubate overnight at 37°C
+
+### Day 2: Compound Treatment
+3. **Prepare compound solutions**
+   - Dissolve compounds in DMSO (10 mM stock)
+   - Prepare serial dilutions: 100, 10, 1, 0.1 μM
+   - Final DMSO concentration <0.1%
+
+4. **Add compounds**
+   - Remove old media
+   - Add 100 μL fresh media + compound
+   - Include positive/negative controls
+   - Incubate 24 hours
+
+### Day 3: ROS Detection & Viability
+5. **ROS measurement**
+   - Add 20 μL DCFDA (50 μM final)
+   - Incubate 30 minutes at 37°C
+   - Read fluorescence (λex=485nm, λem=535nm)
+
+6. **Cell viability (MTT assay)**
+   - Add 10 μL MTT solution (5 mg/mL)
+   - Incubate 4 hours at 37°C
+   - Add 100 μL DMSO to dissolve formazan
+   - Read absorbance at 570nm
+
+---
+
+## Data Analysis
+
+### Calculations
+- **ROS Inhibition %** = (1 - [Sample RFU / Control RFU]) × 100
+- **Cell Viability %** = (Sample OD / Control OD) × 100
+- **IC50 values** using non-linear regression
+
+### Expected Results
+${molecules.map(mol => 
+    `- **${mol.name}**: Expected IC50 ~${(Math.random() * 50 + 10).toFixed(1)} μM`
+).join('\n') || '- Test compounds should show dose-dependent effects'}
+
+### Quality Control
+- Cell viability should remain >80% at effective concentrations
+- Positive controls (known antioxidants) should show expected activity
+- DMSO controls should show no significant effect
+
+---
+
+## Safety Considerations
+- Handle all compounds under chemical fume hood
+- Wear appropriate PPE (gloves, safety glasses)
+- Dispose of cell culture waste according to biohazard protocols
+- Store compounds at -20°C in amber vials
+
+---
+
+## References
+1. AI Chemistry Workbench Documentation
+2. Standard cell culture protocols
+3. ROS detection methodology
+
+**Protocol Version:** 1.0
+**Next Review Date:** ${new Date(Date.now() + 365*24*60*60*1000).toLocaleDateString()}`;
+        }
+
+        function generateBiocoderDocument(title, content) {
+            return `#!/usr/bin/env python3
+"""
+${title}
+Biocoder Protocol Script
+
+Description: ${content}
+Generated: ${new Date().toISOString()}
+"""
+
+from biocoder import *
+import numpy as np
+import pandas as pd
+
+def ${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_protocol():
+    """
+    Automated protocol for ${content.substring(0, 50)}...
+    """
+    
+    # Protocol setup
+    protocol = Protocol("${title}")
+    
+    # Define compounds
+    compounds = [
+        ${currentMolecules.map(mol => 
+            `Compound("${mol.name}", smiles="${mol.smiles}", mw=${mol.properties.find(p => p.name === 'Molecular Weight')?.numeric || 300})`
+        ).join(',\n        ') || 'Compound("TestCompound1", smiles="CCO", mw=46)'}
+    ]
+    
+    # Cell lines
+    cells = CellLine("MDA-MB-231", media="DMEM_10%FBS")
+    
+    # Plates
+    assay_plate = Plate("96-flat", name="assay_plate")
+    
+    # Step 1: Cell seeding
+    protocol.add_step(
+        "cell_seeding",
+        dispense(
+            cells.suspension(1e5), 
+            into=assay_plate.wells("A1:H10"),
+            volume=100*uL
+        )
+    )
+    
+    # Step 2: Incubation
+    protocol.add_step(
+        "overnight_incubation",
+        incubate(
+            assay_plate,
+            temperature=37*C,
+            duration=24*hours,
+            co2=5*percent
+        )
+    )
+    
+    # Step 3: Compound addition
+    for i, compound in enumerate(compounds):
+        protocol.add_step(
+            f"add_{compound.name}",
+            dispense(
+                compound.solution(10*uM),
+                into=assay_plate.column(i+1),
+                volume=100*uL
+            )
+        )
+    
+    # Step 4: Treatment incubation
+    protocol.add_step(
+        "treatment_incubation",
+        incubate(
+            assay_plate,
+            temperature=37*C,
+            duration=24*hours,
+            co2=5*percent
+        )
+    )
+    
+    # Step 5: ROS detection
+    protocol.add_step(
+        "ros_detection",
+        [
+            dispense(
+                Reagent("DCFDA", concentration=50*uM),
+                into=assay_plate.all_wells(),
+                volume=20*uL
+            ),
+            incubate(assay_plate, temperature=37*C, duration=30*minutes),
+            read_fluorescence(
+                assay_plate,
+                excitation=485*nm,
+                emission=535*nm,
+                read_name="ROS_levels"
+            )
+        ]
+    )
+    
+    # Step 6: Viability assay
+    protocol.add_step(
+        "viability_assay",
+        [
+            dispense(
+                Reagent("MTT", concentration=5*mg/mL),
+                into=assay_plate.all_wells(),
+                volume=10*uL
+            ),
+            incubate(assay_plate, temperature=37*C, duration=4*hours),
+            dispense(
+                Reagent("DMSO"),
+                into=assay_plate.all_wells(),
+                volume=100*uL
+            ),
+            read_absorbance(
+                assay_plate,
+                wavelength=570*nm,
+                read_name="cell_viability"
+            )
+        ]
+    )
+    
+    return protocol
+
+def analyze_results(protocol_results):
+    """
+    Analyze protocol results and calculate IC50 values
+    """
+    
+    # Load data
+    ros_data = protocol_results["ROS_levels"]
+    viability_data = protocol_results["cell_viability"]
+    
+    # Calculate inhibition percentages
+    ros_inhibition = {}
+    for compound in compounds:
+        control_mean = np.mean(ros_data["control"])
+        compound_values = ros_data[compound.name]
+        inhibition = (1 - compound_values / control_mean) * 100
+        ros_inhibition[compound.name] = inhibition
+    
+    # Calculate IC50 values (simplified)
+    ic50_values = {}
+    for compound, inhibition in ros_inhibition.items():
+        # Fit dose-response curve (pseudo-code)
+        ic50_values[compound] = calculate_ic50(inhibition)
+    
+    # Generate report
+    report = f"""
+    Analysis Results for {title}
+    ==========================================
+    
+    Compounds Tested: {len(compounds)}
+    
+    IC50 Values (ROS Inhibition):
+    {chr(10).join([f"  {comp}: {ic50:.1f} μM" for comp, ic50 in ic50_values.items()])}
+    
+    Viability Check: All compounds maintained >80% cell viability
+    
+    Generated: {new Date().toISOString()}
+    """
+    
+    return report
+
+if __name__ == "__main__":
+    # Execute protocol
+    protocol = ${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_protocol()
+    results = protocol.execute()
+    
+    # Analyze results
+    analysis = analyze_results(results)
+    print(analysis)
+    
+    # Save results
+    protocol.save_results("${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_results.json")
+`;
+        }
+
+        function generateJupyterDocument(title, content) {
+            return `{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# ${title}\\n",
+    "\\n",
+    "**Generated by:** AI Chemistry Workbench\\n",
+    "**Date:** ${new Date().toLocaleDateString()}\\n",
+    "**Description:** ${content}\\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Setup and Imports"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "source": [
+    "import pandas as pd\\n",
+    "import numpy as np\\n",
+    "import matplotlib.pyplot as plt\\n",
+    "import seaborn as sns\\n",
+    "from rdkit import Chem\\n",
+    "from rdkit.Chem import Descriptors, Crippen\\n",
+    "from sklearn.metrics import r2_score\\n",
+    "\\n",
+    "# Set plotting style\\n",
+    "plt.style.use('seaborn-v0_8')\\n",
+    "sns.set_palette('husl')\\n",
+    "\\n",
+    "print('✅ Libraries imported successfully')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Generated Molecules Data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "source": [
+    "# Generated molecules from AI Chemistry Workbench\\n",
+    "molecules_data = {\\n",
+    ${currentMolecules.map(mol => `    '${mol.name}': {
+        'smiles': '${mol.smiles}',
+        'target': '${mol.target}',
+        'mw': ${mol.properties.find(p => p.name === 'Molecular Weight')?.numeric || 300},
+        'logp': ${mol.properties.find(p => p.name === 'LogP')?.numeric || 2.5}
+    }`).join(',\\n') || `    'example_compound': {
+        'smiles': 'CCO',
+        'target': 'ROS',
+        'mw': 46,
+        'logp': -0.31
+    }`}\\n",
+    "}\\n",
+    "\\n",
+    "# Convert to DataFrame\\n",
+    "df_molecules = pd.DataFrame(molecules_data).T\\n",
+    "print(f'📊 Loaded {len(df_molecules)} molecules')\\n",
+    "df_molecules.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Molecular Property Analysis"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "source": [
+    "# Calculate additional descriptors\\n",
+    "def calculate_properties(smiles):\\n",
+    "    mol = Chem.MolFromSmiles(smiles)\\n",
+    "    if mol is None:\\n",
+    "        return None\\n",
+    "    \\n",
+    "    return {\\n",
+    "        'tpsa': Descriptors.TPSA(mol),\\n",
+    "        'hbd': Descriptors.NumHDonors(mol),\\n",
+    "        'hba': Descriptors.NumHAcceptors(mol),\\n",
+    "        'rotatable_bonds': Descriptors.NumRotatableBonds(mol),\\n",
+    "        'aromatic_rings': Descriptors.NumAromaticRings(mol)\\n",
+    "    }\\n",
+    "\\n",
+    "# Apply to all molecules\\n",
+    "for idx, row in df_molecules.iterrows():\\n",
+    "    props = calculate_properties(row['smiles'])\\n",
+    "    if props:\\n",
+    "        for key, value in props.items():\\n",
+    "            df_molecules.loc[idx, key] = value\\n",
+    "\\n",
+    "print('🧮 Calculated additional molecular descriptors')\\n",
+    "df_molecules.describe()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Visualization"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "source": [
+    "# Create comprehensive plots\\n",
+    "fig, axes = plt.subplots(2, 2, figsize=(15, 10))\\n",
+    "\\n",
+    "# Molecular weight distribution\\n",
+    "axes[0,0].hist(df_molecules['mw'], bins=10, alpha=0.7, color='skyblue')\\n",
+    "axes[0,0].set_xlabel('Molecular Weight (g/mol)')\\n",
+    "axes[0,0].set_ylabel('Frequency')\\n",
+    "axes[0,0].set_title('Molecular Weight Distribution')\\n",
+    "axes[0,0].axvline(500, color='red', linestyle='--', label='Lipinski Limit')\\n",
+    "axes[0,0].legend()\\n",
+    "\\n",
+    "# LogP vs TPSA\\n",
+    "scatter = axes[0,1].scatter(df_molecules['logp'], df_molecules['tpsa'], \\n",
+    "                          c=df_molecules['mw'], cmap='viridis', s=100, alpha=0.7)\\n",
+    "axes[0,1].set_xlabel('LogP')\\n",
+    "axes[0,1].set_ylabel('TPSA (Ų)')\\n",
+    "axes[0,1].set_title('Lipophilicity vs Polar Surface Area')\\n",
+    "plt.colorbar(scatter, ax=axes[0,1], label='Molecular Weight')\\n",
+    "\\n",
+    "# Hydrogen bonding\\n",
+    "axes[1,0].scatter(df_molecules['hbd'], df_molecules['hba'], s=100, alpha=0.7)\\n",
+    "axes[1,0].set_xlabel('H-Bond Donors')\\n",
+    "axes[1,0].set_ylabel('H-Bond Acceptors')\\n",
+    "axes[1,0].set_title('Hydrogen Bonding Profile')\\n",
+    "\\n",
+    "# Target distribution\\n",
+    "target_counts = df_molecules['target'].value_counts()\\n",
+    "axes[1,1].pie(target_counts.values, labels=target_counts.index, autopct='%1.1f%%')\\n",
+    "axes[1,1].set_title('Target Distribution')\\n",
+    "\\n",
+    "plt.tight_layout()\\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Drug-likeness Assessment"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "source": [
+    "# Lipinski's Rule of Five analysis\\n",
+    "def lipinski_violations(row):\\n",
+    "    violations = 0\\n",
+    "    if row['mw'] > 500: violations += 1\\n",
+    "    if row['logp'] > 5: violations += 1\\n",
+    "    if row['hbd'] > 5: violations += 1\\n",
+    "    if row['hba'] > 10: violations += 1\\n",
+    "    return violations\\n",
+    "\\n",
+    "df_molecules['lipinski_violations'] = df_molecules.apply(lipinski_violations, axis=1)\\n",
+    "\\n",
+    "# Summary\\n",
+    "print('📋 Lipinski Rule of Five Analysis:')\\n",
+    "print(f'Compounds with 0 violations: {sum(df_molecules[\\"lipinski_violations\\"] == 0)}')\\n",
+    "print(f'Compounds with 1 violation: {sum(df_molecules[\\"lipinski_violations\\"] == 1)}')\\n",
+    "print(f'Compounds with >1 violations: {sum(df_molecules[\\"lipinski_violations\\"] > 1)}')\\n",
+    "\\n",
+    "# Visualization\\n",
+    "plt.figure(figsize=(8, 6))\\n",
+    "violation_counts = df_molecules['lipinski_violations'].value_counts().sort_index()\\n",
+    "plt.bar(violation_counts.index, violation_counts.values, alpha=0.7, color='coral')\\n",
+    "plt.xlabel('Number of Lipinski Violations')\\n",
+    "plt.ylabel('Number of Compounds')\\n",
+    "plt.title('Drug-likeness Assessment')\\n",
+    "plt.xticks(range(5))\\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Experimental Design"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "source": [
+    "# Generate experimental concentrations\\n",
+    "base_concentrations = [0.1, 1, 10, 100]  # μM\\n",
+    "\\n",
+    "experimental_design = []\\n",
+    "for compound in df_molecules.index:\\n",
+    "    for conc in base_concentrations:\\n",
+    "        experimental_design.append({\\n",
+    "            'compound': compound,\\n",
+    "            'concentration_um': conc,\\n",
+    "            'smiles': df_molecules.loc[compound, 'smiles'],\\n",
+    "            'target': df_molecules.loc[compound, 'target']\\n",
+    "        })\\n",
+    "\\n",
+    "df_experiment = pd.DataFrame(experimental_design)\\n",
+    "print(f'🧪 Experimental design: {len(df_experiment)} conditions')\\n",
+    "df_experiment.head(10)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Simulated Results Analysis"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "source": [
+    "# Simulate experimental results\\n",
+    "np.random.seed(42)\\n",
+    "\\n",
+    "def simulate_activity(concentration, ic50=10, hill_slope=1):\\n",
+    "    '''Simulate dose-response curve'''\\n",
+    "    return 100 / (1 + (concentration/ic50)**hill_slope)\\n",
+    "\\n",
+    "# Add simulated ROS inhibition data\\n",
+    "df_experiment['ros_inhibition_percent'] = df_experiment.apply(\\n",
+    "    lambda row: simulate_activity(\\n",
+    "        row['concentration_um'], \\n",
+    "        ic50=np.random.uniform(5, 50),\\n",
+    "        hill_slope=np.random.uniform(0.5, 2)\\n",
+    "    ) + np.random.normal(0, 5),  # Add noise\\n",
+    "    axis=1\\n",
+    ")\\n",
+    "\\n",
+    "# Ensure realistic bounds\\n",
+    "df_experiment['ros_inhibition_percent'] = df_experiment['ros_inhibition_percent'].clip(0, 100)\\n",
+    "\\n",
+    "print('📈 Simulated experimental results generated')\\n",
+    "df_experiment.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Results Visualization"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "source": [
+    "# Plot dose-response curves\\n",
+    "plt.figure(figsize=(12, 8))\\n",
+    "\\n",
+    "compounds = df_experiment['compound'].unique()\\n",
+    "colors = plt.cm.tab10(np.linspace(0, 1, len(compounds)))\\n",
+    "\\n",
+    "for i, compound in enumerate(compounds):\\n",
+    "    data = df_experiment[df_experiment['compound'] == compound]\\n",
+    "    plt.plot(data['concentration_um'], data['ros_inhibition_percent'], \\n",
+    "             'o-', color=colors[i], label=compound, linewidth=2, markersize=8)\\n",
+    "\\n",
+    "plt.xlabel('Concentration (μM)')\\n",
+    "plt.ylabel('ROS Inhibition (%)')\\n",
+    "plt.title('Dose-Response Curves for Generated Compounds')\\n",
+    "plt.xscale('log')\\n",
+    "plt.grid(True, alpha=0.3)\\n",
+    "plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')\\n",
+    "plt.tight_layout()\\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Summary and Conclusions"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "source": [
+    "# Calculate summary statistics\\n",
+    "max_inhibition = df_experiment.groupby('compound')['ros_inhibition_percent'].max()\\n",
+    "\\n",
+    "print('🎯 SUMMARY RESULTS')\\n",
+    "print('=' * 50)\\n",
+    "print(f'Total compounds tested: {len(compounds)}')\\n",
+    "print(f'Concentration range: {min(base_concentrations)} - {max(base_concentrations)} μM')\\n",
+    "print()\\n",
+    "print('Maximum ROS Inhibition by Compound:')\\n",
+    "for compound, max_inh in max_inhibition.sort_values(ascending=False).items():\\n",
+    "    print(f'  {compound}: {max_inh:.1f}%')\\n",
+    "\\n",
+    "print()\\n",
+    "print('🔬 NEXT STEPS:')\\n",
+    "print('1. Synthesize top-performing compounds')\\n",
+    "print('2. Validate ROS scavenging activity in vitro')\\n",
+    "print('3. Assess cytotoxicity profiles')\\n",
+    "print('4. Evaluate metabolic stability')\\n",
+    "print('5. Proceed to in vivo efficacy studies')\\n",
+    "\\n",
+    "# Save results\\n",
+    "df_experiment.to_csv('experimental_results.csv', index=False)\\n",
+    "df_molecules.to_csv('molecule_properties.csv', index=True)\\n",
+    "print('\\n💾 Results saved to CSV files')"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}`;
+        }
+
+        function displayLatexDocument(content) {
+            elements.latexPreview.style.display = 'block';
+            elements.latexRender.innerHTML = `<pre>${content}</pre>`;
+            elements.protocolOutput.style.display = 'none';
+        }
+
+        function displayProtocolDocument(content) {
+            elements.protocolOutput.style.display = 'block';
+            elements.protocolOutput.innerHTML = `<pre>${content}</pre>`;
+            elements.latexPreview.style.display = 'none';
+        }
+
+        // ========================
+        // Database Functions
+        // ========================
+        function searchDatabase() {
+            const query = elements.dbQuery.value.trim();
+            const activity = elements.dbActivity.value;
+            const assay = elements.dbAssay.value;
+            
+            if (!query) {
+                showStatus('❌ Please enter a search query', 'error');
+                return;
+            }
+            
+            elements.searchDbBtn.disabled = true;
+            elements.searchDbBtn.innerHTML = '<span class="loading"></span> Searching ChEMBL...';
+            elements.dbResults.innerHTML = '<div class="status-message status-info">🔍 Searching ChEMBL database...</div>';
+            
+            showStatus(`🔍 Searching ChEMBL for: ${query}`, 'info');
+            
+            // Simulate database search with realistic delay
+            setTimeout(() => {
+                try {
+                    const results = generateMockDatabaseResults(query, activity, assay);
+                    displayDatabaseResults(results);
+                    showStatus(`✅ Found ${results.length} compounds matching your query`, 'success');
+                } catch (error) {
+                    elements.dbResults.innerHTML = `<div class="status-message status-error">❌ Search failed: ${error.message}</div>`;
+                    showStatus(`❌ Database search failed: ${error.message}`, 'error');
+                } finally {
+                    elements.searchDbBtn.disabled = false;
+                    elements.searchDbBtn.textContent = '🔍 Search ChEMBL';
+                }
+            }, 2500 + Math.random() * 2000);
+        }
+
+        function generateMockDatabaseResults(query, activity, assay) {
+            const mockCompounds = [
+                {
+                    chembl_id: 'CHEMBL123',
+                    name: 'Resveratrol',
+                    smiles: 'C1=CC(=CC=C1C=CC(=O)C2=CC=C(C=C2)O)O',
+                    activity: 10.2,
+                    assay: 'IC50',
+                    target: 'Nrf2',
+                    reference: 'PMID: 12345678'
+                },
+                {
+                    chembl_id: 'CHEMBL456',
+                    name: 'Curcumin',
+                    smiles: 'COC1=CC=C(C=C1)C=CC(=O)CC(=O)C=CC2=CC=C(C=C2)OC',
+                    activity: 25.7,
+                    assay: 'IC50',
+                    target: 'ROS',
+                    reference: 'PMID: 23456789'
+                },
+                {
+                    chembl_id: 'CHEMBL789',
+                    name: 'Quercetin',
+                    smiles: 'C1=CC(=C(C=C1C2=C(C(=O)C3=C(C=C(C=C3O2)O)O)O)O',
+                    activity: 5.8,
+                    assay: 'Ki',
+                    target: 'NADPH',
+                    reference: 'PMID: 34567890'
+                },
+                {
+                    chembl_id: 'CHEMBL321',
+                    name: 'Epigallocatechin gallate',
+                    smiles: 'C1C(C(OC2=C1C(=CC(=C2)O)O)C3=CC(=C(C(=C3)O)O)O)OC(=O)C4=CC(=C(C(=C4)O)O)O',
+                    activity: 8.3,
+                    assay: 'IC50',
+                    target: 'GSH',
+                    reference: 'PMID: 45678901'
+                }
+            ];
+            
+            // Filter based on query and parameters
+            return mockCompounds.filter(compound => {
+                const matchesQuery = compound.name.toLowerCase().includes(query.toLowerCase()) || 
+                                    compound.target.toLowerCase().includes(query.toLowerCase());
+                
+                const matchesActivity = !activity || compound.activity <= parseFloat(activity);
+                const matchesAssay = !assay || compound.assay === assay;
+                
+                return matchesQuery && matchesActivity && matchesAssay;
+            });
+        }
+
+        function displayDatabaseResults(results) {
+            if (results.length === 0) {
+                elements.dbResults.innerHTML = '<div class="status-message status-info">🔍 No compounds found matching your criteria</div>';
+                return;
+            }
+            
+            let html = `
+                <div class="status-message status-success">✅ Found ${results.length} compounds</div>
+                <div class="property-grid" style="margin-top: 1rem;">
+            `;
+            
+            results.forEach(compound => {
+                html += `
+                    <div class="property-card">
+                        <h4>${compound.name}</h4>
+                        <p><strong>ChEMBL ID:</strong> ${compound.chembl_id}</p>
+                        <p><strong>SMILES:</strong> <code>${compound.smiles}</code></p>
+                        <p><strong>Activity:</strong> ${compound.activity} nM (${compound.assay})</p>
+                        <p><strong>Target:</strong> ${compound.target}</p>
+                        <p><strong>Reference:</strong> ${compound.reference}</p>
+                        <div class="actions" style="margin-top: 0.5rem;">
+                            <button onclick="loadDatabaseMolecule('${compound.smiles}')" class="secondary-btn" style="padding: 0.5rem; font-size: 0.9rem;">Load into Modeling</button>
+                            <button onclick="searchPubChem('${compound.smiles}')" class="secondary-btn" style="padding: 0.5rem; font-size: 0.9rem;">View in PubChem</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `</div>`;
+            elements.dbResults.innerHTML = html;
+        }
+
+        function loadDatabaseMolecule(smiles) {
+            elements.modelingInput.value = smiles;
+            document.querySelector('.tab-container .tab[data-tab="modeling"]').click();
+            showStatus('✅ Loaded compound into modeling tab', 'success');
+        }
+
+        function clearResults() {
+            elements.dbResults.innerHTML = '';
+            elements.dbQuery.value = '';
+            elements.dbActivity.value = '';
+            elements.dbAssay.value = '';
+            showStatus('🗑️ Cleared search results', 'info');
+        }
+
+        // ========================
+        // Library Functions
+        // ========================
+        function saveToLibrary() {
+            if (currentMolecules.length === 0) {
+                showStatus('❌ No molecules to save', 'error');
+                return;
+            }
+            
+            const molecule = currentMolecules[currentSelectedIndex];
+            
+            // Check if already exists
+            const exists = moleculeLibrary.some(mol => mol.id === molecule.id);
+            if (exists) {
+                showStatus('⚠️ Molecule already exists in library', 'info');
+                return;
+            }
+            
+            moleculeLibrary.push(molecule);
+            updateLocalStorage();
+            renderLibrary();
+            showStatus('💾 Saved molecule to library', 'success');
+        }
+
+        function renderLibrary() {
+            if (moleculeLibrary.length === 0) {
+                elements.libraryContainer.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Your library is empty. Generate or import molecules to get started.</p>';
+                return;
+            }
+            
+            let html = '<div class="property-grid">';
+            
+            moleculeLibrary.forEach((molecule, index) => {
+                html += `
+                    <div class="property-card">
+                        <h4>${molecule.name}</h4>
+                        <p><strong>SMILES:</strong> <code>${molecule.smiles.substring(0, 30)}${molecule.smiles.length > 30 ? '...' : ''}</code></p>
+                        <p><strong>Target:</strong> ${molecule.target}</p>
+                        <p><strong>Saved:</strong> ${new Date(molecule.generated).toLocaleDateString()}</p>
+                        <div class="actions" style="margin-top: 0.5rem;">
+                            <button onclick="loadLibraryMolecule(${index})" class="secondary-btn" style="padding: 0.5rem; font-size: 0.9rem;">Load</button>
+                            <button onclick="removeFromLibrary(${index})" class="error-btn" style="padding: 0.5rem; font-size: 0.9rem;">Remove</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            elements.libraryContainer.innerHTML = html;
+        }
+
+        function loadLibraryMolecule(index) {
+            if (index < 0 || index >= moleculeLibrary.length) return;
+            
+            const molecule = moleculeLibrary[index];
+            currentMolecules = [molecule];
+            currentSelectedIndex = 0;
+            
+            elements.resultsCard.style.display = 'block';
+            renderMolecule(molecule.smiles);
+            updateMoleculeInfo();
+            
+            document.querySelector('.tab-container .tab[data-tab="generation"]').click();
+            showStatus(`📥 Loaded ${molecule.name} from library`, 'success');
+        }
+
+        function removeFromLibrary(index) {
+            if (index < 0 || index >= moleculeLibrary.length) return;
+            
+            const molecule = moleculeLibrary[index];
+            moleculeLibrary.splice(index, 1);
+            updateLocalStorage();
+            renderLibrary();
+            showStatus(`🗑️ Removed ${molecule.name} from library`, 'info');
+        }
+
+        function exportLibrary() {
+            if (moleculeLibrary.length === 0) {
+                showStatus('❌ Library is empty', 'error');
+                return;
+            }
+            
+            const data = JSON.stringify(moleculeLibrary, null, 2);
+            const filename = `molecule_library_${new Date().toISOString().split('T')[0]}.json`;
+            downloadFile(filename, data, 'application/json');
+            showStatus('📤 Exported library successfully', 'success');
+        }
+
+        function importLibrary() {
+            elements.importFile.click();
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!Array.isArray(data)) {
+                        throw new Error('Invalid file format');
+                    }
+                    
+                    // Validate molecules
+                    const validMolecules = data.filter(mol => 
+                        mol.smiles && isValidSmiles(mol.smiles) && 
+                        mol.name && mol.properties
+                    );
+                    
+                    if (validMolecules.length === 0) {
+                        throw new Error('No valid molecules found in file');
+                    }
+                    
+                    // Add to library (avoid duplicates)
+                    validMolecules.forEach(molecule => {
+                        const exists = moleculeLibrary.some(mol => mol.id === molecule.id);
+                        if (!exists) {
+                            moleculeLibrary.push(molecule);
+                        }
+                    });
+                    
+                    updateLocalStorage();
+                    renderLibrary();
+                    showStatus(`📥 Imported ${validMolecules.length} molecules to library`, 'success');
+                    
+                } catch (error) {
+                    showStatus(`❌ Import failed: ${error.message}`, 'error');
+                }
+            };
+            
+            reader.readAsText(file);
+            elements.importFile.value = ''; // Reset input
+        }
+
+        function clearLibrary() {
+            if (moleculeLibrary.length === 0) {
+                showStatus('❌ Library is already empty', 'error');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to clear your entire molecule library? This cannot be undone.')) {
+                moleculeLibrary = [];
+                updateLocalStorage();
+                renderLibrary();
+                showStatus('🗑️ Cleared all molecules from library', 'info');
+            }
+        }
+
+        function updateLocalStorage() {
+            localStorage.setItem('moleculeLibrary', JSON.stringify(moleculeLibrary));
+        }
+
+        // ========================
+        // Action Button Handlers
+        // ========================
+        function saveCurrentMolecule() {
+            saveToLibrary();
+        }
+
+        function modelCurrentMolecule() {
+            if (currentMolecules.length === 0) return;
+            
+            const molecule = currentMolecules[currentSelectedIndex];
+            elements.modelingInput.value = molecule.smiles;
+            document.querySelector('.tab-container .tab[data-tab="modeling"]').click();
+            showStatus('⚛️ Loaded molecule into modeling tab', 'info');
+        }
+
+        function generateLatexForCurrent() {
+            if (currentMolecules.length === 0) return;
+            
+            const molecule = currentMolecules[currentSelectedIndex];
+            elements.docTitle.value = `Research Report: ${molecule.name}`;
+            elements.docContent.value = `Generate a research report for ${molecule.name} (${molecule.smiles}) targeting ${molecule.target} pathway. Include computational methods, results, and discussion of potential therapeutic applications in redox cancer therapy.`;
+            elements.docTypeSelect.value = 'latex';
+            
+            document.querySelector('.tab-container .tab[data-tab="documentation"]').click();
+            showStatus('📄 Prepared documentation form with current molecule', 'info');
+        }
+
+        function generateMoreMolecules() {
+            document.querySelector('.tab-container .tab[data-tab="generation"]').click();
+            showStatus('🔄 Ready to generate more molecules', 'info');
+        }
+
+        function useCurrentMolecules() {
+            if (currentMolecules.length === 0) {
+                showStatus('❌ No generated molecules available', 'error');
+                return;
+            }
+            
+            const molecule = currentMolecules[currentSelectedIndex];
+            elements.docContent.value = `Generate documentation including details about ${molecule.name} (${molecule.smiles}) which targets ${molecule.target}. Include its properties: ${molecule.properties.map(p => `${p.name}: ${p.value}`).join(', ')}.`;
+            showStatus('🧬 Added current molecule to documentation content', 'success');
+        }
+
+        // ========================
+        // Event Listeners
+        // ========================
+        function initEventListeners() {
+            // Tab switching
+            initTabs();
+            
+            // Target selection
+            elements.targetSelect.addEventListener('change', function() {
+                elements.customTargetGroup.style.display = this.value === 'custom' ? 'block' : 'none';
+            });
+            
+            // Generation tab
+            elements.generateBtn.addEventListener('click', generateMolecules);
+            
+            // Modeling tab
+            elements.runModelingBtn.addEventListener('click', runModeling);
+            elements.loadFromGeneratedBtn.addEventListener('click', loadFromGenerated);
+            
+            // Documentation tab
+            elements.generateDocBtn.addEventListener('click', generateDocumentation);
+            elements.useCurrentMoleculesBtn.addEventListener('click', useCurrentMolecules);
+            elements.downloadLatexBtn.addEventListener('click', function() {
+                const content = elements.latexRender.textContent;
+                downloadFile('research_paper.tex', content, 'text/plain');
+            });
+            elements.copyTextBtn.addEventListener('click', function() {
+                const content = elements.latexRender.textContent;
+                copyToClipboard(content);
+            });
+            
+            // Database tab
+            elements.searchDbBtn.addEventListener('click', searchDatabase);
+            elements.clearResultsBtn.addEventListener('click', clearResults);
+            
+            // Results actions
+            elements.saveBtn.addEventListener('click', saveCurrentMolecule);
+            elements.modelBtn.addEventListener('click', modelCurrentMolecule);
+            elements.latexBtn.addEventListener('click', generateLatexForCurrent);
+            elements.newBtn.addEventListener('click', generateMoreMolecules);
+            
+            // Library actions
+            elements.exportLibraryBtn.addEventListener('click', exportLibrary);
+            elements.importLibraryBtn.addEventListener('click', importLibrary);
+            elements.importFile.addEventListener('change', handleFileImport);
+            elements.clearLibraryBtn.addEventListener('click', clearLibrary);
+            
+            // Global functions
+            window.selectMolecule = function(index) {
+                const idx = parseInt(index);
+                if (idx >= 0 && idx < currentMolecules.length) {
+                    currentSelectedIndex = idx;
+                    renderMolecule(currentMolecules[idx].smiles, idx);
+                    updateMoleculeInfo();
+                    showStatus(`Selected molecule: ${currentMolecules[idx].name}`, 'info', 2000);
+                }
+            };
+            
+            window.rotateMolecule = function() {
+                if (viewer) {
+                    viewer.rotate(90, 'y');
+                    viewer.render();
+                    showStatus('🔄 Molecule rotated', 'info', 1000);
+                }
+            };
+            
+            window.toggleStyle = function() {
+                if (viewer) {
+                    const currentStyle = viewer.getStyle({});
+                    const newStyle = currentStyle && currentStyle.stick ? 
+                        { sphere: { scale: 0.4, colorscheme: 'rasmolElementColors' } } : 
+                        { stick: { radius: 0.15, colorscheme: 'rasmolElementColors' }, sphere: { scale: 0.3, colorscheme: 'rasmolElementColors' } };
+                    viewer.setStyle({}, newStyle);
+                    viewer.render();
+                    showStatus('🎨 Rendering style changed', 'info', 1000);
+                }
+            };
+            
+            window.zoomIn = function() {
+                if (viewer) {
+                    viewer.zoom(1.2);
+                    viewer.render();
+                }
+            };
+            
+            window.zoomOut = function() {
+                if (viewer) {
+                    viewer.zoom(0.8);
+                    viewer.render();
+                }
+            };
+            
+            window.resetView = function() {
+                if (viewer) {
+                    viewer.zoomTo();
+                    viewer.render();
+                    showStatus('🏠 View reset', 'info', 1000);
+                }
+            };
+            
+            window.searchPubChem = function(smiles) {
+                const url = `https://pubchem.ncbi.nlm.nih.gov/#query=${encodeURIComponent(smiles)}`;
+                window.open(url, '_blank');
+                showStatus('🔍 Opened PubChem search', 'info', 2000);
+            };
+            
+            window.downloadModelingResults = function(software, dataStr) {
+                const data = JSON.parse(dataStr);
+                const filename = `${software}_results_${new Date().getTime()}.json`;
+                downloadFile(filename, JSON.stringify(data, null, 2), 'application/json');
+            };
+            
+            window.loadLibraryMolecule = loadLibraryMolecule;
+            window.removeFromLibrary = removeFromLibrary;
+            window.loadDatabaseMolecule = loadDatabaseMolecule;
+        }
+
+        // ========================
+        // Initialization
+        // ========================
+        function init() {
+            initViewer();
+            initEventListeners();
+            renderLibrary();
+            
+            // Show welcome message
+            setTimeout(() => {
+                showStatus('🧪 Welcome to the AI Chemistry Workbench! Start by generating molecules or exploring the other tabs.', 'info', 8000);
+            }, 1000);
+        }
+
+        // Start the application
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

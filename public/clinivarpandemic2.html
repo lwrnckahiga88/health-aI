@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClinVARnet Pandemic Unified PWA</title>
+
+<!-- Manifest Inline -->
+<script type="application/json" id="manifest">
+{
+  "name": "ClinVARnet Pandemic Unified PWA",
+  "short_name": "ClinVARnetEWS",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f0f0f0",
+  "theme_color": "#0ea5e9",
+  "description": "Offline multi-layer node editor with AI, dynamic parameter workflows, and pandemic early warning simulation",
+  "icons": [
+    {"src":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABG0lEQVQ4T2NkoBAwUqifgYGBoYGB4z//f3+YzDMyM8+fP/58xDgaHn4AgJw2xCuQT3I5QHgVqRwiEyMQwCDJg1DoA7uHgVJcxiFlS5ghZ2Xj8Aw0T9DScmInRj4gZCqEcQvN/LxzMwkzRzODtG6Ng4vPnz8fBwRnz/+/3+H9mT1ZEXjDkgwRBogmAPx/Gdg5HhA8k2wxhLB+3IEFL8lIgaD8cPnmM1Zf3v/jww8cPHz+eMmD7hyMnbyyNjY3xBiOhjgD5L0JYSAIAbP0xC5WFT0RAAAAAElFTkSuQmCC","sizes":"16x16","type":"image/png"}
+  ]
+}
+</script>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { margin:0; font-family:sans-serif; background:#f0f0f0; }
+canvas { background:#fff; border:1px solid #ccc; display:block; margin:0 auto; }
+.node { position:absolute; border-radius:8px; padding:8px; min-width:160px; cursor:pointer; user-select:none; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
+#toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333;color:#fff;padding:10px 20px;border-radius:8px; display:none; z-index:1000; }
+.parameter-panel { position:fixed; top:80px; right:20px; width:300px; background:#fff; border:1px solid #ccc; border-radius:8px; padding:10px; box-shadow:0 4px 12px rgba(0,0,0,0.3); display:none; z-index:100; max-height:75%; overflow-y:auto; }
+.parameter-panel h3 { font-weight:bold; margin-bottom:6px; }
+.parameter-panel label { display:block; margin-top:6px; font-size:0.85em; }
+.parameter-panel input, .parameter-panel select, .parameter-panel textarea { width:100%; padding:4px; border-radius:4px; border:1px solid #ccc; margin-top:2px; }
+button { cursor:pointer; margin-top:4px; }
+</style>
+</head>
+<body>
+
+<h1 class="text-center text-2xl font-bold my-4">ClinVARnet Pandemic Unified PWA</h1>
+<canvas id="graphCanvas" width="1400" height="800"></canvas>
+<div id="toast"></div>
+
+<div id="parameterPanel" class="parameter-panel">
+  <h3 id="paramTitle">Node Parameters</h3>
+  <div id="paramInputs"></div>
+</div>
+
+<script type="module">
+// --- Offline Transformers.js AI Model ---
+import { AutoModelForCausalLM, AutoTokenizer } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js';
+
+let model, tokenizer;
+async function loadModel(){
+  showToast('Loading AI model offline...',5000);
+  tokenizer = await AutoTokenizer.from_pretrained('Xenova/gpt2-small',{cacheDir:'transformers-cache'});
+  model = await AutoModelForCausalLM.from_pretrained('Xenova/gpt2-small',{cacheDir:'transformers-cache'});
+  showToast('Offline AI model ready',2000);
+}
+loadModel();
+
+// --- Canvas & State ---
+const canvas=document.getElementById('graphCanvas');
+const ctx=canvas.getContext('2d');
+let nodes=[], edges=[], nodeIdCounter=0;
+let selectedNode=null, dragOffset={x:0,y:0};
+let connectingNode=null, connectingOutputIndex=null, editingNode=null;
+
+// --- Toast ---
+function showToast(msg,duration=2000){
+  const toast=document.getElementById('toast'); toast.textContent=msg; toast.style.display='block';
+  setTimeout(()=>toast.style.display='none',duration);
+}
+
+// --- Node & Edge Classes ---
+class Node{
+  constructor(x,y,label,type='generic'){
+    this.id=nodeIdCounter++; this.x=x; this.y=y; this.label=label; this.type=type;
+    this.inputs=['in']; this.outputs=['out']; this.parameters={prompt:'Edit me', spawnNext:[], connectTo:[], days:120, seed:42};
+    this.width=160; this.height=70; this.outputValue=null;
+  }
+  draw(ctx){
+    ctx.fillStyle=this.type==='ai'?'#0ea5e9':(this.type==='pandemic'?'#f59e0b':'#4f46e5');
+    ctx.fillRect(this.x,this.y,this.width,this.height);
+    ctx.fillStyle='#fff'; ctx.font='bold 14px sans-serif';
+    ctx.fillText(this.label,this.x+8,this.y+18);
+    this.inputs.forEach((_,i)=>{ ctx.beginPath(); ctx.arc(this.x,this.y+30+i*14,5,0,2*Math.PI); ctx.fill(); });
+    this.outputs.forEach((_,i)=>{ ctx.beginPath(); ctx.arc(this.x+this.width,this.y+30+i*14,5,0,2*Math.PI); ctx.fill(); });
+    if(this.outputValue!==null){ ctx.font='12px sans-serif'; ctx.fillText(this.outputValue.toString().substring(0,20), this.x+8,this.y+this.height-8); }
+  }
+  isInside(mx,my){ return mx>this.x && mx<this.x+this.width && my>this.y && my<this.y+this.height; }
+  getPortUnderMouse(mx,my){
+    for(let i=0;i<this.inputs.length;i++){ const px=this.x, py=this.y+30+i*14; if(Math.hypot(mx-px,my-py)<7) return {type:'input', index:i}; }
+    for(let i=0;i<this.outputs.length;i++){ const px=this.x+this.width, py=this.y+30+i*14; if(Math.hypot(mx-px,my-py)<7) return {type:'output', index:i}; }
+    return null;
+  }
+}
+
+class Edge{
+  constructor(fromNode,fromIndex,toNode,toIndex){ this.fromNode=fromNode; this.toNode=toNode; this.fromIndex=fromIndex; this.toIndex=toIndex; }
+  draw(ctx){
+    const startX=this.fromNode.x+this.fromNode.width, startY=this.fromNode.y+30+this.fromIndex*14;
+    const endX=this.toNode.x, endY=this.toNode.y+30+this.toIndex*14;
+    ctx.strokeStyle='#111'; ctx.lineWidth=2; ctx.beginPath();
+    ctx.moveTo(startX,startY); ctx.bezierCurveTo(startX+50,startY,endX-50,endY,endX,endY); ctx.stroke();
+  }
+}
+
+// --- Draw Loop ---
+function draw(){ ctx.clearRect(0,0,canvas.width,canvas.height); edges.forEach(e=>e.draw(ctx)); nodes.forEach(n=>n.draw(ctx)); requestAnimationFrame(draw); }
+requestAnimationFrame(draw);
+
+// --- Load / Save Workflow ---
+function saveWorkflow(){
+  localStorage.setItem('nodes',JSON.stringify(nodes));
+  localStorage.setItem('edges',JSON.stringify(edges.map(e=>({from:e.fromNode.id,to:e.toNode.id,fromIndex:e.fromIndex,toIndex:e.toIndex}))));
+}
+
+function loadWorkflow(){
+  const savedNodes=JSON.parse(localStorage.getItem('nodes')||'[]');
+  const savedEdges=JSON.parse(localStorage.getItem('edges')||'[]');
+  nodes=savedNodes.map(n=>{ const node=new Node(n.x,n.y,n.label,n.type); node.id=n.id; node.parameters=n.parameters||{prompt:'Edit me',spawnNext:[],connectTo:[],days:120,seed:42}; node.outputValue=n.outputValue||null; return node; });
+  nodeIdCounter = nodes.length ? Math.max(...nodes.map(n=>n.id))+1 : 0;
+  edges=savedEdges.map(e=>new Edge(nodes.find(n=>n.id===e.from), e.fromIndex, nodes.find(n=>n.id===e.to), e.toIndex));
+}
+loadWorkflow();
+
+// --- Mouse Events ---
+canvas.addEventListener('mousedown', e=>{
+  const mx=e.offsetX, my=e.offsetY;
+  const node=nodes.find(n=>n.isInside(mx,my));
+  if(connectingNode){
+    if(node && node!==connectingNode){ const port=node.getPortUnderMouse(mx,my); if(port && port.type==='input'){ edges.push(new Edge(connectingNode,connectingOutputIndex,node,port.index)); connectingNode=null; connectingOutputIndex=null; saveWorkflow(); showToast('Nodes Connected'); return; }}
+    connectingNode=null; connectingOutputIndex=null; return;
+  }
+  if(node){
+    const port=node.getPortUnderMouse(mx,my);
+    if(port && port.type==='output'){ connectingNode=node; connectingOutputIndex=port.index; return; }
+    selectedNode=node; dragOffset={x:mx-node.x,y:my-node.y}; showNodeParameters(node);
+  } else hideNodeParameters();
+});
+canvas.addEventListener('mousemove', e=>{ if(selectedNode){ selectedNode.x=e.offsetX-dragOffset.x; selectedNode.y=e.offsetY-dragOffset.y; saveWorkflow(); executeWorkflow(); } });
+canvas.addEventListener('mouseup', e=>{ selectedNode=null; });
+
+// --- Parameter Panel ---
+const paramPanel=document.getElementById('parameterPanel');
+const paramInputsDiv=document.getElementById('paramInputs');
+const paramTitle=document.getElementById('paramTitle');
+
+function showNodeParameters(node){
+  editingNode=node; paramPanel.style.display='block'; paramTitle.textContent=`Node: ${node.label}`; paramInputsDiv.innerHTML='';
+  for(const key in node.parameters){
+    const label=document.createElement('label'); label.textContent=key;
+    const input=document.createElement('textarea'); input.value=node.parameters[key]; input.rows=2;
+    input.oninput=(e)=>{ node.parameters[key]=e.target.value; saveWorkflow(); executeWorkflow(); };
+    paramInputsDiv.appendChild(label); paramInputsDiv.appendChild(input);
+  }
+  const spawnBtn=document.createElement('button'); spawnBtn.textContent='Spawn Node from Parameter';
+  spawnBtn.className='mt-2 w-full bg-yellow-500 text-white px-2 py-1 rounded';
+  spawnBtn.onclick=()=>{ 
+    if(editingNode.parameters.spawnNext){
+      editingNode.parameters.spawnNext.forEach(p=>{
+        const spawned=new Node(editingNode.x+180, editingNode.y+Math.random()*200, p,'generic'); nodes.push(spawned);
+      });
+      saveWorkflow(); executeWorkflow(); showToast('Spawned nodes from parameter array'); 
+    }
+  };
+  paramInputsDiv.appendChild(spawnBtn);
+}
+
+function hideNodeParameters(){ editingNode=null; paramPanel.style.display='none'; }
+
+// --- Workflow Execution & Pandemic EWS ---
+let simulationDay=0;
+async function executeNode(node){
+  if(node.type==='ai' && model && tokenizer){
+    try{
+      const inputIds = await tokenizer.encode(node.parameters.prompt);
+      const output = await model.generate(inputIds,{max_new_tokens:20});
+      node.outputValue = await tokenizer.decode(output[0]);
+    } catch(e){ node.outputValue='AI Error'; }
+  } else if(node.type==='pandemic'){
+    node.outputValue=`Day ${simulationDay}: Risk ${(Math.random()*100).toFixed(1)}%`;
+  } else node.outputValue=Math.random().toFixed(4);
+
+  // Auto-connect
+  if(node.parameters.connectTo){
+    node.parameters.connectTo.forEach(tid=>{
+      const targetNode = nodes.find(n=>n.id==tid);
+      if(targetNode && !edges.find(e=>e.fromNode===node && e.toNode===targetNode))
+        edges.push(new Edge(node,0,targetNode,0));
+    });
+  }
+  edges.filter(e=>e.fromNode===node).forEach(e=>e.toNode.parameters.input=node.outputValue);
+  return node.outputValue;
+}
+
+async function executeWorkflow(){
+  simulationDay++;
+  const executed=new Set();
+  async function recurse(n){ if(executed.has(n.id)) return; const deps=edges.filter(e=>e.toNode===n).map(e=>e.fromNode); for(const d of deps) await recurse(d); await executeNode(n); executed.add(n.id);}
+  const outputNodes=nodes.filter(n=>n.type==='output' || n.type==='pandemic'); await Promise.all(outputNodes.map(n=>recurse(n)));
+}
+
+// --- Buttons ---
+const runButton=document.createElement('button'); runButton.textContent='Run Workflow'; runButton.className='fixed top-4 right-4 bg-indigo-600 text-white px-4 py-2 rounded shadow'; runButton.onclick=executeWorkflow; document.body.appendChild(runButton);
+
+const addNodeButton=document.createElement('button'); addNodeButton.textContent='Add Node'; addNodeButton.className='fixed top-12 right-4 bg-green-600 text-white px-4 py-2 rounded shadow';
+addNodeButton.onclick=()=>{ const n=new Node(100+Math.random()*300,100+Math.random()*300,'New Node'); nodes.push(n); saveWorkflow(); executeWorkflow(); showToast('Node Added'); };
+document.body.appendChild(addNodeButton);
+
+const addAINodeButton=document.createElement('button'); addAINodeButton.textContent='Add AI Node'; addAINodeButton.className='fixed top-20 right-4 bg-cyan-600 text-white px-4 py-2 rounded shadow';
+addAINodeButton.onclick=()=>{ const n=new Node(200+Math.random()*300,150+Math.random()*300,'AI Node','ai'); n.parameters={prompt:'Hello AI', spawnNext:[], connectTo:[]}; nodes.push(n); saveWorkflow(); executeWorkflow(); showToast('AI Node Added'); };
+document.body.appendChild(addAINodeButton);
+
+const addPandemicNodeButton=document.createElement('button'); addPandemicNodeButton.textContent='Add Pandemic Node'; addPandemicNodeButton.className='fixed top-28 right-4 bg-orange-500 text-white px-4 py-2 rounded shadow';
+addPandemicNodeButton.onclick=()=>{ const n=new Node(300+Math.random()*300,200+Math.random()*300,'Pandemic Node','pandemic'); nodes.push(n); saveWorkflow(); executeWorkflow(); showToast('Pandemic Node Added'); };
+document.body.appendChild(addPandemicNodeButton);
+
+// --- Inline Service Worker ---
+if('serviceWorker' in navigator){
+  const swBlob=new Blob([`
+    const CACHE_NAME='clinvarnet-ews-cache-v3';
+    const urlsToCache=['.','https://cdn.tailwindcss.com','https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js'];
+    self.addEventListener('install',e=>{ e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(urlsToCache)).then(()=>self.skipWaiting())); });
+    self.addEventListener('fetch',e=>{ e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))); });
+  `],{type:'application/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(swBlob)).then(()=>console.log('Inline SW registered'));
+}
+
+</script>
+</body>
+</html>

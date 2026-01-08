@@ -1,0 +1,852 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Unified Pandemic Langflow PWA — Time-series CSV + Attachments</title>
+
+  <!-- Inline manifest -->
+  <script id="app-manifest" type="application/json">
+  {
+    "name": "Unified Pandemic Langflow PWA",
+    "short_name": "PandemicFlow",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#071426",
+    "theme_color": "#0ea5e9",
+    "description": "SEIRD model + Langflow-style node builder with time-series CSV import and attachments"
+  }
+  </script>
+
+  <style>
+    html,body,#root { height:100%; margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#071426; color:#e6eef8; }
+    .app-wrap { max-width:1300px; margin:18px auto; padding:18px; display:flex; gap:16px; flex-direction:column; }
+    .header { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .title { font-size:20px; font-weight:700; color:#cfe8ff; }
+    .tabs { display:flex; gap:8px; margin-top:12px; }
+    .tab { padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer; color:#cfe8ff; }
+    .tab.active { background:#0ea5e9; color:#071127; font-weight:700; }
+    .content { display:grid; grid-template-columns: 420px 1fr; gap:16px; margin-top:12px; }
+    .panel { background: linear-gradient(180deg,#071827,#07102a); border-radius:12px; padding:12px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.03); }
+    .small { font-size:13px; color:#9fb7d2; }
+    .muted { color:#87a7c4; font-size:13px; }
+    label { display:block; font-size:12px; color:#9fb7d2; margin-bottom:6px; }
+    input, select, textarea { width:100%; padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.02); color:#e6eef8; }
+    .btn { padding:8px 10px; border-radius:8px; border:none; background:#0ea5e9; color:#071127; font-weight:700; cursor:pointer; }
+    .btn.ghost { background:transparent; border:1px solid rgba(255,255,255,0.04); color:#cfe8ff; }
+    .node-card { background: linear-gradient(180deg,#071b2b,#051428); padding:10px; border-radius:10px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.03); }
+    .canvas-wrap { position:relative; height:620px; background:linear-gradient(180deg,#071427,#04101e); border-radius:12px; overflow:hidden; }
+    #canvas { position:absolute; inset:0; }
+    #canvas-edges { position:absolute; inset:0; pointer-events:none; }
+    .node-el { position:absolute; width:200px; background:linear-gradient(180deg,#072b3e,#0b3448); border-radius:10px; padding:8px; box-shadow:0 6px 18px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.03); cursor:grab; }
+    .node-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+    .node-type { font-size:12px; color:#9fb7d2; background:rgba(255,255,255,0.02); padding:3px 6px; border-radius:999px; }
+    .port { position:absolute; width:12px; height:12px; border-radius:50%; background:#10b981; border:2px solid rgba(0,0,0,0.6); }
+    .port.in { left:-8px; top:50%; transform:translateY(-50%); }
+    .port.out { right:-8px; top:50%; transform:translateY(-50%); }
+    .log { height:140px; overflow:auto; background:rgba(255,255,255,0.02); border-radius:8px; padding:8px; font-family:monospace; font-size:12px; color:#9fb7d2; }
+    .graph-wrap { margin-top:8px; height:300px; background:#081220; border-radius:8px; padding:8px; }
+    .metrics { margin-top:8px; font-size:13px; color:#cfe8ff; }
+    .attachment-list { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
+    .attachment-item { display:flex; justify-content:space-between; gap:8px; padding:6px; background:rgba(255,255,255,0.02); border-radius:6px; }
+    .footer { margin-top:12px; display:flex; justify-content:space-between; align-items:center; color:#87a7c4; font-size:13px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React & ReactDOM UMD -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Recharts UMD -->
+  <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
+
+  <script type="text/babel">
+  /**********************************************************************
+   * Unified PWA with:
+   * - Tabbed UI (Workflow Builder + Pandemic SEIRD)
+   * - Time-series CSV import (per-day parameters)
+   * - CSV export of results
+   * - Node editor with file attachments (PDF/DOC/TXT/CSV)
+   * - Inline manifest + service worker registration (caching)
+   *
+   * Large LLM inference is NOT embedded; LLM nodes include attachment
+   * handling and a simulated 'process' flow. You can later replace the
+   * placeholder with a Xenova in-browser model.
+   **********************************************************************/
+
+  const { useState, useEffect, useRef, forwardRef, useImperativeHandle } = React;
+  const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+
+  /*************************
+   * Utility helpers
+   *************************/
+  function parseCSV(csvText) {
+    // simple CSV parser, returns array of objects
+    const lines = csvText.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    if (!lines.length) return [];
+    const headers = lines[0].split(',').map(h=>h.trim());
+    const rows = lines.slice(1).map(line => {
+      const cols = line.split(',').map(c=>c.trim());
+      const obj = {};
+      headers.forEach((h,i) => obj[h]=cols[i] !== undefined ? cols[i] : '');
+      return obj;
+    });
+    return rows;
+  }
+
+  function downloadBlob(filename, contents, type='text/csv') {
+    const blob = new Blob([contents], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  /******************************************************************
+   * Pandemic SEIRD Component (keeps original structure)
+   * Extra: supports timeSeriesOverrides: array indexed by day -> object of params
+   * Extra: file upload for time-series CSV (each row = day, columns = param names)
+   ******************************************************************/
+  const PandemicModel = forwardRef((props, ref) => {
+    // original params
+    const [params, setParams] = useState({
+      beta: 0.3,
+      sigma: 1/5.1,
+      gamma: 1/10,
+      mu: 0.001,
+      alpha: 0.1,
+      rho: 0.05,
+      populationSize: 1000000
+    });
+
+    const [initialConditions, setInitialConditions] = useState({
+      susceptible: 999900,
+      exposed: 50,
+      infected: 50,
+      recovered: 0,
+      dead: 0
+    });
+
+    const [isRunning, setIsRunning] = useState(false);
+    const [currentDay, setCurrentDay] = useState(0);
+    const [data, setData] = useState([]);
+    const [populations, setPopulations] = useState(initialConditions);
+    const [interventionDay, setInterventionDay] = useState(30);
+
+    // time-series overrides: map dayNumber -> { beta, gamma, infected, ... }
+    const [timeSeriesOverrides, setTimeSeriesOverrides] = useState({});
+
+    const intervalRef = useRef(null);
+    const timeStep = 1;
+
+    // update populations (same structure)
+    function updatePopulations(S, E, I, R, D, dt, currentParams) {
+      const N = S + E + I + R;
+      const { beta, sigma, gamma, mu, alpha } = currentParams;
+      const effectiveBeta = (currentDay >= interventionDay) ? beta * (1 - alpha) : beta;
+      const newE = effectiveBeta * S * I / N * dt;
+      const newI = sigma * E * dt;
+      const newR = gamma * I * dt;
+      const newD = mu * I * dt;
+      return {
+        susceptible: Math.max(0, S - newE),
+        exposed: Math.max(0, E + newE - newI),
+        infected: Math.max(0, I + newI - newR - newD),
+        recovered: Math.max(0, R + newR),
+        dead: Math.max(0, D + newD)
+      };
+    }
+
+    function calculateMetrics(S, E, I, R, D, currentParams) {
+      const N = currentParams.populationSize;
+      const effectiveBeta = (currentDay >= interventionDay) ? currentParams.beta * (1 - currentParams.alpha) : currentParams.beta;
+      const R0 = effectiveBeta / (currentParams.gamma + currentParams.mu);
+      const Rt = R0 * (S / N);
+      const attackRate = ((N - S) / N) * 100;
+      const cfr = D > 0 ? (D / (R + D)) * 100 : 0;
+      const prevalence = (I / N) * 100000;
+      return { R0, Rt, attackRate, cfr, prevalence };
+    }
+
+    // simulation step uses timeSeriesOverrides: if override exists for next day, apply it
+    function simulationStep() {
+      setCurrentDay(prevDay => {
+        const nextDay = prevDay + 1;
+        setPopulations(prevPops => {
+          let currentParams = { ...params };
+          // if timeSeriesOverrides has entry for nextDay, merge into currentParams and possibly override populations
+          if (timeSeriesOverrides[nextDay]) {
+            const override = timeSeriesOverrides[nextDay];
+            // merge numeric overrides into currentParams
+            Object.keys(override).forEach(k => {
+              // parameters vs populations distinction: if override key is one of S,E,I,R,D or populationSize or epidemiological params
+            });
+            // apply numeric overrides to currentParams if present
+            currentParams = { ...currentParams, ...Object.fromEntries(Object.entries(override).filter(([k,v]) => ['beta','sigma','gamma','mu','alpha','rho','populationSize'].includes(k)).map(([k,v]) => [k, parseFloat(v)])) };
+          }
+          // compute newPops using currentParams
+          const newPops = updatePopulations(prevPops.susceptible, prevPops.exposed, prevPops.infected, prevPops.recovered, prevPops.dead, timeStep, currentParams);
+
+          // if timeSeriesOverrides has population overrides for nextDay, use them
+          if (timeSeriesOverrides[nextDay]) {
+            const override = timeSeriesOverrides[nextDay];
+            const pops = {
+              susceptible: override.susceptible !== undefined ? parseFloat(override.susceptible) : newPops.susceptible,
+              exposed: override.exposed !== undefined ? parseFloat(override.exposed) : newPops.exposed,
+              infected: override.infected !== undefined ? parseFloat(override.infected) : newPops.infected,
+              recovered: override.recovered !== undefined ? parseFloat(override.recovered) : newPops.recovered,
+              dead: override.dead !== undefined ? parseFloat(override.dead) : newPops.dead
+            };
+            // metrics
+            const metrics = calculateMetrics(pops.susceptible, pops.exposed, pops.infected, pops.recovered, pops.dead, currentParams);
+            setData(d => [...d, {
+              day: nextDay,
+              ...pops,
+              newCases: Math.max(0, pops.infected - prevPops.infected),
+              ...metrics
+            }].slice(-1000));
+            return pops;
+          } else {
+            // regular update
+            const metrics = calculateMetrics(newPops.susceptible, newPops.exposed, newPops.infected, newPops.recovered, newPops.dead, currentParams);
+            setData(d => [...d, {
+              day: nextDay,
+              ...newPops,
+              newCases: Math.max(0, newPops.infected - prevPops.infected),
+              ...metrics
+            }].slice(-1000));
+            return newPops;
+          }
+        });
+        return nextDay;
+      });
+    }
+
+    function toggleSimulation() {
+      if (isRunning) {
+        clearInterval(intervalRef.current);
+        setIsRunning(false);
+      } else {
+        intervalRef.current = setInterval(simulationStep, 600);
+        setIsRunning(true);
+      }
+    }
+
+    function resetSimulation() {
+      clearInterval(intervalRef.current);
+      setIsRunning(false);
+      setCurrentDay(0);
+      setPopulations(initialConditions);
+      setData([{
+        day: 0,
+        ...initialConditions,
+        newCases: 0,
+        R0: params.beta / (params.gamma + params.mu),
+        Rt: params.beta / (params.gamma + params.mu),
+        attackRate: 0,
+        cfr: 0,
+        prevalence: (initialConditions.infected / params.populationSize) * 100000
+      }]);
+    }
+
+    // parse time-series CSV where each row = day (header contains column names)
+    const handleTimeSeriesUpload = (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const txt = ev.target.result;
+        const rows = parseCSV(txt);
+        // convert rows by day number if 'day' column exists
+        const overrides = {};
+        rows.forEach(r => {
+          const dayKey = r.day !== undefined ? parseInt(r.day) : undefined;
+          if (dayKey === undefined || isNaN(dayKey)) return;
+          // copy all columns as overrides for that day
+          overrides[dayKey] = { ...r };
+        });
+        setTimeSeriesOverrides(overrides);
+        console.log('time-series overrides loaded:', overrides);
+      };
+      reader.readAsText(f);
+    };
+
+    const exportResults = () => {
+      const header = 'day,susceptible,exposed,infected,recovered,dead,newCases,R0,Rt,attackRate,cfr,prevalence';
+      const rows = data.map(d => `${d.day},${Math.round(d.susceptible)},${Math.round(d.exposed)},${Math.round(d.infected)},${Math.round(d.recovered)},${Math.round(d.dead)},${Math.round(d.newCases)},${d.R0.toFixed(3)},${d.Rt.toFixed(3)},${d.attackRate.toFixed(3)},${d.cfr.toFixed(3)},${d.prevalence.toFixed(3)}`);
+      downloadBlob('seird_results.csv', [header, ...rows].join('\n'), 'text/csv');
+    };
+
+    useEffect(() => { resetSimulation(); }, []);
+
+    useEffect(() => { return () => { if (intervalRef.current) clearInterval(intervalRef.current); }}, []);
+
+    // Expose methods
+    useImperativeHandle(ref, () => ({
+      applyParams: (paramsObj) => {
+        if (!paramsObj) return;
+        const numeric = {};
+        Object.keys(paramsObj).forEach(k => {
+          const v = paramsObj[k];
+          if (v === '' || v === null || v === undefined) return;
+          const n = parseFloat(v);
+          numeric[k] = isNaN(n) ? v : n;
+        });
+        // if populations present
+        const popKeys = ['susceptible','exposed','infected','recovered','dead'];
+        const hasPop = popKeys.some(k => k in numeric);
+        if (hasPop) {
+          setPopulations(prev => ({ ...prev, ...Object.fromEntries(popKeys.filter(k=>k in numeric).map(k=>[k, numeric[k]])) }));
+        }
+        const allowed = ['beta','sigma','gamma','mu','alpha','rho','populationSize'];
+        const newModelParams = {};
+        allowed.forEach(k => { if (k in numeric) newModelParams[k] = numeric[k]; });
+        if (Object.keys(newModelParams).length) setParams(p => ({ ...p, ...newModelParams }));
+      },
+      simulationStep: () => simulationStep(),
+      resetSimulation: () => resetSimulation(),
+      toggleSimulation: () => toggleSimulation(),
+      setTimeSeriesOverrides: (obj) => setTimeSeriesOverrides(obj),
+      getLatestMetrics: () => data.length ? data[data.length -1] : null
+    }));
+
+    const latest = data.length ? data[data.length-1] : null;
+
+    return (
+      <div className="panel">
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <div className="title" style={{ marginBottom:6 }}>Pandemic SEIRD Model</div>
+            <div className="small">SEIRD simulation with time-series parameter overrides per day.</div>
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button className="btn" onClick={toggleSimulation}>{isRunning ? 'Pause' : 'Start'}</button>
+            <button className="btn ghost" onClick={() => simulationStep()}>Step</button>
+            <button className="btn ghost" onClick={resetSimulation}>Reset</button>
+          </div>
+        </div>
+
+        <div style={{ marginTop:10, display:'flex', gap:8 }}>
+          <div style={{ flex:1 }}>
+            <label>Upload time-series CSV (each row = day, include "day" column)</label>
+            <input type="file" accept=".csv,text/csv" onChange={handleTimeSeriesUpload} />
+            <div className="muted" style={{ marginTop:6 }}>CSV example header: day,beta,gamma,mu,infected,exposed,recovered,dead,populationSize</div>
+          </div>
+          <div style={{ width:180 }}>
+            <label>Export results</label>
+            <button className="btn ghost" onClick={exportResults}>Export CSV</button>
+          </div>
+        </div>
+
+        <div className="graph-wrap" style={{ marginTop:12 }}>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={data}>
+              <CartesianGrid stroke="#0b2a3c" />
+              <XAxis dataKey="day" stroke="#6aa6c9" />
+              <YAxis stroke="#6aa6c9" />
+              <Tooltip wrapperStyle={{ color:'#071127' }} />
+              <Legend />
+              <Line type="monotone" dataKey="infected" stroke="#ef4444" dot={false} />
+              <Line type="monotone" dataKey="recovered" stroke="#10b981" dot={false} />
+              <Line type="monotone" dataKey="dead" stroke="#9ca3af" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div style={{ marginTop:8 }}>
+          <div className="metrics">
+            { latest ? (
+              <>
+                <div>Day: {latest.day} | Infected: {Math.round(latest.infected)} | Recovered: {Math.round(latest.recovered)} | Dead: {Math.round(latest.dead)}</div>
+                <div className="muted" style={{ marginTop:6 }}>R0: {latest.R0.toFixed(2)} | Rt: {latest.Rt.toFixed(2)} | Attack Rate: {latest.attackRate.toFixed(2)}%</div>
+              </>
+            ) : <div className="muted">No data yet — run simulation or upload time-series.</div> }
+          </div>
+        </div>
+      </div>
+    );
+  });
+
+  /******************************************************************
+   * NodeEditor with attachments and LLM node processing placeholder
+   ******************************************************************/
+  function NodeEditor({ onApplyNodeParams, onLLMProcess }) {
+    const [nodes, setNodes] = useState([]);
+    const [edges, setEdges] = useState([]);
+    const [counter, setCounter] = useState(1);
+    const [selected, setSelected] = useState(null);
+    const [connectingFrom, setConnectingFrom] = useState(null);
+    const canvasRef = useRef(null);
+    const dragState = useRef({ dragging:null, offsetX:0, offsetY:0 });
+    const [log, setLog] = useState([]);
+
+    useEffect(() => {
+      // add initial nodes if empty
+      if (nodes.length === 0) {
+        setNodes([
+          { id:'n1', type:'Input', x:20, y:20, label:'Data Source n1', params:{}, attachments:[] },
+          { id:'n2', type:'pandemic', x:20, y:160, label:'Pandemic n2', params:{beta:0.3,gamma:0.1,infected:50}, attachments:[] },
+          { id:'n3', type:'LLM', x:20, y:320, label:'LLM n3', params:{prompt:''}, attachments:[] }
+        ]);
+        setCounter(4);
+      }
+    }, []);
+
+    function addNode(type) {
+      const id = 'n' + counter;
+      setCounter(c => c + 1);
+      const base = { id, type, x: 120 + Math.random()*200, y: 60 + Math.random()*300, label: `${type} ${id}`, params: {}, attachments: [] };
+      if (type === 'pandemic') base.params = { beta:0.3, sigma:1/5.1, gamma:1/10, mu:0.001, infected:50, populationSize:1000000 };
+      if (type === 'LLM') base.params = { prompt: 'Summarize', model: 'mock' };
+      setNodes(ns => [...ns, base]);
+      logAdd(`Added node ${id} (${type})`);
+    }
+
+    function removeNode(id) {
+      setNodes(ns => ns.filter(n => n.id !== id));
+      setEdges(es => es.filter(e => e.from !== id && e.to !== id));
+      if (selected === id) setSelected(null);
+      logAdd(`Removed node ${id}`);
+    }
+
+    function logAdd(msg) {
+      setLog(l => [...l.slice(-500), `[${new Date().toLocaleTimeString()}] ${msg}`]);
+    }
+
+    function startDrag(e, id) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const node = nodes.find(n=>n.id===id);
+      if (!node) return;
+      dragState.current = { dragging:id, offsetX: e.clientX - rect.left - node.x, offsetY: e.clientY - rect.top - node.y };
+      document.addEventListener('mousemove', onDrag);
+      document.addEventListener('mouseup', endDrag);
+    }
+
+    function onDrag(e) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const st = dragState.current;
+      if (!st.dragging) return;
+      const nx = e.clientX - rect.left - st.offsetX;
+      const ny = e.clientY - rect.top - st.offsetY;
+      setNodes(ns => ns.map(n => n.id === st.dragging ? { ...n, x:nx, y:ny } : n ));
+    }
+
+    function endDrag() {
+      document.removeEventListener('mousemove', onDrag);
+      document.removeEventListener('mouseup', endDrag);
+      dragState.current = { dragging:null, offsetX:0, offsetY:0 };
+    }
+
+    function startConnect(fromId) {
+      setConnectingFrom(fromId);
+      logAdd(`Start connecting from ${fromId}`);
+    }
+
+    function completeConnect(toId) {
+      if (!connectingFrom) return;
+      if (connectingFrom === toId) { setConnectingFrom(null); return; }
+      setEdges(es => {
+        if (es.some(e => e.from === connectingFrom && e.to === toId)) return es;
+        logAdd(`Connected ${connectingFrom} -> ${toId}`);
+        return [...es, { from: connectingFrom, to: toId }];
+      });
+      setConnectingFrom(null);
+    }
+
+    function selectNode(id) {
+      setSelected(id);
+    }
+
+    function updateNodeParams(id, newParams) {
+      setNodes(ns => ns.map(n => n.id === id ? { ...n, params: { ...n.params, ...newParams } } : n ));
+    }
+
+    function attachFilesToNode(id, files) {
+      if (!files || !files.length) return;
+      setNodes(ns => ns.map(n => {
+        if (n.id !== id) return n;
+        const attachments = [ ...n.attachments ];
+        for (const f of files) {
+          const url = URL.createObjectURL(f);
+          attachments.push({ name: f.name, size: f.size, type: f.type, file, url, uploadedAt: Date.now() });
+        }
+        return { ...n, attachments };
+      }));
+      logAdd(`Attached ${files.length} files to ${id}`);
+    }
+
+    function downloadAttachment(nodeId, index) {
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      const att = node.attachments[index];
+      if (!att) return;
+      const link = document.createElement('a');
+      link.href = att.url;
+      link.download = att.name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+
+    function processLLMNode(nodeId) {
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      // Placeholder processing: if attachments contain text/csv, extract first 500 chars, else create metadata summary
+      const extracted = [];
+      const textPromises = [];
+      for (const att of node.attachments || []) {
+        const { file } = att;
+        if (file && (file.type.startsWith('text/') || file.name.endsWith('.csv') || file.name.endsWith('.txt'))) {
+          const p = new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const text = e.target.result;
+              resolve({ name: att.name, text: text.slice(0, 2000) });
+            };
+            reader.readAsText(file);
+          });
+          textPromises.push(p);
+        } else {
+          // non-text (pdf/doc) — create metadata
+          extracted.push({ name: att.name, meta: `file:${att.name} size:${att.size}` });
+        }
+      }
+      Promise.all(textPromises).then(results => {
+        const combined = [ ...extracted, ...results ];
+        // create a simulated summary
+        const summary = combined.map(c => c.text ? `Extract(${c.name}): ${c.text.slice(0,200)}` : `Meta(${c.name}): ${c.meta}`).join('\n\n');
+        // set node.params.summary
+        updateNodeParams(nodeId, { summary: summary, processedAt: new Date().toISOString() });
+        logAdd(`LLM node ${nodeId} processed attachments (simulated).`);
+        if (onLLMProcess) onLLMProcess({ nodeId, summary });
+      });
+    }
+
+    function applySelectedNodeToModel() {
+      const node = nodes.find(n => n.id === selected);
+      if (!node) return;
+      // If node has attachments and it's a data source, we may attempt to parse CSV and apply as time-series
+      if (node.type === 'Input' && node.attachments && node.attachments.length) {
+        // find first csv attachment and parse time-series & send to caller
+        const csvAtt = node.attachments.find(a => a.name.toLowerCase().endsWith('.csv') || a.type === 'text/csv');
+        if (csvAtt) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const rows = parseCSV(e.target.result);
+            // build overrides map day->row
+            const overrides = {};
+            rows.forEach(r => {
+              const day = r.day !== undefined ? parseInt(r.day) : undefined;
+              if (!day || isNaN(day)) return;
+              overrides[day] = r;
+            });
+            // call parent callback to set time-series overrides if provided
+            if (onApplyNodeParams) onApplyNodeParams({ timeSeriesOverrides: overrides });
+            logAdd(`Applied CSV from ${csvAtt.name} to model (time-series).`);
+          };
+          reader.readAsText(csvAtt.file);
+          return;
+        }
+      }
+      // otherwise apply node.params as model params
+      if (onApplyNodeParams) onApplyNodeParams(node.params);
+      logAdd(`Applied params from node ${selected} to model.`);
+    }
+
+    return (
+      <div className="panel">
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <div className="title">Workflow Builder</div>
+            <div className="small">Nodes support file attachments (pdf/docx/txt/csv). Attach files inside the selected node, then process or apply.</div>
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button className="btn" onClick={() => addNode('Input')}>Add Input</button>
+            <button className="btn" onClick={() => addNode('pandemic')}>Add Pandemic</button>
+            <button className="btn" onClick={() => addNode('LLM')}>Add LLM</button>
+            <button className="btn ghost" onClick={() => addNode('Output')}>Add Output</button>
+          </div>
+        </div>
+
+        <div style={{ marginTop:10, display:'flex', gap:8 }}>
+          <div style={{ flex:1 }}>
+            <div className="node-card">
+              <div style={{ fontWeight:700 }}>Selected Node</div>
+              <div style={{ marginTop:8 }}>
+                { selected ? (
+                  (() => {
+                    const node = nodes.find(n => n.id === selected);
+                    if (!node) return null;
+                    return (
+                      <>
+                        <label>Node ID: {node.id} • Type: {node.type}</label>
+                        <label>Edit Params (JSON)</label>
+                        <textarea rows={6} value={JSON.stringify(node.params, null, 2)} onChange={e => {
+                          try {
+                            const parsed = JSON.parse(e.target.value);
+                            updateNodeParams(node.id, parsed);
+                          } catch(err) {
+                            // ignore parse errors
+                          }
+                        }} />
+                        <div style={{ marginTop:8 }}>
+                          <label>Attachments (PDF/DOC/DOCX/TXT/CSV)</label>
+                          <input type="file" multiple accept=".pdf,.doc,.docx,.txt,.csv" onChange={e => attachFilesToNode(node.id, e.target.files)} />
+                          <div className="attachment-list">
+                            { (node.attachments||[]).map((a,i) => (
+                              <div key={i} className="attachment-item">
+                                <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.name} ({Math.round(a.size/1024)} KB)</div>
+                                <div style={{ display:'flex', gap:8 }}>
+                                  <button className="btn ghost" onClick={() => downloadAttachment(node.id, i)}>Download</button>
+                                  <button className="btn ghost" onClick={() => {
+                                    // remove attachment
+                                    setNodes(ns => ns.map(n => n.id === node.id ? { ...n, attachments: n.attachments.filter((_,idx) => idx !== i) } : n ));
+                                  }}>Remove</button>
+                                </div>
+                              </div>
+                            )) }
+                          </div>
+
+                          <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                            <button className="btn" onClick={() => processLLMNode(node.id)}>Process (LLM placeholder)</button>
+                            <button className="btn ghost" onClick={() => applySelectedNodeToModel()}>Apply to Model</button>
+                            <button className="btn ghost" onClick={() => removeNode(node.id)}>Delete Node</button>
+                          </div>
+
+                          { node.params && node.params.summary && (
+                            <div style={{ marginTop:8 }}>
+                              <label>LLM Summary</label>
+                              <textarea rows={5} value={node.params.summary} readOnly />
+                            </div>
+                          ) }
+                        </div>
+                      </>
+                    );
+                  })()
+                ) : (
+                  <div className="muted">No node selected — click a node on the canvas to edit or attach files.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="node-card" style={{ marginTop:8 }}>
+              <div style={{ fontWeight:700 }}>Workflow Log</div>
+              <div className="log" style={{ marginTop:8 }}>
+                { log.slice().reverse().map((l,i) => <div key={i}>{l}</div>) }
+              </div>
+            </div>
+          </div>
+
+          <div style={{ width:360 }}>
+            <div className="node-card">
+              <div style={{ fontWeight:700 }}>Nodes</div>
+              <div style={{ marginTop:8 }}>
+                { nodes.map(n => (
+                  <div key={n.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, padding:'6px 0' }}>
+                    <div style={{ overflow:'hidden' }}>
+                      <div style={{ fontWeight:700 }}>{n.label}</div>
+                      <div className="muted">{n.type} • Attachments: {(n.attachments||[]).length}</div>
+                    </div>
+                    <div style={{ display:'flex', gap:6 }}>
+                      <button className="btn ghost" onClick={() => { setSelected(n.id); }}>Select</button>
+                      <button className="btn ghost" onClick={() => startConnect(n.id)}>Connect</button>
+                    </div>
+                  </div>
+                )) }
+              </div>
+            </div>
+
+            <div className="node-card" style={{ marginTop:8 }}>
+              <div style={{ fontWeight:700 }}>Edges</div>
+              <div style={{ marginTop:8 }}>
+                { edges.length ? edges.map((e,i) => <div key={i}>{e.from} → {e.to}</div>) : <div className="muted">No edges yet</div> }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop:10 }} className="canvas-wrap">
+          <div id="canvas" ref={canvasRef} style={{ position:'absolute', inset:0 }}>
+            { nodes.map(node => (
+              <div key={node.id}
+                   className="node-el"
+                   style={{ left: node.x, top: node.y }}
+                   onMouseDown={(e) => startDrag(e, node.id)}
+                   onClick={(e) => { e.stopPropagation(); setSelected(node.id); }}>
+                <div className="node-head">
+                  <div style={{ fontWeight:700 }}>{node.label}</div>
+                  <div className="node-type">{node.type}</div>
+                </div>
+                <div style={{ fontSize:12, color:'#9fb7d2', minHeight:36 }}>
+                  { Object.keys(node.params||{}).length ? Object.entries(node.params).slice(0,3).map(([k,v]) => `${k}:${String(v)}`).join(' | ') : 'no params' }
+                </div>
+                <div className="port out" onMouseDown={(e) => { e.stopPropagation(); startConnect(node.id); }}></div>
+                <div className="port in" onMouseUp={(e) => { e.stopPropagation(); completeConnect(node.id); }}></div>
+              </div>
+            )) }
+          </div>
+
+          <svg id="canvas-edges" style={{ position:'absolute', inset:0, pointerEvents:'none' }}>
+            { edges.map((edge,i) => {
+              const from = nodes.find(n => n.id === edge.from);
+              const to = nodes.find(n => n.id === edge.to);
+              if (!from || !to) return null;
+              const x1 = from.x + 200, y1 = from.y + 40;
+              const x2 = to.x, y2 = to.y + 40;
+              const dx = Math.abs(x2 - x1);
+              const c1 = x1 + Math.min(120, dx * 0.5);
+              const c2 = x2 - Math.min(120, dx * 0.5);
+              return <path key={i} d={`M ${x1} ${y1} C ${c1} ${y1} ${c2} ${y2} ${x2} ${y2}`} stroke="#22d3ee" fill="none" strokeWidth="2" />;
+            }) }
+          </svg>
+        </div>
+      </div>
+    );
+  }
+
+  /******************************************************************
+   * App: top-level with tabs, keeps both components alive
+   ******************************************************************/
+  function App() {
+    const pandemicRef = useRef(null);
+    const [tab, setTab] = useState('workflow');
+    const [appLog, setAppLog] = useState([]);
+
+    const log = (m) => setAppLog(l => [...l.slice(-400), `[${new Date().toLocaleTimeString()}] ${m}`]);
+
+    // handler when NodeEditor applies params
+    const handleApplyNodeParams = (params) => {
+      if (!params) return;
+      // check for timeSeriesOverrides key special-case
+      if (params.timeSeriesOverrides) {
+        if (pandemicRef.current && pandemicRef.current.setTimeSeriesOverrides) {
+          pandemicRef.current.setTimeSeriesOverrides(params.timeSeriesOverrides);
+          log('Time-series overrides set from node.');
+          return;
+        }
+      }
+      if (pandemicRef.current && pandemicRef.current.applyParams) {
+        pandemicRef.current.applyParams(params);
+        log('Applied node params to SEIRD: ' + JSON.stringify(params));
+      } else {
+        log('Pandemic model not ready.');
+      }
+    };
+
+    const handleLLMProcess = ({ nodeId, summary }) => {
+      log(`LLM node ${nodeId} processed attachments (simulated). Summary length: ${summary.length}`);
+    };
+
+    // register manifest + SW
+    useEffect(() => {
+      try {
+        const manifestText = document.getElementById('app-manifest').textContent;
+        const blob = new Blob([manifestText], { type:'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = url;
+        document.head.appendChild(link);
+      } catch (e) {
+        console.warn('manifest attach failed', e);
+      }
+
+      if ('serviceWorker' in navigator) {
+        const swCode = `
+          const CACHE='unified-pandemic-cache-v1';
+          const OFFLINE = ['./','https://unpkg.com/react@18/umd/react.development.js','https://unpkg.com/react-dom@18/umd/react-dom.development.js','https://unpkg.com/@babel/standalone/babel.min.js','https://unpkg.com/recharts/umd/Recharts.min.js'];
+          self.addEventListener('install', (ev) => {
+            ev.waitUntil(caches.open(CACHE).then(c => c.addAll(OFFLINE)));
+            self.skipWaiting();
+          });
+          self.addEventListener('activate', (ev) => ev.waitUntil(self.clients.claim()));
+          self.addEventListener('fetch', (ev) => {
+            const req = ev.request;
+            if (req.method !== 'GET') return;
+            ev.respondWith(caches.match(req).then(r => r || fetch(req).then(net => { caches.open(CACHE).then(c => c.put(req, net.clone())); return net; }).catch(() => caches.match('./'))));
+          });
+        `;
+        try {
+          const blob = new Blob([swCode], { type:'application/javascript' });
+          const swUrl = URL.createObjectURL(blob);
+          navigator.serviceWorker.register(swUrl).then(() => console.log('SW registered'));
+        } catch (err) {
+          console.warn('SW register failed', err);
+        }
+      }
+    }, []);
+
+    return (
+      <div className="app-wrap">
+        <div className="header">
+          <div>
+            <div className="title">Unified Pandemic Langflow PWA</div>
+            <div className="small">Time-series CSV per-day overrides • Node attachments (PDF/DOC/TXT/CSV) • Offline-capable PWA</div>
+          </div>
+
+          <div style={{ display:'flex', gap:8 }}>
+            <div style={{ display:'flex', gap:8 }} className="tabs">
+              <div className={'tab ' + (tab === 'workflow' ? 'active':'')} onClick={() => setTab('workflow')}>Workflow Builder</div>
+              <div className={'tab ' + (tab === 'pandemic' ? 'active':'')} onClick={() => setTab('pandemic')}>Pandemic SEIRD</div>
+              <div className={'tab ' + (tab === 'both' ? 'active':'')} onClick={() => setTab('both')}>Both</div>
+            </div>
+          </div>
+        </div>
+
+        {/* content area */}
+        <div className="content" style={{ display: tab === 'both' ? 'grid' : 'grid', gridTemplateColumns: tab === 'pandemic' ? '1fr' : '420px 1fr' }}>
+          {/* left: NodeEditor */}
+          { (tab === 'workflow' || tab === 'both') && (
+            <NodeEditor onApplyNodeParams={handleApplyNodeParams} onLLMProcess={handleLLMProcess} />
+          )}
+
+          {/* right: Pandemic */}
+          { (tab === 'pandemic' || tab === 'both') && (
+            <div>
+              <PandemicModel ref={pandemicRef} />
+              <div className="panel" style={{ marginTop:12 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div className="muted">App Activity Log</div>
+                  <div className="muted">You can keep both systems running — switching tabs won't stop them.</div>
+                </div>
+                <div className="log" style={{ marginTop:8 }}>
+                  { appLog.slice().reverse().map((l,i) => <div key={i}>{l}</div>) }
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* if just the workflow tab is active, show pandemic as collapsed right panel */}
+          { tab === 'workflow' && (
+            <div>
+              <div className="panel">
+                <div style={{ fontWeight:700 }}>Pandemic Preview</div>
+                <div className="muted" style={{ marginTop:8 }}>Switch to the Pandemic tab to interact with the full SEIRD model. The model runs in background.</div>
+                <div style={{ marginTop:8 }} className="muted">Tip: Select a node and click "Apply to Model" to push parameters/time series to the SEIRD model.</div>
+              </div>
+            </div>
+          )}
+
+          {/* if only pandemic tab active and we didn't render node editor */}
+          { tab === 'pandemic' && (
+            <div style={{ display:'none' }}></div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Render
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+  </script>
+</body>
+</html>

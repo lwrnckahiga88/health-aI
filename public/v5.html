@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetStream Auto-PWA v5 Live Metrics</title>
+<meta name="theme-color" content="#6366f1">
+<meta name="description" content="Automated streaming + IPFS caching + Livepeer + ERC-20 rewards with live charts">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.1/dist/hls.min.js"></script>
+
+<style>
+:root{--bg:#0f0f23;--panel:#1a1a2e;--node:#16213e;--node-border:#3b4d6b;--accent:#6366f1;--text:#e2e8f0;--success:#10b981;--warning:#f59e0b;--error:#ef4444}
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text)}
+.app{display:flex;flex-direction:column;min-height:100vh}
+.panel{background:var(--panel);border-bottom:1px solid var(--node-border);padding:12px}
+.flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}.gap-3{gap:12px}
+.btn{background:var(--node);border:1px solid var(--node-border);border-radius:8px;padding:8px 12px;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.container{display:flex;gap:16px;padding:16px;align-items:flex-start}
+.column{flex:1;min-width:300px}
+.card{background:var(--panel);border:1px solid var(--node-border);border-radius:12px;padding:16px;margin-bottom:16px}
+.stat-value{font-weight:700;font-size:1.25rem}
+input.url-input{width:100%;padding:10px;border-radius:8px;border:1px solid var(--node-border);background:var(--node);color:var(--text)}
+canvas{background:transparent;border-radius:8px}
+.small{font-size:0.9rem;color:#9ca3af}
+.flex-row{display:flex;gap:8px}
+.muted{color:#94a3b8}
+.video-container{aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;margin-bottom:8px}
+ul{padding-left:16px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="panel flex items-center justify-between">
+    <h1 style="margin:0;font-size:1.1rem;">NetStream Auto-PWA v5 Live Metrics</h1>
+    <div class="flex items-center gap-3">
+      <button id="btn-connect-wallet" class="btn primary">Connect Wallet</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="column">
+      <div class="card">
+        <h2>Network Diagnostics</h2>
+        <canvas id="networkChart" height="160"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Blockchain & Token Rewards</h3>
+        <div>Wallet: <strong id="wallet-address">Not connected</strong></div>
+        <div>Tokens: <strong id="token-balance">0</strong></div>
+        <canvas id="tokenChart" height="120"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>IPFS Preload Status</h3>
+        <ul id="ipfs-list"></ul>
+      </div>
+    </div>
+
+    <div class="column">
+      <div class="card">
+        <h2>Streaming & Livepeer Demo</h2>
+        <div class="video-container">
+          <video id="test-video" controls autoplay muted></video>
+        </div>
+        <canvas id="streamChart" height="140"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;right:16px;bottom:16px;background:#111827;color:#fff;padding:10px;border-radius:8px;display:none;"></div>
+
+<script>
+// ---------------------------
+// Toast
+function toast(msg,type='info'){
+  const el=document.getElementById('toast');el.innerText=msg;
+  el.style.display='block';
+  el.style.background= type==='error' ? '#b91c1c' : type==='success' ? '#065f46' : '#111827';
+  setTimeout(()=>el.style.display='none',3000);
+}
+
+// ---------------------------
+// IndexedDB for caching & metrics
+let db;
+const openDB=()=>new Promise((res,rej)=>{
+  const request=indexedDB.open('NetStreamDB',1);
+  request.onerror=()=>rej();
+  request.onsuccess=()=>{db=request.result;res(db)};
+  request.onupgradeneeded=e=>{
+    db=e.target.result;
+    if(!db.objectStoreNames.contains('metrics')) db.createObjectStore('metrics',{keyPath:'id',autoIncrement:true});
+    if(!db.objectStoreNames.contains('ipfs')) db.createObjectStore('ipfs',{keyPath:'url'});
+  };
+});
+async function saveMetrics(type,data){
+  const tx=db.transaction('metrics','readwrite');
+  tx.objectStore('metrics').add({type,data,date:new Date().toISOString()});
+}
+
+// ---------------------------
+// Wallet & Smart Contract
+let provider, signer, userAddress;
+let tokenBalance=0;
+let contract;
+const ERC20_ABI = ["function balanceOf(address owner) view returns (uint256)","function transfer(address to, uint amount) returns (bool)","function decimals() view returns (uint8)"];
+const ERC20_ADDRESS = "0xYourTokenContractAddressHere";
+
+async function connectWallet(){
+  if(window.ethereum){
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+    document.getElementById('wallet-address').innerText=userAddress;
+    contract = new ethers.Contract(ERC20_ADDRESS, ERC20_ABI, signer);
+    updateTokenBalance();
+    toast('Wallet connected','success');
+  } else toast('No wallet found','error');
+}
+
+async function updateTokenBalance(){
+  if(contract && userAddress){
+    const balance = await contract.balanceOf(userAddress);
+    const decimals = await contract.decimals();
+    tokenBalance = parseFloat(ethers.utils.formatUnits(balance, decimals));
+    document.getElementById('token-balance').innerText = tokenBalance.toFixed(2);
+    addTokenChartPoint(tokenBalance);
+  }
+}
+
+async function claimTokens(amount){
+  if(contract && signer){
+    const decimals = await contract.decimals();
+    const tx = await contract.transfer(userAddress, ethers.utils.parseUnits(amount.toString(), decimals));
+    await tx.wait();
+    updateTokenBalance();
+    toast(`Claimed ${amount} tokens`,'success');
+  }
+}
+
+// ---------------------------
+// Charts
+let networkChartCtx=document.getElementById('networkChart').getContext('2d');
+let networkChart=new Chart(networkChartCtx,{
+  type:'bar',
+  data:{labels:[],datasets:[{label:'TTFB (ms)',data:[],backgroundColor:'#6366f1'}]},
+  options:{responsive:true,scales:{y:{beginAtZero:true}}}
+});
+
+let streamChartCtx=document.getElementById('streamChart').getContext('2d');
+let streamChart=new Chart(streamChartCtx,{
+  type:'line',
+  data:{labels:[],datasets:[{label:'Buffer (ms)',data:[],borderColor:'#10b981',fill:false}]},
+  options:{responsive:true,scales:{y:{beginAtZero:true}}}
+});
+
+let tokenChartCtx=document.getElementById('tokenChart').getContext('2d');
+let tokenChart=new Chart(tokenChartCtx,{
+  type:'line',
+  data:{labels:[],datasets:[{label:'Token Balance',data:[],borderColor:'#fbbf24',fill:false}]},
+  options:{responsive:true,scales:{y:{beginAtZero:true}}}
+});
+
+// ---------------------------
+// Auto Pipeline Logic
+let autoPreloadQueue=[];
+async function fetchDynamicPlaylist(){
+  // Replace with your dynamic server or IPFS JSON
+  const res = await fetch('https://example.com/ipfs-playlist.json');
+  const data = await res.json();
+  autoPreloadQueue = data.videos || [];
+  for(const url of autoPreloadQueue) updateIPFSList(url,'queued');
+}
+
+// ---------------------------
+// IPFS caching
+async function cacheIPFSVideo(url){
+  if(!url) return;
+  const res=await fetch(url);
+  const blob=await res.blob();
+  const tx=db.transaction('ipfs','readwrite');
+  tx.objectStore('ipfs').put({url,blob});
+  updateIPFSList(url,'cached');
+  awardTokens(3);
+}
+
+// ---------------------------
+// Video playback
+function playVideo(url){
+  const vid=document.getElementById('test-video');
+  if(Hls.isSupported()){
+    const hls=new Hls();
+    hls.loadSource(url);
+    hls.attachMedia(vid);
+    hls.on(Hls.Events.MANIFEST_PARSED,()=>vid.play());
+  } else { vid.src=url; vid.play();}
+}
+
+// ---------------------------
+// Network TTFB test
+async function runNetworkTest(){
+  for(const url of autoPreloadQueue){
+    try{
+      const start=performance.now();
+      await fetch(url,{mode:'cors'});
+      const ttfb=Math.round(performance.now()-start);
+      saveMetrics('network',{url,ttfb});
+      networkChart.data.labels.push(url);
+      networkChart.data.datasets[0].data.push(ttfb);
+      networkChart.update();
+      awardTokens(1);
+    }catch(err){console.error(err);}
+  }
+}
+
+// ---------------------------
+// Stream comparison simulation
+function compareStreams(){
+  for(const url of autoPreloadQueue){
+    const buffer=Math.round(Math.random()*300+50);
+    saveMetrics('stream',{url,buffer});
+    streamChart.data.labels.push(url);
+    streamChart.data.datasets[0].data.push(buffer);
+    streamChart.update();
+    awardTokens(2);
+  }
+}
+
+// ---------------------------
+// IPFS list
+function updateIPFSList(url,status='queued'){
+  const ul=document.getElementById('ipfs-list');
+  const existing=ul.querySelector(`[data-url="${url}"]`);
+  if(existing){existing.innerText=`${url} - ${status}`;return;}
+  const li=document.createElement('li');li.innerText=`${url} - ${status}`;li.dataset.url=url;
+  ul.appendChild(li);
+}
+
+// ---------------------------
+// Token rewards
+function awardTokens(amount){
+  tokenBalance += amount;
+  document.getElementById('token-balance').innerText = tokenBalance.toFixed(2);
+  addTokenChartPoint(tokenBalance);
+  if(contract && signer) claimTokens(amount);
+}
+function addTokenChartPoint(value){
+  const t=new Date().toLocaleTimeString();
+  tokenChart.data.labels.push(t);
+  tokenChart.data.datasets[0].data.push(value);
+  tokenChart.update();
+}
+
+// ---------------------------
+// Auto preload & run
+async function autoPipelineRun(){
+  for(const url of autoPreloadQueue){
+    updateIPFSList(url,'preloading');
+    await cacheIPFSVideo(url);
+    playVideo(url);
+  }
+  await runNetworkTest();
+  compareStreams();
+}
+
+// ---------------------------
+// Init
+openDB().then(async ()=>{
+  toast('NetStream Auto-PWA v5 ready!','success');
+  await fetchDynamicPlaylist();
+  autoPipelineRun();
+});
+
+// ---------------------------
+// Events
+document.getElementById('btn-connect-wallet').addEventListener('click',connectWallet);
+</script>
+</body>
+</html>
+

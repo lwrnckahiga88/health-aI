@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetStream v11 - YouTube + Blockchain Rewards</title>
+<meta name="theme-color" content="#6366f1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<style>
+:root{--bg:#0f0f23;--panel:#1a1a2e;--node:#16213e;--node-border:#3b4d6b;--accent:#6366f1;--text:#e2e8f0;--success:#10b981;--warning:#f59e0b;--error:#ef4444}
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text)}
+.app{display:flex;flex-direction:column;min-height:100vh}
+.panel{background:var(--panel);border-bottom:1px solid var(--node-border);padding:12px}
+.flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}.gap-3{gap:12px}
+.btn{background:var(--node);border:1px solid var(--node-border);border-radius:8px;padding:8px 12px;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.streaming{background:#ff6b6b;border-color:#ff6b6b;color:#fff}
+.container{display:flex;gap:16px;padding:16px;align-items:flex-start}
+.column{flex:1;min-width:300px}
+.card{background:var(--panel);border:1px solid var(--node-border);border-radius:12px;padding:16px;margin-bottom:16px}
+.stat-value{font-weight:700;font-size:1.25rem}
+input.url-input{width:100%;padding:10px;border-radius:8px;border:1px solid var(--node-border);background:var(--node);color:var(--text)}
+canvas{background:transparent;border-radius:8px}
+.small{font-size:0.9rem;color:#9ca3af}
+.flex-row{display:flex;gap:8px}
+.muted{color:#94a3b8}
+.video-container{aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="panel flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <h1 style="margin:0;font-size:1.1rem;">NetStream v11 <span class="small muted">YouTube + ERC-20 Rewards</span></h1>
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="btn-toggle-blockchain" class="btn primary">Enable Blockchain</button>
+      <button id="btn-run-full" class="btn streaming">Run Full Suite</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="column">
+      <div class="card">
+        <h2>Network Diagnostics</h2>
+        <div id="results" class="small">Press <strong>Run Full Suite</strong> to start diagnostics.</div>
+        <div style="margin-top:12px;"><canvas id="networkChart" height="160"></canvas></div>
+        <button id="btn-run-net" class="btn primary" style="margin-top:8px;">Run Network Test</button>
+      </div>
+
+      <div class="card">
+        <h3>Blockchain & ERC-20</h3>
+        <div class="small">Balance: <strong id="token-balance">0</strong></div>
+        <div style="margin-top:8px;" class="flex-row">
+          <button id="btn-award-local" class="btn">Award 10 Tokens</button>
+          <button id="btn-claim-tokens" class="btn primary">Claim on-chain</button>
+          <button id="btn-reset-tokens" class="btn">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="column">
+      <div class="card">
+        <h2>Streaming Comparison</h2>
+        <input id="youtube-url" class="url-input" placeholder="YouTube Video URL" value="https://www.youtube.com/watch?v=dQw4w9WgXcQ"/>
+        <input id="cdn-url" class="url-input" placeholder="CDN Video URL" value="https://cdn.jsdelivr.net/gh/video-dev/hls.js@master/docs/example.mp4" style="margin-top:4px"/>
+        <input id="ipfs-url" class="url-input" placeholder="IPFS Video URL" value="" style="margin-top:4px"/>
+        <input id="livepeer-url" class="url-input" placeholder="Livepeer Video URL" value="" style="margin-top:4px"/>
+        <button id="btn-compare" class="btn streaming" style="margin-top:8px;">Compare Streams</button>
+
+        <div class="video-container" id="video-container" style="margin-top:12px;">
+          <div id="youtube-player"></div>
+          <video id="fallback-video" controls style="width:100%;height:100%;display:none;background:#000"></video>
+        </div>
+        <div id="stream-results" class="small muted" style="margin-top:8px;">No comparison run yet.</div>
+        <div style="margin-top:12px;"><canvas id="streamCompareChart" height="140"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+let isBlockchainEnabled=false,provider=null,rewardQueue=[],tokenBalance=0;
+let youtubePlayer=null,youtubeDuration=0,watchedSeconds=0;
+
+function toast(msg){alert(msg);} // simple fallback toast
+
+/* ------------------- Blockchain ------------------- */
+async function enableBlockchain(){
+  if(!window.ethereum){toast('MetaMask not detected'); return;}
+  provider=new ethers.providers.Web3Provider(window.ethereum);
+  await provider.send("eth_requestAccounts",[]);
+  isBlockchainEnabled=true;
+  toast('Blockchain enabled');
+}
+document.getElementById('btn-toggle-blockchain').addEventListener('click',enableBlockchain);
+document.getElementById('btn-award-local').addEventListener('click',()=>{rewardQueue.push(10);tokenBalance+=10;document.getElementById('token-balance').innerText=tokenBalance;});
+document.getElementById('btn-claim-tokens').addEventListener('click',async()=>{
+  if(!isBlockchainEnabled){toast('Enable blockchain first');return;}
+  const signer=provider.getSigner();
+  const addr=await signer.getAddress();
+  toast(`Claiming ${rewardQueue.reduce((a,b)=>a+b,0)} tokens for ${addr}`);
+  rewardQueue=[];tokenBalance=0;document.getElementById('token-balance').innerText=tokenBalance;
+});
+document.getElementById('btn-reset-tokens').addEventListener('click',()=>{rewardQueue=[];tokenBalance=0;document.getElementById('token-balance').innerText=tokenBalance;});
+
+/* ------------------- Network Test ------------------- */
+async function simulateTTFB(url){const start=performance.now();return fetch(url,{mode:'no-cors'}).then(()=>performance.now()-start).catch(()=>performance.now()-start);}
+async function runNetworkTest(){
+  const urls=['https://cdn.jsdelivr.net','https://ipfs.io/ipfs','https://livepeer.studio','https://www.youtube.com'];
+  const resultsEl=document.getElementById('results'); resultsEl.innerText='Running TTFB...';
+  const metrics=[];
+  for(const u of urls){const ttfb=Math.round(await simulateTTFB(u));metrics.push({url:u,ttfb});}
+  resultsEl.innerText='TTFB:\n'+metrics.map(m=>m.url+': '+m.ttfb+'ms').join('\n'); renderNetworkChart(metrics);
+}
+document.getElementById('btn-run-net').addEventListener('click',runNetworkTest);
+
+/* ------------------- Charts ------------------- */
+let netChart=null,streamChart=null;
+function renderNetworkChart(metrics){
+  const ctx=document.getElementById('networkChart').getContext('2d');
+  const labels=metrics.map(m=>m.url),data=metrics.map(m=>m.ttfb);
+  if(netChart) netChart.destroy();
+  netChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'TTFB (ms)',data,backgroundColor:'#6366f1'}]},options:{responsive:true,plugins:{legend:{display:false}}}});
+}
+function renderStreamChart(metrics){
+  const ctx=document.getElementById('streamCompareChart').getContext('2d');
+  const labels=metrics.map(m=>m.label),data=metrics.map(m=>m.ttfb);
+  if(streamChart) streamChart.destroy();
+  streamChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'TTFB (ms)',data,backgroundColor:['#6366f1','#10b981','#f59e0b','#facc15']}]},options:{responsive:true,plugins:{legend:{display:false}}}});
+}
+
+/* ------------------- YouTube IFrame ------------------- */
+function onYouTubeIframeAPIReady(){
+  const ytUrl=document.getElementById('youtube-url').value;
+  const videoId=(ytUrl.split('v=')[1]||'dQw4w9WgXcQ').split('&')[0];
+  youtubePlayer=new YT.Player('youtube-player',{height:'100%',width:'100%',videoId:videoId,events:{onReady:onPlayerReady,onStateChange:onPlayerStateChange}});
+}
+function onPlayerReady(event){youtubeDuration=event.target.getDuration();}
+function onPlayerStateChange(event){
+  if(event.data===YT.PlayerState.PLAYING){
+    const interval=setInterval(()=>{
+      if(event.target.getPlayerState()!==YT.PlayerState.PLAYING){clearInterval(interval);}
+      watchedSeconds=Math.floor(event.target.getCurrentTime());
+      const percent=Math.floor((watchedSeconds/youtubeDuration)*100);
+      if(percent>=50){tokenBalance+=5;document.getElementById('token-balance').innerText=tokenBalance;toast('ERC-20 reward: +5 tokens for watching 50%');}
+    },5000);
+  }
+}
+
+/* ------------------- Stream Compare ------------------- */
+async function compareStreams(){
+  const urls=[
+    {label:'YouTube',url:document.getElementById('youtube-url').value},
+    {label:'CDN',url:document.getElementById('cdn-url').value},
+    {label:'IPFS',url:document.getElementById('ipfs-url').value},
+    {label:'Livepeer',url:document.getElementById('livepeer-url').value}
+  ];
+  const metrics=[];
+  for(const u of urls){
+    const ttfb=Math.round(await simulateTTFB(u.url));
+    metrics.push({label:u.label,ttfb});
+  }
+  document.getElementById('stream-results').innerText=metrics.map(m=>m.label+': '+m.ttfb+'ms').join('\n');
+  renderStreamChart(metrics);
+}
+document.getElementById('btn-compare').addEventListener('click',compareStreams);
+
+/* ------------------- Full Suite ------------------- */
+document.getElementById('btn-run-full').addEventListener('click',async()=>{
+  await enableBlockchain().catch(()=>{});
+  await runNetworkTest();
+  await compareStreams();
+});
+</script>
+</body>
+</html>

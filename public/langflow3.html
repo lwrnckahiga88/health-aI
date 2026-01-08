@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Node Graph Editor with Execution Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .node {
+      position: absolute;
+      background: white;
+      border: 2px solid #3b82f6;
+      border-radius: 0.5rem;
+      padding: 0.5rem;
+      width: 150px;
+      text-align: center;
+      cursor: grab;
+      user-select: none;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .node-header {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    .connection {
+      stroke: #3b82f6;
+      stroke-width: 2;
+      fill: none;
+    }
+    #canvas {
+      width: 100%;
+      height: 80vh;
+      border: 1px solid #e5e7eb;
+      position: relative;
+      overflow: hidden;
+    }
+    #output-box {
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 2px solid #10b981;
+      border-radius: 0.5rem;
+      background: #f0fdf4;
+      min-height: 100px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center p-4 space-y-4">
+  <h1 class="text-2xl font-bold text-blue-600">Node Graph Editor with Execution Engine</h1>
+
+  <!-- Toolbar -->
+  <div class="space-x-2">
+    <button onclick="addNode('input')" class="px-4 py-2 bg-blue-500 text-white rounded-lg">Add Input Node</button>
+    <button onclick="addNode('process')" class="px-4 py-2 bg-yellow-500 text-white rounded-lg">Add Process Node</button>
+    <button onclick="addNode('output')" class="px-4 py-2 bg-green-500 text-white rounded-lg">Add Output Node</button>
+    <button onclick="executeGraph()" class="px-4 py-2 bg-purple-600 text-white rounded-lg">Run Graph</button>
+  </div>
+
+  <!-- Canvas -->
+  <div id="canvas" class="bg-white rounded-lg shadow relative"></div>
+
+  <!-- Output Box -->
+  <div id="output-box">Execution results will appear here...</div>
+
+  <script>
+    let nodes = [];
+    let connections = [];
+    let nodeIdCounter = 1;
+    let selectedNode = null;
+    let connecting = false;
+    let fromNode = null;
+
+    const canvas = document.getElementById('canvas');
+
+    function addNode(type) {
+      const node = document.createElement('div');
+      node.className = 'node';
+      node.style.top = '50px';
+      node.style.left = '50px';
+      node.dataset.id = nodeIdCounter;
+      node.dataset.type = type;
+
+      let content = `<div class="node-header">${type.toUpperCase()} Node</div>`;
+      if (type === 'input') {
+        content += `<input type="text" placeholder="Enter text" class="border p-1 w-full" />`;
+      } else if (type === 'process') {
+        content += `<select class="border p-1 w-full">
+                      <option value="uppercase">Uppercase</option>
+                      <option value="lowercase">Lowercase</option>
+                      <option value="reverse">Reverse</option>
+                    </select>`;
+      } else if (type === 'output') {
+        content += `<div class="p-2 bg-gray-100 rounded">Output</div>`;
+      }
+
+      content += `<button class="mt-2 px-2 py-1 bg-gray-200 rounded" onclick="startConnection(${nodeIdCounter})">Connect</button>`;
+
+      node.innerHTML = content;
+      canvas.appendChild(node);
+
+      makeDraggable(node);
+
+      nodes.push({
+        id: nodeIdCounter,
+        type: type,
+        element: node
+      });
+
+      nodeIdCounter++;
+    }
+
+    function makeDraggable(node) {
+      let offsetX, offsetY;
+      node.onmousedown = (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON') return;
+        selectedNode = node;
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+      };
+      document.onmousemove = (e) => {
+        if (selectedNode) {
+          selectedNode.style.left = `${e.pageX - canvas.offsetLeft - offsetX}px`;
+          selectedNode.style.top = `${e.pageY - canvas.offsetTop - offsetY}px`;
+        }
+      };
+      document.onmouseup = () => {
+        selectedNode = null;
+      };
+    }
+
+    function startConnection(id) {
+      if (!connecting) {
+        fromNode = id;
+        connecting = true;
+      } else {
+        if (fromNode !== id) {
+          connections.push({ from: fromNode, to: id });
+        }
+        connecting = false;
+        fromNode = null;
+        renderConnections();
+      }
+    }
+
+    function renderConnections() {
+      const oldSvg = document.getElementById('connections-svg');
+      if (oldSvg) oldSvg.remove();
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('id', 'connections-svg');
+      svg.setAttribute('class', 'absolute inset-0 w-full h-full pointer-events-none');
+      canvas.appendChild(svg);
+
+      connections.forEach(conn => {
+        const fromEl = nodes.find(n => n.id === conn.from).element;
+        const toEl = nodes.find(n => n.id === conn.to).element;
+
+        const fromRect = fromEl.getBoundingClientRect();
+        const toRect = toEl.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+
+        const x1 = fromRect.left + fromRect.width / 2 - canvasRect.left;
+        const y1 = fromRect.top + fromRect.height / 2 - canvasRect.top;
+        const x2 = toRect.left + toRect.width / 2 - canvasRect.left;
+        const y2 = toRect.top + toRect.height / 2 - canvasRect.top;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M ${x1} ${y1} C ${x1+100} ${y1}, ${x2-100} ${y2}, ${x2} ${y2}`);
+        path.setAttribute('class', 'connection');
+        svg.appendChild(path);
+      });
+    }
+
+    function executeGraph() {
+      let results = [];
+      let data = {};
+
+      connections.forEach(conn => {
+        const fromNode = nodes.find(n => n.id === conn.from);
+        const toNode = nodes.find(n => n.id === conn.to);
+
+        if (fromNode.type === 'input') {
+          const inputVal = fromNode.element.querySelector('input').value;
+          data[toNode.id] = inputVal;
+        }
+
+        if (fromNode.type === 'process') {
+          const operation = fromNode.element.querySelector('select').value;
+          let inputVal = data[fromNode.id];
+          if (!inputVal) return;
+
+          if (operation === 'uppercase') inputVal = inputVal.toUpperCase();
+          if (operation === 'lowercase') inputVal = inputVal.toLowerCase();
+          if (operation === 'reverse') inputVal = inputVal.split('').reverse().join('');
+
+          data[toNode.id] = inputVal;
+        }
+
+        if (toNode.type === 'output') {
+          results.push(data[fromNode.id]);
+        }
+      });
+
+      document.getElementById('output-box').innerText = results.join('\n');
+    }
+  </script>
+</body>
+</html>

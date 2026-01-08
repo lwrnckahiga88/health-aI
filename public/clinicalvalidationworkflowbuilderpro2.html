@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical Protocol Validation Workflow Builder</title>
+    <meta name="theme-color" content="#0f172a">
+    <meta name="description" content="Build and validate clinical protocols with AI-assisted workflow">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Add required libraries for the Langflow node -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.9.179/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.5.2/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        :root {
+            --color-node-input: #10b981;
+            --color-node-knowledge: #8b5cf6;
+            --color-node-validator: #ef4444;
+            --color-node-llm: #ec4899;
+            --color-node-output: #facc15;
+            --color-node-langflow: #06b6d4;
+            --color-port-input: #10b981;
+            --color-port-output: #3b82f6;
+            --color-edge: #4ade80;
+            --color-flow-dot: #60a5fa;
+            --color-canvas-bg: #0f172a;
+            --color-node-bg: #1e293b;
+            --color-node-border: #334155;
+        }
+        body { margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--color-canvas-bg); color: white; overflow: hidden; user-select: none; }
+        .node { position: absolute; padding: 12px; background: var(--color-node-bg); border: 2px solid var(--color-node-border); border-radius: 8px; cursor: move; width: 260px; min-height: 70px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); transition: all 0.2s ease; z-index: 5; }
+        .node:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2); }
+        .node.selected { border-color: #facc15 !important; box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.4); }
+        .node-input { border-color: var(--color-node-input); }
+        .node-knowledge { border-color: var(--color-node-knowledge); }
+        .node-validator { border-color: var(--color-node-validator); }
+        .node-llm { border-color: var(--color-node-llm); }
+        .node-output { border-color: var(--color-node-output); }
+        .node-langflow { border-color: var(--color-node-langflow); }
+        .node-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .node-title { font-weight: 600; font-size: 0.9rem; }
+        .node-icon { font-size: 0.8rem; }
+        .node-content { margin-top: 8px; }
+        .edge { stroke: var(--color-edge); stroke-width: 3; fill: none; stroke-linecap: round; cursor: pointer; transition: all 0.2s ease; }
+        .edge:hover { stroke: #86efac; stroke-width: 4; }
+        .input-field, .select-transform, .text-area { width: 100%; background: #334155; border: 1px solid #475569; color: white; padding: 6px 8px; margin-top: 6px; border-radius: 6px; font-size: 0.85rem; }
+        .text-area { min-height: 60px; resize: vertical; font-family: inherit; }
+        .flow-dot { fill: var(--color-flow-dot); r: 6; filter: drop-shadow(0 0 2px rgba(96, 165, 250, 0.8)); }
+        .result-box { background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 8px; margin-top: 8px; font-size: 0.8rem; min-height: 20px; max-height: 120px; overflow-y: auto; white-space: pre-wrap; }
+        .result-box.success { background-color: rgba(16, 185, 129, 0.15); border-color: #10b981; }
+        .result-box.failure { background-color: rgba(239, 68, 68, 0.15); border-color: #ef4444; }
+        .port { width: 14px; height: 14px; background: #475569; border-radius: 50%; position: absolute; cursor: crosshair; z-index: 10; transition: all 0.1s ease; }
+        .port:hover { transform: scale(1.2); }
+        .input-port { left: -7px; background: var(--color-port-input); }
+        .output-port { right: -7px; background: var(--color-port-output); }
+        .toast { position: fixed; top: 20px; right: 20px; padding: 12px 16px; background: #1e293b; border-left: 4px solid #4ade80; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); z-index: 1000; opacity: 0; transform: translateX(100px); transition: all 0.3s ease; }
+        .toast.error { border-left-color: #ef4444; }
+        .toast.visible { opacity: 1; transform: translateX(0); }
+        #canvas { position: relative; width: 100%; height: calc(100vh - 150px); background: var(--color-canvas-bg); background-image: radial-gradient(circle, #1e293b 1px, transparent 1px); background-size: 20px 20px; }
+        #toolbar { display: flex; gap: 8px; padding: 10px; background: #1e293b; border-bottom: 1px solid #334155; }
+        .toolbar-btn { padding: 8px 12px; background: #374151; border: 1px solid #475569; border-radius: 6px; color: white; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; transition: all 0.2s ease; }
+        .toolbar-btn:hover { background: #4b5563; }
+        .toolbar-btn.primary { background: #3b82f6; border-color: #3b82f6; }
+        .toolbar-btn.success { background: #10b981; border-color: #10b981; }
+        .toolbar-btn.danger { background: #ef4444; border-color: #ef4444; }
+        .toolbar-btn.warning { background: #f59e0b; border-color: #f59e0b; }
+        .toolbar-separator { width: 1px; background: #374151; margin: 0 8px; }
+        #input-panel { padding: 15px; background: #1e293b; border-bottom: 1px solid #334155; }
+        #output-panel { position: fixed; bottom: 0; left: 0; right: 0; height: 200px; background: #1e293b; border-top: 1px solid #334155; padding: 15px; z-index: 10; box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1); overflow-y: auto; }
+        #output-content { white-space: pre-wrap; font-family: 'Monaco', 'Menlo', monospace; font-size: 0.9rem; }
+        .output-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .output-tab { padding: 8px 16px; background: #374151; border-radius: 4px; cursor: pointer; margin-right: 5px; }
+        .output-tab.active { background: #3b82f6; }
+        .context-menu { position: fixed; background: #1e293b; border: 1px solid #374151; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); z-index: 1000; padding: 4px 0; }
+        .context-menu-item { padding: 8px 16px; cursor: pointer; font-size: 0.85rem; }
+        .context-menu-item:hover { background: #374151; }
+        .protocol-section { background: #1e293b; border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 4px solid #8b5cf6; }
+        .protocol-section h3 { margin-top: 0; color: #8b5cf6; }
+        .validation-result { padding: 10px; border-radius: 6px; margin: 5px 0; background: #1e293b; }
+        .validation-result.pass { border-left: 4px solid #10b981; }
+        .validation-result.fail { border-left: 4px solid #ef4444; }
+        .file-upload { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; border: 2px dashed #475569; border-radius: 8px; margin-top: 10px; cursor: pointer; }
+        .file-upload:hover { border-color: #3b82f6; }
+        .file-upload i { font-size: 2rem; margin-bottom: 10px; color: #8b5cf6; }
+        .file-info { margin-top: 10px; font-size: 0.8rem; text-align: center; }
+        .connecting-line { stroke: #facc15; stroke-width: 2; stroke-dasharray: 5,5; }
+        .node-form { margin-top: 8px; }
+        .node-form label { display: block; font-size: 12px; margin-bottom: 4px; color: rgba(255, 255, 255, 0.7); }
+        .node-form input, .node-form select, .node-form textarea { width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.2); color: white; margin-bottom: 8px; font-size: 12px; }
+        .node-form textarea { min-height: 60px; resize: vertical; }
+        
+        /* Langflow Modal Styles */
+        .langflow-modal { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 900px; max-width: 95%; height: 600px; background: white; border-radius: 12px; padding: 16px; z-index: 2000; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6); display: none; overflow: auto; color: #111827; }
+        .langflow-modal.show { display: block; }
+        .langflow-modal .close { position: absolute; right: 12px; top: 8px; cursor: pointer; }
+        .langflow-chart-container { width: 100%; height: 400px; margin: 20px 0; }
+        
+        /* PWA Install Button */
+        .install-btn { position: fixed; bottom: 20px; right: 20px; z-index: 1000; padding: 10px 16px; background: #3b82f6; color: white; border-radius: 50px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); cursor: pointer; display: none; }
+        .install-btn:hover { background: #2563eb; }
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 1024px) {
+            .sidebar { display: none; }
+            #canvas-container { width: 100%; }
+            .node { width: 220px; }
+        }
+        
+        /* Palette Styles */
+        .palette-item { display: flex; flex-direction: column; align-items: center; padding: 8px; background: #1e293b; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; }
+        .palette-item:hover { background: #374151; transform: translateY(-2px); }
+        .palette-item i { font-size: 1.2rem; margin-bottom: 4px; }
+        .palette-item div { font-size: 0.7rem; text-align: center; }
+    </style>
+</head>
+<body class="bg-slate-900 text-white">
+    <!-- PWA Install Button -->
+    <div id="installButton" class="install-btn">
+        <i class="fas fa-download"></i> Install App
+    </div>
+
+    <!-- Input Panel -->
+    <div id="input-panel">
+        <div class="flex items-center gap-4">
+            <div class="flex-1">
+                <label class="block text-sm font-medium mb-1">Validation Parameters</label>
+                <textarea id="protocol-input" class="text-area" placeholder="Enter validation parameters here...">{
+  "model_version": "varnet-v2.1.0",
+  "test_scenarios": 500,
+  "validation_focus": ["diagnostic_accuracy", "treatment_compliance", "dosage_safety"],
+  "compliance_thresholds": {
+    "diagnostic_accuracy": 0.95,
+    "treatment_compliance": 0.98,
+    "knowledge_retrieval": 0.95
+  }
+}</textarea>
+            </div>
+            <div>
+                <button id="btn-apply-input" class="toolbar-btn success mt-6"><i class="fas fa-play"></i> Apply Parameters</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div id="toolbar">
+        <button id="btn-add-knowledge" class="toolbar-btn"><i class="fas fa-database"></i> Knowledge Base</button>
+        <button id="btn-add-validator" class="toolbar-btn"><i class="fas fa-check-circle"></i> Validator</button>
+        <button id="btn-add-llm" class="toolbar-btn"><i class="fas fa-brain"></i> LLM Analyst</button>
+        <button id="btn-add-langflow" class="toolbar-btn"><i class="fas fa-project-diagram"></i> Langflow</button>
+        <button id="btn-add-output" class="toolbar-btn"><i class="fas fa-file-alt"></i> Report</button>
+        <div class="toolbar-separator"></div>
+        <button id="btn-connect-mode" class="toolbar-btn"><i class="fas fa-plug"></i> Connect</button>
+        <button id="btn-run-graph" class="toolbar-btn success"><i class="fas fa-play"></i> Run Validation</button>
+        <button id="btn-stop-graph" class="toolbar-btn danger"><i class="fas fa-stop"></i> Stop</button>
+        <div class="toolbar-separator"></div>
+        <button id="btn-clear-workspace" class="toolbar-btn danger"><i class="fas fa-trash-alt"></i> Clear</button>
+        <button id="btn-save-workflow" class="toolbar-btn"><i class="fas fa-save"></i> Save</button>
+        <button id="btn-load-workflow" class="toolbar-btn"><i class="fas fa-folder-open"></i> Load</button>
+        <div class="toolbar-separator"></div>
+        <button id="btn-zoom-in" class="toolbar-btn"><i class="fas fa-search-plus"></i></button>
+        <button id="btn-zoom-out" class="toolbar-btn"><i class="fas fa-search-minus"></i></button>
+        <button id="btn-reset-view" class="toolbar-btn"><i class="fas fa-expand"></i> Reset View</button>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" style="position: absolute; right: 0; top: 0; width: 300px; height: calc(100vh - 350px); z-index: 20; background: #1e293b; border-left: 1px solid #334155; padding: 15px; overflow-y: auto;">
+        <div class="sidebar-section">
+            <div style="font-weight: 700; margin-bottom: 8px">Medical Components</div>
+            <div class="node-palette" id="palette" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div class="palette-item" data-type="PatientData"><i class="fa fa-user-injured"></i><div>Patient Data</div></div>
+                <div class="palette-item" data-type="Symptoms"><i class="fa fa-stethoscope"></i><div>Symptoms</div></div>
+                <div class="palette-item" data-type="Differential"><i class="fa fa-diagnoses"></i><div>Differential Dx</div></div>
+                <div class="palette-item" data-type="Questions"><i class="fa fa-question-circle"></i><div>Next Questions</div></div>
+                <div class="palette-item" data-type="Tests"><i class="fa fa-vial"></i><div>Diagnostic Tests</div></div>
+                <div class="palette-item" data-type="Exams"><i class="fa fa-hand-holding-medical"></i><div>Physical Exams</div></div>
+                <div class="palette-item" data-type="Referral"><i class="fa fa-user-md"></i><div>Referral</div></div>
+                <div class="palette-item" data-type="Flags"><i class="fa fa-flag"></i><div>Case Flags</div></div>
+                <div class="palette-item" data-type="EndlessMedical"><i class="fa fa-api"></i><div>EndlessMedical</div></div>
+                <div class="palette-item" data-type="LLM"><i class="fa fa-brain"></i><div>Medical LLM</div></div>
+                <div class="palette-item" data-type="Langflow"><i class="fa fa-project-diagram"></i><div>Langflow</div></div>
+                <div class="palette-item" data-type="Output"><i class="fa fa-share"></i><div>Output</div></div>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <div style="font-weight: 700; margin-bottom: 8px">Flow Settings</div>
+            <label class="text-sm text-gray-400">Flow name</label>
+            <input id="flowName" placeholder="Clinical Decision Support" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #223; background: #0b1220; color: #fff; margin-bottom: 8px"/>
+            <label class="text-sm text-gray-400">Description</label>
+            <textarea id="flowDesc" rows="3" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #223; background: #0b1220; color: #fff">Clinical decision support workflow incorporating EndlessMedical API</textarea>
+        </div>
+
+        <div class="sidebar-section" style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+            <div style="font-weight: 700">Execution Logs</div>
+            <div id="logs" class="logs" style="padding: 12px; background: rgba(0, 0, 0, 0.2); border-radius: 8px; height: 220px; overflow: auto; font-family: monospace; font-size: 13px;"></div>
+        </div>
+    </div>
+
+    <!-- Canvas Container -->
+    <div id="canvas-container" style="position: relative; overflow: hidden; height: calc(100vh - 350px); width: calc(100% - 300px);">
+        <div id="canvas" style="transform-origin: 0 0; transform: scale(1);"></div>
+        <svg id="edges" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2;"></svg>
+        <svg id="flow" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3;"></svg>
+        <svg id="connecting-line" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; display: none;"></svg>
+    </div>
+
+    <!-- Output Panel -->
+    <div id="output-panel">
+        <div class="output-header">
+            <div class="flex">
+                <div class="output-tab active" data-tab="results">Validation Results</div>
+                <div class="output-tab" data-tab="log">Execution Log</div>
+                <div class="output-tab" data-tab="report">Compliance Report</div>
+            </div>
+            <div>
+                <button id="btn-clear-output" class="toolbar-btn"><i class="fas fa-trash"></i> Clear Output</button>
+            </div>
+        </div>
+        <div id="output-content">
+            <div class="text-slate-400">// Protocol validation results will appear here after execution...</div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Hidden File Input -->
+    <input type="file" id="file-input" style="display: none;" accept=".pdf,.doc,.docx,.csv,.epub,.txt" multiple />
+    <input type="file" id="workflow-input" style="display: none;" accept=".json" />
+
+    <!-- Langflow Modal -->
+    <div id="langflow-modal" class="langflow-modal">
+        <div class="close" id="langflow-close" title="Close">✕</div>
+        <h2 id="langflow-title">Langflow Analysis</h2>
+        <div class="langflow-chart-container">
+            <canvas id="langflow-chart"></canvas>
+        </div>
+        <div id="langflow-content"></div>
+        <div style="margin-top: 20px;">
+            <button id="langflow-export" class="toolbar-btn primary"><i class="fas fa-download"></i> Export Data</button>
+            <button id="langflow-close-btn" class="toolbar-btn" style="margin-left: 8px;">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        let nodes = [];
+        let edges = [];
+        let nodeId = 0;
+        let connectMode = false;
+        let dragPort = null;
+        let dragNode = null;
+        let offset = { x: 0, y: 0 };
+        let selectedNode = null;
+        let canvasScale = 1;
+        let canvasOffset = { x: 0, y: 0 };
+        let isRunning = false;
+        let currentInput = {};
+        let uploadedFiles = [];
+        let connectingFromNode = null;
+        let connectingFromPort = null;
+        let currentFileUpload = null;
+
+        // --- DOM Elements ---
+        const canvas = document.getElementById("canvas");
+        const edgesSvg = document.getElementById("edges");
+        const flowSvg = document.getElementById("flow");
+        const connectingLineSvg = document.getElementById("connecting-line");
+        const fileInput = document.getElementById("file-input");
+        const workflowInput = document.getElementById("workflow-input");
+        const toast = document.getElementById("toast");
+        const canvasContainer = document.getElementById("canvas-container");
+        const protocolInput = document.getElementById("protocol-input");
+        const outputContent = document.getElementById("output-content");
+        const outputTabs = document.querySelectorAll('.output-tab');
+        const logs = document.getElementById("logs");
+
+        // --- Clinical Protocol Data ---
+        const kenyaPediatricProtocol = {
+            "Severe Pneumonia": {
+                "diagnostic_criteria": {
+                    "required_signs": ["Cough or difficult breathing", "Fast breathing", "Chest indrawing"],
+                    "additional_signs": ["Nasal flaring", "Grunting", "Oxygen saturation < 90%"]
+                },
+                "treatment": {
+                    "first_line": ["Injectable Ampicillin", "Injectable Gentamicin"],
+                    "dosage": {
+                        "Ampicillin": "50 mg/kg IV every 6 hours",
+                        "Gentamicin": "7.5 mg/kg IM/IV once daily"
+                    },
+                    "supportive_care": ["Oxygen therapy", "Manage fever"]
+                },
+                "referral_criteria": ["Failure to improve after 48 hours", "Development of complications"]
+            },
+            "Malaria": {
+                "diagnostic_criteria": {
+                    "required_signs": ["Fever", "Positive malaria test"],
+                    "additional_signs": ["Vomiting", "Convulsions", "Severe anemia"]
+                },
+                "treatment": {
+                    "first_line": ["Artemether-Lumefantrine"],
+                    "dosage": {
+                        "Artemether-Lumefantrine": "Weight-based dosing over 3 days"
+                    },
+                    "supportive_care": ["Paracetamol for fever", "Manage convulsions"]
+                },
+                "referral_criteria": ["Severe dehydration", "Impaired consciousness", "Severe anemia"]
+            }
+        };
+
+        const validationTypes = {
+            "Diagnostic Accuracy": { metric: "Accuracy", threshold: 0.95 },
+            "Treatment Compliance": { metric: "Compliance Rate", threshold: 0.98 },
+            "Dosage Safety": { metric: "Error Rate", threshold: 0.0 },
+            "Knowledge Retrieval": { metric: "F1 Score", threshold: 0.95 }
+        };
+
+        const llmModels = {
+            "Local Models": {
+                "Llama 3 (8B)": { type: "local", parameters: "8B" },
+                "Mistral (7B)": { type: "local", parameters: "7B" },
+                "Phi-3 (3.8B)": { type: "local", parameters: "3.8B" }
+            },
+            "API Models": {
+                "GPT-4": { type: "api", provider: "OpenAI" },
+                "Claude 3": { type: "api", provider: "Anthropic" },
+                "Gemini Pro": { type: "api", provider: "Google" }
+            }
+        };
+
+        const llmAnalystPrompts = {
+            "Generate Summary Report": "Analyze the following validation results and generate an executive summary for clinical leadership, highlighting key successes and risks: ",
+            "Create Regulatory Submission": "Synthesize this data into a structured report suitable for regulatory submission, focusing on safety and efficacy: ",
+            "Identify Model Gaps": "Analyze these results to identify the top 3 clinical knowledge gaps or weaknesses in the AI model: "
+        };
+
+        // --- Test Scenarios ---
+        const testScenarios = [
+            {
+                id: 1,
+                description: "2-year-old male, weight 12 kg, presents with cough, fever of 39°C, respiratory rate 55/min, and subcostal indrawing. Oxygen saturation is 92%.",
+                expected_diagnosis: "Severe Pneumonia",
+                expected_treatment: {
+                    drugs: ["Ampicillin", "Gentamicin"],
+                    dosage: {
+                        "Ampicillin": "600 mg IV every 6 hours",
+                        "Gentamicin": "90 mg IM/IV once daily"
+                    }
+                }
+            },
+            {
+                id: 2,
+                description: "5-year-old female, weight 18 kg, presents with fever (40°C), vomiting, and positive malaria RDT.",
+                expected_diagnosis: "Malaria",
+                expected_treatment: {
+                    drugs: ["Artemether-Lumefantrine"],
+                    dosage: {
+                        "Artemether-Lumefantrine": "3 tablets immediately, then 3 tablets after 8 hours, then 3 tablets twice daily for 2 days"
+                    }
+                }
+            }
+        ];
+
+        // --- Output Management ---
+        function clearOutput() {
+            outputContent.innerHTML = '<div class="text-slate-400">// Output cleared...</div>';
+        }
+
+        function addOutput(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'text-red-400' : type === 'success' ? 'text-green-400' : 'text-blue-400';
+            const div = document.createElement('div');
+            div.innerHTML = `<span class="text-slate-500">[${timestamp}]</span> <span class="${color}">${message}</span>`;
+            outputContent.appendChild(div);
+            outputContent.scrollTop = outputContent.scrollHeight;
+        }
+
+        function log(msg, cls = 'log-info') { 
+            const d = document.createElement('div'); 
+            d.className = 'log-entry ' + cls; 
+            d.textContent = msg; 
+            logs.appendChild(d); 
+            logs.scrollTop = logs.scrollHeight; 
+        }
+
+        function showFinalValidationReport(results) {
+            let output = `=== CLINICAL PROTOCOL VALIDATION REPORT ===\n\n`;
+            output += `Timestamp: ${new Date().toLocaleString()}\n`;
+            output += `Model Version: ${currentInput.model_version || 'varnet-v2.1.0'}\n`;
+            output += `Total Test Scenarios: ${results.length}\n\n`;
+            
+            // Calculate summary statistics
+            const passedDiagnosis = results.filter(r => r.diagnosis_match).length;
+            const passedTreatment = results.filter(r => r.treatment_match).length;
+            const diagnosisAccuracy = (passedDiagnosis / results.length) * 100;
+            const treatmentCompliance = (passedTreatment / results.length) * 100;
+            
+            output += `SUMMARY:\n`;
+            output += `✅ Diagnostic Accuracy: ${diagnosisAccuracy.toFixed(1)}% (${passedDiagnosis}/${results.length})\n`;
+            output += `✅ Treatment Compliance: ${treatmentCompliance.toFixed(1)}% (${passedTreatment}/${results.length})\n\n`;
+            
+            output += `DETAILED RESULTS:\n`;
+            results.forEach((result, index) => {
+                output += `\n--- Scenario ${index + 1} ---\n`;
+                output += `Description: ${result.scenario_description}\n`;
+                output += `Expected Diagnosis: ${result.expected_diagnosis}\n`;
+                output += `VARnet Diagnosis: ${result.varnet_diagnosis}\n`;
+                output += `Diagnosis Match: ${result.diagnosis_match ? '✅ PASS' : '❌ FAIL'}\n`;
+                
+                if (result.diagnosis_match) {
+                    output += `Treatment Match: ${result.treatment_match ? '✅ PASS' : '❌ FAIL'}\n`;
+                    if (!result.treatment_match) {
+                        output += `Treatment Discrepancy: ${result.treatment_discrepancy}\n`;
+                    }
+                }
+                
+                if (result.critical_failure) {
+                    output += `🚨 CRITICAL FAILURE: ${result.critical_failure}\n`;
+                }
+            });
+            
+            // Overall assessment
+            const overallPass = diagnosisAccuracy >= 95 && treatmentCompliance >= 98;
+            output += `\nOVERALL ASSESSMENT: ${overallPass ? '✅ PASS' : '❌ FAIL'}\n`;
+            output += `The model ${overallPass ? 'meets' : 'does not meet'} the required compliance thresholds for clinical use.\n`;
+            
+            if (!overallPass) {
+                output += `Areas requiring improvement:\n`;
+                if (diagnosisAccuracy < 95) output += `- Diagnostic accuracy (current: ${diagnosisAccuracy.toFixed(1)}%, required: 95%)\n`;
+                if (treatmentCompliance < 98) output += `- Treatment compliance (current: ${treatmentCompliance.toFixed(1)}%, required: 98%)\n`;
+            }
+            
+            const pre = document.createElement('pre');
+            pre.className = 'bg-slate-900 p-4 rounded border border-slate-700';
+            pre.textContent = output;
+            
+            outputContent.innerHTML = '';
+            outputContent.appendChild(pre);
+        }
+
+        // Mock functions simulating real work
+        const clinicalFunctions = {
+            "Load Knowledge Base": async (files, sourceName) => {
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                let message = `Loaded ${sourceName} with ${files.length} documents:\n`;
+                files.forEach((file, index) => {
+                    message += `${index + 1}. ${file.name} (${file.type})\n`;
+                });
+                
+                addOutput(`Loading knowledge base: ${sourceName}`);
+                log(`Loading knowledge base: ${sourceName}`);
+                return {
+                    source: sourceName,
+                    files: files,
+                    content: kenyaPediatricProtocol,
+                    scenarios: testScenarios,
+                    message: message
+                };
+            },
+            "Run Validation": async (validationType, knowledgeData) => {
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                // Simulate validation results
+                const results = knowledgeData.scenarios.map(scenario => {
+                    // Simulate VARnet's diagnosis (90-98% accuracy)
+                    const accurateDiagnosis = Math.random() < 0.95;
+                    const varnetDiagnosis = accurateDiagnosis ? 
+                        scenario.expected_diagnosis : 
+                        (scenario.expected_diagnosis === "Severe Pneumonia" ? "Malaria" : "Severe Pneumonia");
+                    
+                    // Simulate treatment compliance (92-99% compliance)
+                    const compliantTreatment = Math.random() < 0.97;
+                    
+                    // Check for critical failures
+                    let criticalFailure = null;
+                    if (!accurateDiagnosis && scenario.expected_diagnosis === "Severe Pneumonia") {
+                        criticalFailure = "Missed diagnosis of Severe Pneumonia";
+                    } else if (!compliantTreatment && accurateDiagnosis) {
+                        criticalFailure = "Incorrect dosage calculation";
+                    }
+                    
+                    return {
+                        scenario_id: scenario.id,
+                        scenario_description: scenario.description,
+                        expected_diagnosis: scenario.expected_diagnosis,
+                        varnet_diagnosis: varnetDiagnosis,
+                        diagnosis_match: accurateDiagnosis,
+                        treatment_match: compliantTreatment,
+                        treatment_discrepancy: compliantTreatment ? null : "Dosage deviation > 10%",
+                        critical_failure: criticalFailure
+                    };
+                });
+                
+                addOutput(`Running ${validationType} validation: ${results.filter(r => r.diagnosis_match).length}/${results.length} accurate diagnoses`);
+                log(`Running ${validationType} validation: ${results.filter(r => r.diagnosis_match).length}/${results.length} accurate diagnoses`);
+                return { 
+                    type: "validation", 
+                    validatorType: validationType, 
+                    results: results,
+                    summary: `${validationType}: ${((results.filter(r => r.diagnosis_match).length / results.length) * 100).toFixed(1)}% accuracy`
+                };
+            },
+            "LLM Analysis": async (model, promptType, inputData) => {
+                await new Promise(resolve => setTimeout(resolve, 1200));
+                
+                const validationResults = inputData.filter(d => d.type === "validation");
+                const totalScenarios = validationResults.length > 0 ? validationResults[0].results.length : 0;
+                const passedDiagnosis = validationResults.length > 0 ? 
+                    validationResults[0].results.filter(r => r.diagnosis_match).length : 0;
+                const diagnosisAccuracy = totalScenarios > 0 ? (passedDiagnosis / totalScenarios) * 100 : 0;
+                
+                addOutput(`Running LLM analysis with ${model}: ${promptType}`);
+                log(`Running LLM analysis with ${model}: ${promptType}`);
+                return {
+                    type: "analysis",
+                    summary: `${promptType} completed using ${model}. Model shows ${diagnosisAccuracy.toFixed(1)}% diagnostic accuracy against the clinical protocol.`,
+                    details: "The analysis indicates strong performance in diagnosis but recommends additional training on dosage calculations for pediatric patients."
+                };
+            },
+            "Langflow Analysis": async (inputData) => {
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Simulate Langflow analysis
+                const validationResults = inputData.filter(d => d.type === "validation");
+                const totalScenarios = validationResults.length > 0 ? validationResults[0].results.length : 0;
+                const passedDiagnosis = validationResults.length > 0 ? 
+                    validationResults[0].results.filter(r => r.diagnosis_match).length : 0;
+                const diagnosisAccuracy = totalScenarios > 0 ? (passedDiagnosis / totalScenarios) * 100 : 0;
+                
+                addOutput(`Running Langflow analysis`);
+                log(`Running Langflow analysis`);
+                
+                // Generate simulated SEIRD data for visualization
+                const beta = 0.3, sigma = 1/5.1, gamma = 1/10, mu = 0.001;
+                let S = 999900, E = 50, I = 50, R = 0, D = 0;
+                const simulation = [];
+                
+                for (let day = 0; day < 120; day++) {
+                    const newE = beta * S * I / Math.max(S + E + I + R, 1);
+                    const newI = sigma * E;
+                    const newR = gamma * I;
+                    const newD = mu * I;
+                    
+                    S = Math.max(S - newE, 0);
+                    E = Math.max(E + newE - newI, 0);
+                    I = Math.max(I + newI - newR - newD, 0);
+                    R = Math.max(R + newR, 0);
+                    D = Math.max(D + newD, 0);
+                    
+                    simulation.push({
+                        day,
+                        S: Math.round(S),
+                        E: Math.round(E),
+                        I: Math.round(I),
+                        R: Math.round(R),
+                        D: Math.round(D)
+                    });
+                }
+                
+                return {
+                    type: "langflow",
+                    summary: `Langflow analysis completed. Model shows ${diagnosisAccuracy.toFixed(1)}% diagnostic accuracy.`,
+                    simulation: simulation,
+                    details: "SEIRD epidemiological model simulation completed with current parameters."
+                };
+            }
+        };
+
+        // --- Node Execution Logic ---
+        const nodeTypes = {
+            "KnowledgeBase": async (node) => {
+                const sourceName = node.data.selectedSource;
+                const files = node.data.files || [];
+                const result = await clinicalFunctions["Load Knowledge Base"](files, sourceName);
+                return { ...result, type: "knowledge" };
+            },
+            "Validator": async (node, inputs) => {
+                const knowledgeData = inputs.find(i => i && i.type === "knowledge");
+                const validationType = node.data.selectedValidation;
+                
+                if (!knowledgeData) {
+                    throw new Error("Validator needs a Knowledge Base connected.");
+                }
+                
+                const result = await clinicalFunctions["Run Validation"](validationType, knowledgeData);
+                return result;
+            },
+            "LLMAnalyst": async (node, inputs) => {
+                const validationResults = inputs.filter(i => i && i.type === "validation");
+                const promptType = node.data.selectedPrompt;
+                const model = node.data.selectedModel;
+                
+                if (validationResults.length === 0) {
+                    throw new Error("LLM Analyst needs Validator nodes connected.");
+                }
+                
+                const result = await clinicalFunctions["LLM Analysis"](model, promptType, validationResults);
+                return result;
+            },
+            "Langflow": async (node, inputs) => {
+                const validationResults = inputs.filter(i => i && i.type === "validation");
+                
+                if (validationResults.length === 0) {
+                    throw new Error("Langflow node needs Validator nodes connected.");
+                }
+                
+                const result = await clinicalFunctions["Langflow Analysis"](validationResults);
+                return result;
+            },
+            "Report": async (node, inputs) => {
+                const validationResults = inputs.filter(i => i && i.type === "validation");
+                const allResults = validationResults.flatMap(vr => vr.results || []);
+                
+                const summary = `Generated comprehensive validation report with ${allResults.length} test results.`;
+                addOutput("Generating final validation report...");
+                log("Generating final validation report...");
+                
+                return { 
+                    type: "report", 
+                    data: allResults, 
+                    summary: summary,
+                    validationResults: validationResults
+                };
+            }
+        };
+
+        // --- Node Creation & UI ---
+        function createNode(type, x = 100, y = 100) {
+            const id = nodeId++;
+            const el = document.createElement("div");
+            el.className = `node node-${type.toLowerCase()}`;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.dataset.id = id;
+
+            const node = { id, type, el, data: {}, inputs: [], outputs: [] };
+            nodes.push(node);
+
+            // Add input and output ports
+            const inputPort = document.createElement("div");
+            inputPort.className = "port input-port";
+            inputPort.title = "Input port";
+            el.appendChild(inputPort);
+
+            const outputPort = document.createElement("div");
+            outputPort.className = "port output-port";
+            outputPort.title = "Output port";
+            el.appendChild(outputPort);
+
+            // Node type-specific content
+            let title = type;
+            let icon = "fa-cube";
+            let content = '';
+
+            switch(type) {
+                case "KnowledgeBase":
+                    title = "Knowledge Base";
+                    icon = "fa-database";
+                    content = `
+                        <select class="select-transform mb-2">
+                            <option value="Kenya Pediatric Protocol 2022">Kenya Pediatric Protocol 2022</option>
+                            <option value="WHO IMCI Guidelines">WHO IMCI Guidelines</option>
+                            <option value="Custom Knowledge Base">Custom Knowledge Base</option>
+                        </select>
+                        <div class="file-upload" id="file-upload-${id}">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <div>Click to upload documents</div>
+                            <div class="text-xs text-slate-400">PDF, DOC, DOCX, CSV, EPUB, TXT</div>
+                        </div>
+                        <div class="file-info" id="file-info-${id}">No files selected</div>
+                    `;
+                    break;
+                case "Validator":
+                    title = "Validation Check";
+                    icon = "fa-check-circle";
+                    content = `
+                        <select class="select-transform">
+                            ${Object.keys(validationTypes).map(v => `<option value="${v}">${v}</option>`).join('')}
+                        </select>
+                    `;
+                    break;
+                case "LLMAnalyst":
+                    title = "LLM Analyst";
+                    icon = "fa-brain";
+                    content = `
+                        <select class="select-transform mb-2" id="llm-model-${id}">
+                            <optgroup label="Local Models">
+                                ${Object.keys(llmModels["Local Models"]).map(m => `<option value="${m}">${m}</option>`).join('')}
+                            </optgroup>
+                            <optgroup label="API Models">
+                                ${Object.keys(llmModels["API Models").map(m => `<option value="${m}">${m}</option>`).join('')}
+                            </optgroup>
+                        </select>
+                        <select class="select-transform">
+                            ${Object.keys(llmAnalystPrompts).map(p => `<option value="${p}">${p}</option>`).join('')}
+                        </select>
+                    `;
+                    break;
+                case "Langflow":
+                    title = "Langflow Analysis";
+                    icon = "fa-project-diagram";
+                    content = `
+                        <div class="text-xs text-slate-400 mb-2">Advanced workflow analysis with epidemiological modeling</div>
+                        <button class="toolbar-btn primary w-full" id="langflow-view-${id}">
+                            <i class="fas fa-chart-line"></i> View Analysis
+                        </button>
+                    `;
+                    break;
+                case "Report":
+                    title = "Validation Report";
+                    icon = "fa-file-alt";
+                    content = '';
+                    break;
+            }
+
+            el.innerHTML = `
+                <div class="node-header">
+                    <div>
+                        <div class="node-title"><i class="fas ${icon} node-icon"></i> ${title}</div>
+                        <div class="meta" style="font-size:12px;color:rgba(255,255,255,0.6)">${node.type}</div>
+                    </div>
+                    <div>
+                        <button data-act="del" title="Delete" style="background:transparent;border:0;color:#fff;cursor:pointer"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="node-content">
+                    ${content}
+                    <div class="result-box"></div>
+                </div>
+            `;
+
+            // Set up change listeners for selects
+            const selects = el.querySelectorAll("select");
+            selects.forEach((select, index) => {
+                if (select.id.startsWith('llm-model')) {
+                    select.onchange = (e) => node.data.selectedModel = e.target.value;
+                    node.data.selectedModel = select.value;
+                } else if (index === 0) {
+                    const dataKey = type === 'KnowledgeBase' ? 'selectedSource' : 
+                                  type === 'Validator' ? 'selectedValidation' : 'selectedPrompt';
+                    select.onchange = (e) => node.data[dataKey] = e.target.value;
+                    node.data[dataKey] = select.value;
+                } else {
+                    select.onchange = (e) => node.data.selectedPrompt = e.target.value;
+                    node.data.selectedPrompt = select.value;
+                }
+            });
+
+            // Set up file upload for Knowledge Base nodes
+            if (type === "KnowledgeBase") {
+                const fileUpload = el.querySelector(`#file-upload-${id}`);
+                const fileInfo = el.querySelector(`#file-info-${id}`);
+                
+                fileUpload.addEventListener('click', () => {
+                    fileInput.click();
+                    currentFileUpload = { nodeId: id, fileInfo: fileInfo };
+                });
+            }
+
+            // Set up Langflow view button
+            if (type === "Langflow") {
+                const viewBtn = el.querySelector(`#langflow-view-${id}`);
+                viewBtn.addEventListener('click', () => {
+                    showLangflowModal(node);
+                });
+            }
+
+            // Delete node handler
+            el.querySelector('.fa-times').parentNode.onclick = (e) => {
+                e.stopPropagation();
+                deleteNode(id);
+            };
+
+            // Node selection
+            el.onclick = (e) => {
+                if (e.target.classList.contains('port') || e.target.classList.contains('fa-times')) return;
+                selectNode(id);
+            };
+
+            // Port click handlers for connection mode
+            inputPort.onclick = (e) => {
+                e.stopPropagation();
+                if (connectMode) {
+                    handlePortClick(id, 'input');
+                }
+            };
+
+            outputPort.onclick = (e) => {
+                e.stopPropagation();
+                if (connectMode) {
+                    handlePortClick(id, 'output');
+                }
+            };
+
+            canvas.appendChild(el);
+            makeDraggable(el);
+            selectNode(id);
+            return node;
+        }
+
+        function handlePortClick(nodeId, portType) {
+            if (!connectingFromNode) {
+                // First port clicked - start connection
+                connectingFromNode = nodeId;
+                connectingFromPort = portType;
+                showToast("Select target node to complete connection");
+                
+                // Show connecting line
+                connectingLineSvg.style.display = 'block';
+                const fromNode = nodes.find(n => n.id === nodeId);
+                const fromPort = fromNode.el.querySelector(portType === 'input' ? '.input-port' : '.output-port');
+                const fromRect = fromNode.el.getBoundingClientRect();
+                const canvasRect = canvas.getBoundingClientRect();
+                
+                const x1 = fromRect.left - canvasRect.left + fromPort.offsetLeft + fromPort.offsetWidth / 2;
+                const y1 = fromRect.top - canvasRect.top + fromPort.offsetTop + fromPort.offsetHeight / 2;
+                
+                connectingLineSvg.innerHTML = '';
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", x1);
+                line.setAttribute("y1", y1);
+                line.setAttribute("x2", x1);
+                line.setAttribute("y2", y1);
+                line.setAttribute("class", "connecting-line");
+                connectingLineSvg.appendChild(line);
+                
+                // Add mousemove listener to update connecting line
+                document.addEventListener('mousemove', updateConnectingLine);
+            } else {
+                // Second port clicked - complete connection
+                document.removeEventListener('mousemove', updateConnectingLine);
+                
+                if (connectingFromNode !== nodeId) {
+                    if (connectingFromPort === 'output' && portType === 'input') {
+                        createEdge(connectingFromNode, nodeId);
+                    } else if (connectingFromPort === 'input' && portType === 'output') {
+                        createEdge(nodeId, connectingFromNode);
+                    } else {
+                        showToast("Invalid connection: must connect output to input", true);
+                    }
+                } else {
+                    showToast("Cannot connect a node to itself", true);
+                }
+                
+                // Reset connection state
+                connectingFromNode = null;
+                connectingFromPort = null;
+                connectingLineSvg.style.display = 'none';
+                connectingLineSvg.innerHTML = '';
+            }
+        }
+
+        function updateConnectingLine(e) {
+            if (!connectingFromNode) return;
+            
+            const fromNode = nodes.find(n => n.id === connectingFromNode);
+            if (!fromNode) return;
+            
+            const fromPort = fromNode.el.querySelector(connectingFromPort === 'input' ? '.input-port' : '.output-port');
+            const fromRect = fromNode.el.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            const x1 = fromRect.left - canvasRect.left + fromPort.offsetLeft + fromPort.offsetWidth / 2;
+            const y1 = fromRect.top - canvasRect.top + fromPort.offsetTop + fromPort.offsetHeight / 2;
+            const x2 = e.clientX - canvasRect.left;
+            const y2 = e.clientY - canvasRect.top;
+            
+            connectingLineSvg.innerHTML = '';
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", x1);
+            line.setAttribute("y1", y1);
+            line.setAttribute("x2", x2);
+            line.setAttribute("y2", y2);
+            line.setAttribute("class", "connecting-line");
+            connectingLineSvg.appendChild(line);
+        }
+
+        function selectNode(id) {
+            if (selectedNode) {
+                selectedNode.el.classList.remove('selected');
+            }
+            selectedNode = nodes.find(n => n.id === id);
+            if (selectedNode) {
+                selectedNode.el.classList.add('selected');
+            }
+        }
+
+        function deleteNode(id) {
+            const nodeIndex = nodes.findIndex(n => n.id === id);
+            if (nodeIndex === -1) return;
+            
+            edges = edges.filter(e => e.from !== id && e.to !== id);
+            const node = nodes[nodeIndex];
+            canvas.removeChild(node.el);
+            nodes.splice(nodeIndex, 1);
+            drawEdges();
+            
+            if (selectedNode && selectedNode.id === id) {
+                selectedNode = null;
+            }
+            
+            showToast("Node deleted");
+        }
+
+        function makeDraggable(el) {
+            el.onmousedown = (e) => {
+                if (e.target.classList.contains("port") || e.target.classList.contains("fa-times")) return;
+                
+                dragNode = el;
+                offset.x = e.offsetX;
+                offset.y = e.offsetY;
+                
+                document.onmousemove = onMouseMove;
+                document.onmouseup = onMouseUp;
+            };
+        }
+
+        function onMouseMove(e) {
+            if (!dragNode) return;
+            
+            dragNode.style.left = `${e.pageX - offset.x - canvasOffset.x}px`;
+            dragNode.style.top = `${e.pageY - offset.y - canvasOffset.y}px`;
+            drawEdges();
+        }
+
+        function onMouseUp() {
+            dragNode = null;
+            document.onmousemove = null;
+            document.onmouseup = null;
+        }
+
+        // --- Edge Management ---
+        function drawEdges() {
+            edgesSvg.innerHTML = "";
+            edges.forEach((edge, index) => {
+                const fromNode = nodes.find(n => n.id === edge.from);
+                const toNode = nodes.find(n => n.id === edge.to);
+                if (!fromNode || !toNode) return;
+
+                const fromPort = fromNode.el.querySelector(".output-port");
+                const toPort = toNode.el.querySelector(".input-port");
+
+                const fromRect = fromNode.el.getBoundingClientRect();
+                const toRect = toNode.el.getBoundingClientRect();
+                const canvasRect = canvas.getBoundingClientRect();
+
+                const x1 = fromRect.left - canvasRect.left + fromPort.offsetLeft + fromPort.offsetWidth / 2;
+                const y1 = fromRect.top - canvasRect.top + fromPort.offsetTop + fromPort.offsetHeight / 2;
+                const x2 = toRect.left - canvasRect.left + toPort.offsetLeft + toPort.offsetWidth / 2;
+                const y2 = toRect.top - canvasRect.top + toPort.offsetTop + toPort.offsetHeight / 2;
+
+                // Create a curved path instead of a straight line for better visuals
+                const midX = (x1 + x2) / 2;
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                path.setAttribute("d", `M ${x1} ${y1} C ${midX} ${y1} ${midX} ${y2} ${x2} ${y2}`);
+                path.setAttribute("class", "edge");
+                path.setAttribute("stroke-width", "3");
+                path.setAttribute("fill", "none");
+                path.setAttribute("stroke-linecap", "round");
+                
+                // Make edges interactive
+                path.style.cursor = "pointer";
+                path.dataset.edgeId = index;
+                path.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteEdge(edge.from, edge.to);
+                });
+                
+                // Add arrowhead at the end
+                const arrowhead = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                arrowhead.setAttribute("points", "0,0 -4,8 4,8");
+                arrowhead.setAttribute("fill", "#4ade80");
+                arrowhead.setAttribute("transform", `translate(${x2},${y2}) rotate(${y2 > y1 ? 90 : -90})`);
+                
+                edgesSvg.appendChild(path);
+                edgesSvg.appendChild(arrowhead);
+            });
+        }
+
+        function createEdge(fromNodeId, toNodeId) {
+            // Check if edge already exists
+            if (edges.some(e => e.from === fromNodeId && e.to === toNodeId)) {
+                showToast("Connection already exists", true);
+                return;
+            }
+            
+            // Check for circular connections
+            if (wouldCreateCycle(fromNodeId, toNodeId)) {
+                showToast("Cannot create circular connection", true);
+                return;
+            }
+            
+            edges.push({ from: fromNodeId, to: toNodeId });
+            drawEdges();
+            showToast("Nodes connected");
+        }
+
+        function wouldCreateCycle(fromNodeId, toNodeId) {
+            const visited = new Set();
+            const stack = [toNodeId];
+            
+            while (stack.length > 0) {
+                const nodeId = stack.pop();
+                
+                if (nodeId === fromNodeId) {
+                    return true;
+                }
+                
+                if (!visited.has(nodeId)) {
+                    visited.add(nodeId);
+                    edges.filter(e => e.from === nodeId).forEach(e => {
+                        stack.push(e.to);
+                    });
+                }
+            }
+            
+            return false;
+        }
+
+        function deleteEdge(fromNodeId, toNodeId) {
+            const edgeIndex = edges.findIndex(e => e.from === fromNodeId && e.to === toNodeId);
+            if (edgeIndex === -1) return;
+            
+            edges.splice(edgeIndex, 1);
+            drawEdges();
+            showToast("Connection deleted");
+        }
+
+        function animateFlow(fromNode, toNode) {
+            const fromPort = fromNode.el.querySelector(".output-port");
+            const toPort = toNode.el.querySelector(".input-port");
+
+            const fromRect = fromNode.el.getBoundingClientRect();
+            const toRect = toNode.el.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+
+            const x1 = fromRect.left - canvasRect.left + fromPort.offsetLeft + fromPort.offsetWidth / 2;
+            const y1 = fromRect.top - canvasRect.top + fromPort.offsetTop + fromPort.offsetHeight / 2;
+            const x2 = toRect.left - canvasRect.left + toPort.offsetLeft + toPort.offsetWidth / 2;
+            const y2 = toRect.top - canvasRect.top + toPort.offsetTop + toPort.offsetHeight / 2;
+
+            const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            dot.setAttribute("class", "flow-dot");
+            dot.setAttribute("cx", x1);
+            dot.setAttribute("cy", y1);
+            flowSvg.appendChild(dot);
+
+            let startTime = null;
+            function animate(timestamp) {
+                if (!startTime) startTime = timestamp;
+                const progress = Math.min((timestamp - startTime) / 1000, 1);
+                
+                dot.setAttribute("cx", x1 + (x2 - x1) * progress);
+                dot.setAttribute("cy", y1 + (y2 - y1) * progress);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    flowSvg.removeChild(dot);
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // --- Execution Engine ---
+        async function runGraph() {
+            if (isRunning) {
+                showToast("Validation is already running", true);
+                return;
+            }
+            
+            // Parse input parameters
+            try {
+                currentInput = JSON.parse(protocolInput.value);
+                addOutput("Validation parameters applied successfully", "success");
+                log("Validation parameters applied successfully");
+            } catch (e) {
+                addOutput("Invalid JSON input. Using default parameters.", "error");
+                log("Invalid JSON input. Using default parameters.", "error");
+                currentInput = { 
+                    model_version: "varnet-v2.1.0", 
+                    test_scenarios: 500 
+                };
+            }
+            
+            isRunning = true;
+            document.getElementById('btn-run-graph').disabled = true;
+            clearOutput();
+            addOutput("Starting clinical validation workflow...", "success");
+            log("Starting clinical validation workflow...");
+
+            try {
+                // Reset all results
+                nodes.forEach(node => {
+                    const resultBox = node.el.querySelector(".result-box");
+                    if (resultBox) {
+                        resultBox.textContent = "Pending...";
+                        resultBox.className = "result-box";
+                    }
+                    node.result = undefined;
+                });
+
+                // Find all report nodes (endpoints) and execute backwards
+                const reportNodes = nodes.filter(n => n.type === "Report");
+                
+                if (reportNodes.length === 0) {
+                    throw new Error("No Report node found. Add a Report node to see results.");
+                }
+                
+                const allResults = [];
+                for (const reportNode of reportNodes) {
+                    const result = await executeNode(reportNode.id);
+                    if (result && result.data) {
+                        allResults.push(...result.data);
+                    }
+                }
+                
+                // Show final comprehensive output
+                showFinalValidationReport(allResults);
+                showToast("Clinical validation completed successfully");
+                log("Clinical validation completed successfully");
+            } catch (error) {
+                console.error("Error running graph:", error);
+                addOutput(`Error: ${error.message}`, "error");
+                log(`Error: ${error.message}`, "error");
+                showToast(`Error: ${error.message}`, true);
+            } finally {
+                isRunning = false;
+                document.getElementById('btn-run-graph').disabled = false;
+            }
+        }
+
+        async function executeNode(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (node.result !== undefined) return node.result;
+
+            // Get inputs from connected nodes
+            const inputEdges = edges.filter(e => e.to === nodeId);
+            const inputResults = [];
+            
+            for (const edge of inputEdges) {
+                const result = await executeNode(edge.from);
+                inputResults.push(result);
+                animateFlow(nodes.find(n => n.id === edge.from), node);
+            }
+
+            // Execute this node's function
+            let result;
+            try {
+                result = await nodeTypes[node.type](node, inputResults);
+                node.result = result;
+                
+                // Display result in UI
+                const resultBox = node.el.querySelector(".result-box");
+                if (resultBox) {
+                    if (typeof result === 'object') {
+                        resultBox.textContent = result.summary || result.message || JSON.stringify(result, null, 2);
+                    } else {
+                        resultBox.textContent = result;
+                    }
+                    
+                    // Color code based on validation result
+                    if (result.passed !== undefined) {
+                        resultBox.classList.add(result.passed ? 'success' : 'failure');
+                    }
+                }
+            } catch (error) {
+                console.error(`Error executing node ${nodeId}:`, error);
+                const resultBox = node.el.querySelector(".result-box");
+                if (resultBox) {
+                    resultBox.textContent = `Error: ${error.message}`;
+                    resultBox.classList.add('failure');
+                }
+                throw error;
+            }
+            
+            return result;
+        }
+
+        function stopExecution() {
+            isRunning = false;
+            showToast("Execution stopped");
+            log("Execution stopped");
+        }
+
+        function clearWorkspace() {
+            if (!confirm("Are you sure you want to clear the workspace? This cannot be undone.")) return;
+            
+            nodes.forEach(n => canvas.removeChild(n.el));
+            nodes = [];
+            edges = [];
+            nodeId = 0;
+            selectedNode = null;
+            edgesSvg.innerHTML = "";
+            flowSvg.innerHTML = "";
+            connectingLineSvg.innerHTML = "";
+            connectingLineSvg.style.display = 'none';
+            
+            showToast("Workspace cleared");
+            log("Workspace cleared");
+        }
+
+        function zoomIn() {
+            canvasScale = Math.min(canvasScale * 1.2, 3);
+            updateCanvasTransform();
+        }
+
+        function zoomOut() {
+            canvasScale = Math.max(canvasScale / 1.2, 0.5);
+            updateCanvasTransform();
+        }
+
+        function resetView() {
+            canvasScale = 1;
+            canvasOffset = { x: 0, y: 0 };
+            updateCanvasTransform();
+        }
+
+        function updateCanvasTransform() {
+            canvas.style.transform = `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})`;
+        }
+
+        function saveWorkflow() {
+            const data = {
+                nodes: nodes.map(n => ({
+                    id: n.id,
+                    type: n.type,
+                    x: n.el.offsetLeft,
+                    y: n.el.offsetTop,
+                    data: n.data
+                })),
+                edges: edges
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "clinical-validation-workflow.json";
+            a.click();
+            showToast("Workflow saved successfully");
+            log("Workflow saved successfully");
+        }
+
+        function loadWorkflow(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // Clear current workspace
+                    nodes.forEach(n => canvas.removeChild(n.el));
+                    nodes = [];
+                    edges = [];
+                    nodeId = 0;
+                    
+                    // Recreate nodes
+                    data.nodes.forEach(n => {
+                        const node = createNode(n.type, n.x, n.y);
+                        node.id = n.id;
+                        node.data = n.data;
+                        
+                        // Update select values if they exist
+                        const selects = node.el.querySelectorAll("select");
+                        selects.forEach((select, index) => {
+                            if (select.id.startsWith('llm-model')) {
+                                if (node.data.selectedModel) select.value = node.data.selectedModel;
+                            } else if (index === 0) {
+                                const value = node.data.selectedSource || node.data.selectedValidation || node.data.selectedPrompt;
+                                if (value) select.value = value;
+                            } else {
+                                if (node.data.selectedPrompt) select.value = node.data.selectedPrompt;
+                            }
+                        });
+                        
+                        nodeId = Math.max(nodeId, n.id + 1);
+                    });
+                    
+                    // Recreate edges
+                    edges = data.edges;
+                    drawEdges();
+                    
+                    showToast("Workflow loaded successfully");
+                    log("Workflow loaded successfully");
+                } catch (error) {
+                    console.error("Error loading workflow:", error);
+                    showToast("Error loading workflow file", true);
+                    log("Error loading workflow file", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function showToast(message, isError = false) {
+            toast.textContent = message;
+            toast.className = `toast ${isError ? 'error' : ''} visible`;
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 3000);
+        }
+
+        // --- Langflow Modal Functions ---
+        function showLangflowModal(node) {
+            const modal = document.getElementById('langflow-modal');
+            const title = document.getElementById('langflow-title');
+            const content = document.getElementById('langflow-content');
+            const chartEl = document.getElementById('langflow-chart');
+            
+            title.textContent = `${node.type} - Analysis`;
+            modal.classList.add('show');
+            
+            // Display node results if available
+            if (node.result) {
+                content.innerHTML = `
+                    <div class="protocol-section">
+                        <h3>Analysis Summary</h3>
+                        <p>${node.result.summary || 'No summary available'}</p>
+                    </div>
+                `;
+                
+                // Display simulation data if available
+                if (node.result.simulation) {
+                    renderLangflowChart(node.result.simulation, chartEl);
+                    
+                    content.innerHTML += `
+                        <div class="protocol-section">
+                            <h3>Epidemiological Model</h3>
+                            <p>${node.result.details || 'SEIRD model simulation results'}</p>
+                        </div>
+                    `;
+                }
+            } else {
+                content.innerHTML = `
+                    <div class="protocol-section">
+                        <h3>No Analysis Results</h3>
+                        <p>Run the workflow to generate analysis results for this node.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderLangflowChart(simulationData, chartEl) {
+            const labels = simulationData.map(d => d.day);
+            const datasets = [
+                {
+                    label: 'Susceptible',
+                    data: simulationData.map(d => d.S),
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    fill: true
+                },
+                {
+                    label: 'Exposed',
+                    data: simulationData.map(d => d.E),
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    fill: true
+                },
+                {
+                    label: 'Infected',
+                    data: simulationData.map(d => d.I),
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    fill: true
+                },
+                {
+                    label: 'Recovered',
+                    data: simulationData.map(d => d.R),
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: true
+                },
+                {
+                    label: 'Deceased',
+                    data: simulationData.map(d => d.D),
+                    borderColor: '#6b7280',
+                    backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                    fill: true
+                }
+            ];
+            
+            // Destroy previous chart if it exists
+            if (window.langflowChart) {
+                window.langflowChart.destroy();
+            }
+            
+            // Create new chart
+            window.langflowChart = new Chart(chartEl, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'SEIRD Model Simulation'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Days'
+                            }
+                        },
+                        y: {
+                            stacked: false,
+                            title: {
+                                display: true,
+                                text: 'Population'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        document.getElementById('langflow-close').addEventListener('click', () => {
+            document.getElementById('langflow-modal').classList.remove('show');
+        });
+
+        document.getElementById('langflow-close-btn').addEventListener('click', () => {
+            document.getElementById('langflow-modal').classList.remove('show');
+        });
+
+        document.getElementById('langflow-export').addEventListener('click', () => {
+            // Find the currently selected node
+            if (!selectedNode || !selectedNode.result || !selectedNode.result.simulation) {
+                showToast("No simulation data to export", true);
+                return;
+            }
+            
+            const data = selectedNode.result.simulation;
+            const csvContent = "data:text/csv;charset=utf-8,"
+                + "Day,Susceptible,Exposed,Infected,Recovered,Deceased\n"
+                + data.map(d => `${d.day},${d.S},${d.E},${d.I},${d.R},${d.D}`).join("\n");
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `${selectedNode.type.replace(/\s+/g, '_')}_simulation.csv`);
+            document.body.appendChild(link);
+            
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast("Data exported successfully");
+        });
+
+        // --- File Upload Handling ---
+        fileInput.addEventListener('change', (e) => {
+            if (!currentFileUpload) return;
+            
+            const files = Array.from(e.target.files);
+            const node = nodes.find(n => n.id === currentFileUpload.nodeId);
+            
+            if (node) {
+                node.data.files = files;
+                const fileInfo = currentFileUpload.fileInfo;
+                
+                if (files.length === 0) {
+                    fileInfo.textContent = "No files selected";
+                } else {
+                    fileInfo.textContent = `${files.length} file(s) selected: ${files.map(f => f.name).join(', ')}`;
+                }
+                
+                showToast(`Added ${files.length} file(s) to knowledge base`);
+                log(`Added ${files.length} file(s) to knowledge base`);
+            }
+            
+            currentFileUpload = null;
+        });
+
+        // --- Connect Mode Handling ---
+        function toggleConnectMode() {
+            connectMode = !connectMode;
+            if (connectMode) {
+                document.getElementById('btn-connect-mode').classList.add('primary');
+                showToast("Connect Mode: ON - Click on output port first, then input port");
+                log("Connect Mode: ON - Click on output port first, then input port");
+            } else {
+                document.getElementById('btn-connect-mode').classList.remove('primary');
+                connectingFromNode = null;
+                connectingFromPort = null;
+                connectingLineSvg.style.display = 'none';
+                connectingLineSvg.innerHTML = '';
+                document.removeEventListener('mousemove', updateConnectingLine);
+                showToast("Connect Mode: OFF");
+                log("Connect Mode: OFF");
+            }
+        }
+
+        // --- Output Tab Handling ---
+        function handleOutputTabClick(tab) {
+            // Remove active class from all tabs
+            outputTabs.forEach(t => t.classList.remove('active'));
+            
+            // Add active class to clicked tab
+            tab.classList.add('active');
+            
+            // Update content based on selected tab
+            const tabName = tab.getAttribute('data-tab');
+            switch(tabName) {
+                case 'results':
+                    outputContent.innerHTML = '<div class="text-slate-400">// Validation results will appear here after execution...</div>';
+                    break;
+                case 'log':
+                    outputContent.innerHTML = '<div class="text-slate-400">// Execution log will appear here...</div>';
+                    break;
+                case 'report':
+                    outputContent.innerHTML = '<div class="text-slate-400">// Compliance report will appear here...</div>';
+                    break;
+            }
+        }
+
+        // --- Initialize Event Listeners ---
+        function initEventListeners() {
+            // Set up event listeners for output tabs
+            outputTabs.forEach(tab => {
+                tab.addEventListener('click', () => handleOutputTabClick(tab));
+            });
+            
+            // Set up event listeners for toolbar buttons
+            document.getElementById("btn-add-knowledge").addEventListener('click', () => createNode("KnowledgeBase", 100, 100));
+            document.getElementById("btn-add-validator").addEventListener('click', () => createNode("Validator", 100, 200));
+            document.getElementById("btn-add-llm").addEventListener('click', () => createNode("LLMAnalyst", 100, 300));
+            document.getElementById("btn-add-langflow").addEventListener('click', () => createNode("Langflow", 100, 400));
+            document.getElementById("btn-add-output").addEventListener('click', () => createNode("Report", 100, 500));
+            document.getElementById("btn-apply-input").addEventListener('click', () => {
+                try {
+                    currentInput = JSON.parse(protocolInput.value);
+                    addOutput("Validation parameters applied successfully", "success");
+                    log("Validation parameters applied successfully");
+                    showToast("Parameters applied");
+                } catch (e) {
+                    addOutput("Invalid JSON input format", "error");
+                    log("Invalid JSON input format", "error");
+                    showToast("Invalid JSON input", true);
+                }
+            });
+            document.getElementById("btn-clear-output").addEventListener('click', clearOutput);
+            document.getElementById("btn-connect-mode").addEventListener('click', toggleConnectMode);
+            document.getElementById("btn-run-graph").addEventListener('click', runGraph);
+            document.getElementById("btn-stop-graph").addEventListener('click', stopExecution);
+            document.getElementById("btn-clear-workspace").addEventListener('click', clearWorkspace);
+            document.getElementById("btn-save-workflow").addEventListener('click', saveWorkflow);
+            document.getElementById("btn-load-workflow").addEventListener('click', () => workflowInput.click());
+            document.getElementById("btn-zoom-in").addEventListener('click', zoomIn);
+            document.getElementById("btn-zoom-out").addEventListener('click', zoomOut);
+            document.getElementById("btn-reset-view").addEventListener('click', resetView);
+            
+            // Set up event listeners for palette items
+            document.querySelectorAll('#palette .palette-item').forEach(it => {
+                it.addEventListener('click', () => createNode(it.dataset.type));
+            });
+            
+            workflowInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    loadWorkflow(e.target.files[0]);
+                }
+            });
+            
+            // Canvas panning
+            let isPanning = false;
+            let startPanPoint = { x: 0, y: 0 };
+
+            canvasContainer.addEventListener('mousedown', (e) => {
+                if (e.button === 1 || (e.button === 0 && e.altKey)) {
+                    isPanning = true;
+                    startPanPoint = { x: e.clientX - canvasOffset.x, y: e.clientY - canvasOffset.y };
+                    canvasContainer.style.cursor = 'grabbing';
+                    e.preventDefault();
+                }
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isPanning) {
+                    canvasOffset.x = e.clientX - startPanPoint.x;
+                    canvasOffset.y = e.clientY - startPanPoint.y;
+                    updateCanvasTransform();
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isPanning = false;
+                canvasContainer.style.cursor = 'default';
+            });
+
+            canvasContainer.addEventListener('wheel', (e) => {
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    if (e.deltaY < 0) {
+                        zoomIn();
+                    } else {
+                        zoomOut();
+                    }
+                }
+            }, { passive: false });
+        }
+
+        // --- PWA Functionality ---
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                .then(function(registration) {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                })
+                .catch(function(error) {
+                    console.log('Service Worker registration failed:', error);
+                });
+            }
+        }
+
+        function setupPWA() {
+            // Handle the beforeinstallprompt event
+            let deferredPrompt;
+            const installButton = document.getElementById('installButton');
+            
+            window.addEventListener('beforeinstallprompt', (e) => {
+                // Prevent the mini-infobar from appearing on mobile
+                e.preventDefault();
+                // Stash the event so it can be triggered later
+                deferredPrompt = e;
+                // Show the install button
+                installButton.style.display = 'block';
+                
+                installButton.addEventListener('click', () => {
+                    // Hide the install button
+                    installButton.style.display = 'none';
+                    // Show the install prompt
+                    deferredPrompt.prompt();
+                    // Wait for the user to respond to the prompt
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            console.log('User accepted the install prompt');
+                        } else {
+                            console.log('User dismissed the install prompt');
+                        }
+                        deferredPrompt = null;
+                    });
+                });
+            });
+            
+            window.addEventListener('appinstalled', () => {
+                console.log('PWA was installed');
+                installButton.style.display = 'none';
+                deferredPrompt = null;
+            });
+        }
+
+        // --- Initialization ---
+        function init() {
+            // Create initial workflow
+            const knowledgeNode = createNode("KnowledgeBase", 150, 150);
+            const validatorNode = createNode("Validator", 450, 150);
+            const llmNode = createNode("LLMAnalyst", 450, 300);
+            const langflowNode = createNode("Langflow", 450, 450);
+            const reportNode = createNode("Report", 750, 300);
+            
+            createEdge(knowledgeNode.id, validatorNode.id);
+            createEdge(validatorNode.id, llmNode.id);
+            createEdge(llmNode.id, langflowNode.id);
+            createEdge(langflowNode.id, reportNode.id);
+            
+            addOutput("Welcome to Clinical Validation Workflow! Configure your parameters and click 'Run Validation' to start.", "info");
+            log("Welcome to Clinical Validation Workflow! Configure your parameters and click 'Run Validation' to start.");
+            
+            // Initialize event listeners
+            initEventListeners();
+            
+            // Setup PWA
+            registerServiceWorker();
+            setupPWA();
+        }
+
+        // Start the application
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,3133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌍 Pandemic Intelligence Platform</title>
+    <meta name="theme-color" content="#0b0b0c">
+    <meta name="description" content="Advanced SEIRD Model Early Warning System with Real-time Analytics">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="data:application/manifest+json,{
+        &quot;name&quot;:&quot;Pandemic Intelligence Platform&quot;,
+        &quot;short_name&quot;:&quot;PandemicEWS&quot;,
+        &quot;start_url&quot;:&quot;./&quot;,
+        &quot;display&quot;:&quot;standalone&quot;,
+        &quot;background_color&quot;:&quot;#111&quot;,
+        &quot;theme_color&quot;:&quot;#0b0b0c&quot;,
+        &quot;icons&quot;:[
+            {&quot;src&quot;:&quot;data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTMyIDhDMTkuODUwNSA4IDEwIDE3Ljg1MDUgMTAgMzBDMTAgNDIuMTQ5NSAxOS44NTA1IDUyIDMyIDUyQzQ0LjE0OTUgNTIgNTQgNDIuMTQ5NSA1NCAzMEM1NCAxNy44NTA1IDQ0LjE0OTUgOCAzMiA4WiIgZmlsbD0iIzBmMTcyYSIvPgo8cGF0aCBkPSJNMzIgMTJDNDAuODM2NiAxMiA0OCAxOS4xNjM0IDQ4IDI4QzQ4IDM2LjgzNjYgNDAuODM2NiA0NCAzMiA0NEMyMy4xNjM0IDQ0IDE2IDM2LjgzNjYgMTYgMjhDMTYgMTkuMTYzNCAyMy4xNjM0IDEyIDMyIDEyWiIgZmlsbD0iIzYzNjZmMSIvPgo8cGF0aCBkPSJNMzIgMTZDMzguNjI3NCAxNiA0NCAyMS4zNzI2IDQ0IDI4QzQ0IDM0LjYyNzQgMzguNjI3NCA0MCAzMiA0MEMyNS4zNzI2IDQwIDIwIDM0LjYyNzQgMjAgMjhDMjAgMjEuMzcyNiAyNS4zNzI2IDE2IDMyIDE2WiIgZmlsbD0iI2E4ZTZjZiIvPgo8cGF0aCBkPSJNMzIgMjBDMzYuNDE4MyAyMCA0MCAyMy41ODE3IDQwIDI4QzQwIDMyLjQxODMgMzYuNDE4MyAzNiAzMiAzNkMyNy41ODE3IDM2IDI0IDMyLjQxODMgMjQgMjhDMjQgMjMuNTgxNyAyNy41ODE3IDIwIDMyIDIwWiIgZmlsbD0iI2ZmZmZmZiIvPgo8L3N2Zz4K&quot;,&quot;sizes&quot;:&quot;64x64&quot;,&quot;type&quot;:&quot;image/svg+xml&quot;}
+        ]
+    }">
+    
+    <!-- UI Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --primary: #a8e6cf;
+            --secondary: #4fc3f7;
+            --success: #2e7d32;
+            --warning: #ff9800;
+            --danger: #f44336;
+            --dark: #111;
+            --card: #1b1b1b;
+            --border: #333;
+            --text: #e0e0e0;
+            --bg: #0f172a;
+            --panel: #0b1220;
+            --accent: #6366f1;
+            --good: #10b981;
+            --warn: #f59e0b;
+            --bad: #ef4444;
+            --muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #101010, #1b1b1b);
+            padding: 1.2rem;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .mode-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: rgba(168, 230, 207, 0.1);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            border-radius: 20px;
+            padding: 0.5rem 1.2rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover, .tab-btn.active {
+            background: var(--primary);
+            color: var(--dark);
+            transform: translateY(-2px);
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .view-section {
+            display: none;
+        }
+
+        .view-section.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .card h2, .card h3 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 1rem;
+            background: var(--dark);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--secondary);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text);
+            opacity: 0.8;
+            margin-top: 0.5rem;
+        }
+
+        .indicator {
+            text-align: center;
+            padding: 1.5rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 1rem 0;
+            transition: all 0.5s ease;
+        }
+
+        .indicator-low { background: linear-gradient(135deg, #c8e6c9, #66bb6a); color: #1b5e20; }
+        .indicator-medium { background: linear-gradient(135deg, #fff9c4, #ffb74d); color: #333; }
+        .indicator-high { background: linear-gradient(135deg, #ffcdd2, #ef5350); color: #fff; }
+        .indicator-critical { background: linear-gradient(135deg, #b71c1c, #d32f2f); color: #fff; animation: pulse 2s infinite; }
+
+        .btn {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary { background: var(--secondary); }
+        .btn-warning { background: var(--warning); }
+        .btn-danger { background: var(--danger); }
+        .btn-block { width: 100%; margin: 0.5rem 0; }
+        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+
+        input[type="text"], input[type="number"], input[type="range"], textarea, select {
+            width: 100%;
+            padding: 0.7rem;
+            background: var(--dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        input[type="range"] {
+            padding: 0;
+            height: 8px;
+            background: var(--border);
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            border: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: var(--border);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--secondary), var(--primary));
+            transition: width 0.5s ease;
+        }
+
+        canvas {
+            max-width: 100%;
+            border-radius: 10px;
+            background: var(--dark);
+            border: 1px solid var(--border);
+            margin-top: 0.5rem;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+            max-width: 400px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success { background: var(--success); }
+        .notification.error { background: var(--danger); }
+        .notification.warning { background: var(--warning); }
+        .notification.info { background: var(--secondary); }
+
+        .log-entry {
+            padding: 0.5rem;
+            margin: 0.3rem 0;
+            background: var(--dark);
+            border-left: 3px solid var(--secondary);
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .alert-banner {
+            background: var(--danger);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+            animation: pulse 2s infinite;
+        }
+
+        .alert-banner.show {
+            display: block;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-success { background: var(--success); color: white; }
+        .badge-warning { background: var(--warning); color: var(--dark); }
+        .badge-danger { background: var(--danger); color: white; }
+        .badge-critical { background: #b71c1c; color: white; }
+
+        .param-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .param-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .param-label {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .simulation-controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+
+        .simulation-speed {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .simulation-speed input {
+            width: 150px;
+        }
+
+        /* Intervention Styles */
+        .intervention-card {
+            background: var(--dark);
+            border-radius: 10px;
+            padding: 1.2rem;
+            margin: 1rem 0;
+            border-left: 4px solid var(--warning);
+        }
+
+        .intervention-card.active {
+            border-left-color: var(--success);
+        }
+
+        /* Regional Styles */
+        .region-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+
+        .region-btn {
+            background: rgba(79, 195, 247, 0.1);
+            color: var(--secondary);
+            border: 1px solid var(--secondary);
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .region-btn:hover, .region-btn.active {
+            background: var(--secondary);
+            color: var(--dark);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th, .data-table td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table th {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* API Styles */
+        .api-endpoint-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .endpoint-card {
+            background: var(--dark);
+            border-radius: 8px;
+            padding: 1.2rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .endpoint-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .endpoint-header h4 {
+            color: var(--primary);
+            font-family: monospace;
+            margin: 0;
+        }
+
+        .endpoint-example {
+            background: var(--card);
+            border-radius: 4px;
+            padding: 0.8rem;
+            margin: 0.8rem 0;
+            font-family: monospace;
+            font-size: 0.8rem;
+            overflow-x: auto;
+        }
+
+        .api-key-card {
+            background: var(--dark);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border: 1px solid var(--border);
+        }
+
+        .key-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .key-value {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card);
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+
+        .key-metrics {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .integration-examples {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .example-card {
+            background: var(--dark);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .example-card pre {
+            background: var(--card);
+            border-radius: 4px;
+            padding: 1rem;
+            overflow-x: auto;
+            font-size: 0.8rem;
+        }
+
+        /* Data Source Styles */
+        .data-source-card {
+            background: var(--dark);
+            border-radius: 10px;
+            padding: 1.2rem;
+            margin: 1rem 0;
+            border: 1px solid var(--border);
+        }
+
+        .data-source-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .data-source-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .status-active { background: var(--success); }
+        .status-inactive { background: var(--danger); }
+        .status-connecting { background: var(--warning); }
+
+        .data-preview {
+            max-height: 200px;
+            overflow: auto;
+            background: var(--card);
+            border-radius: 6px;
+            padding: 0.8rem;
+            margin-top: 0.8rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        .api-config {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .data-stream {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+        }
+
+        .stream-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stream-metrics {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8rem;
+        }
+
+        .metric {
+            background: var(--dark);
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+        }
+
+        .data-point {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        .data-point:last-child {
+            border-bottom: none;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            margin: 1rem 0;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background: rgba(168, 230, 207, 0.1);
+        }
+
+        .data-quality {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .quality-metric {
+            text-align: center;
+            padding: 1rem;
+            background: var(--dark);
+            border-radius: 8px;
+        }
+
+        .quality-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .quality-good { color: var(--success); }
+        .quality-warning { color: var(--warning); }
+        .quality-poor { color: var(--danger); }
+
+        .integration-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin: 0.2rem;
+        }
+
+        .badge-api { background: var(--accent); color: white; }
+        .badge-csv { background: var(--secondary); color: var(--dark); }
+        .badge-real-time { background: var(--success); color: white; }
+        .badge-batch { background: var(--warning); color: var(--dark); }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            max-width: 500px;
+            width: 90%;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .param-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            header h1 {
+                font-size: 1.2rem;
+            }
+            
+            .simulation-controls {
+                flex-direction: column;
+            }
+            
+            .api-config {
+                grid-template-columns: 1fr;
+            }
+            
+            .integration-examples {
+                grid-template-columns: 1fr;
+            }
+            
+            .mode-tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .tab-btn {
+                width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="alertBanner" class="alert-banner">
+        ⚠️ <strong>Pandemic Alert:</strong> High transmission rate detected. Consider implementing public health measures.
+    </div>
+
+    <header>
+        <h1>🌍 Pandemic Intelligence Platform</h1>
+        <p style="font-size: 0.9rem; opacity: 0.9;">Advanced SEIRD Model Early Warning System with Workflow Builder</p>
+        <div class="mode-tabs">
+            <button class="tab-btn active" data-view="dashboard">📊 Dashboard</button>
+            <button class="tab-btn" data-view="simulation">🦠 Simulation</button>
+            <button class="tab-btn" data-view="interventions">💊 Interventions</button>
+            <button class="tab-btn" data-view="regional">🗺️ Regional</button>
+            <button class="tab-btn" data-view="forecast">🔮 Forecast</button>
+            <button class="tab-btn" data-view="dataSources">📥 Data Sources</button>
+            <button class="tab-btn" data-view="api">🔌 API & Integration</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Dashboard View -->
+        <div id="dashboardView" class="view-section active">
+            <div class="dashboard">
+                <div class="card">
+                    <h3>🦠 Outbreak Risk Assessment</h3>
+                    <div id="pandemicRisk" class="indicator indicator-low">Monitoring...</div>
+                    <span id="riskBadge" class="badge badge-success">Low Risk</span>
+                    <div class="progress-bar">
+                        <div id="riskProgress" class="progress-fill" style="width: 10%;"></div>
+                    </div>
+                    <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 1rem;">Based on SEIRD model analysis</p>
+                </div>
+
+                <div class="card">
+                    <h3>📈 Transmission Metrics</h3>
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="stat-value" id="r0Value">1.2</div>
+                            <div class="stat-label">R₀ Value</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="doublingTime">7.5</div>
+                            <div class="stat-label">Doubling Days</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="infectionRate">0.8%</div>
+                            <div class="stat-label">Infection Rate</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📊 SEIRD Population</h3>
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="stat-value" id="susceptibleCount">998,000</div>
+                            <div class="stat-label">Susceptible</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="exposedCount">1,200</div>
+                            <div class="stat-label">Exposed</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="infectedCount">800</div>
+                            <div class="stat-label">Infected</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="recoveredCount">0</div>
+                            <div class="stat-label">Recovered</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="deceasedCount">0</div>
+                            <div class="stat-label">Deceased</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📈 Real-time SEIRD Model</h3>
+                <div style="height: 400px;">
+                    <canvas id="seirdChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>⚠️ Early Warning Indicators</h3>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="healthcareCapacity">85%</div>
+                        <div class="stat-label">Healthcare Capacity</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="testPositivity">4.2%</div>
+                        <div class="stat-label">Test Positivity</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="mobilityIndex">-12%</div>
+                        <div class="stat-label">Mobility Change</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Simulation View -->
+        <div id="simulationView" class="view-section">
+            <div class="card">
+                <h3>🎮 SEIRD Simulation Controls</h3>
+                <div class="simulation-controls">
+                    <button class="btn btn-success" onclick="startSimulation()">▶️ Start Simulation</button>
+                    <button class="btn btn-danger" onclick="stopSimulation()">⏹️ Stop Simulation</button>
+                    <button class="btn btn-warning" onclick="resetSimulation()">🔄 Reset</button>
+                    <div class="simulation-speed">
+                        <label>Speed:</label>
+                        <input type="range" id="simulationSpeed" min="1" max="10" value="3" onchange="updateSimulationSpeed()">
+                        <span id="speedValue">3x</span>
+                    </div>
+                </div>
+                <div class="param-grid">
+                    <div class="param-group">
+                        <label class="param-label">Transmission Rate (β)</label>
+                        <input type="range" id="betaParam" min="0.1" max="1.0" step="0.01" value="0.3" onchange="updateParameter('beta')">
+                        <span id="betaValue">0.30</span>
+                    </div>
+                    <div class="param-group">
+                        <label class="param-label">Incubation Rate (σ)</label>
+                        <input type="range" id="sigmaParam" min="0.05" max="0.5" step="0.01" value="0.2" onchange="updateParameter('sigma')">
+                        <span id="sigmaValue">0.20</span>
+                    </div>
+                    <div class="param-group">
+                        <label class="param-label">Recovery Rate (γ)</label>
+                        <input type="range" id="gammaParam" min="0.05" max="0.5" step="0.01" value="0.1" onchange="updateParameter('gamma')">
+                        <span id="gammaValue">0.10</span>
+                    </div>
+                    <div class="param-group">
+                        <label class="param-label">Mortality Rate (μ)</label>
+                        <input type="range" id="muParam" min="0.001" max="0.1" step="0.001" value="0.01" onchange="updateParameter('mu')">
+                        <span id="muValue">0.010</span>
+                    </div>
+                </div>
+                <pre id="simLog" style="margin-top: 1rem; max-height: 200px; background: var(--dark); padding: 1rem; border-radius: 8px; overflow: auto;">Simulation ready. Adjust parameters and click Start.</pre>
+            </div>
+
+            <div class="card">
+                <h3>📊 Simulation Results</h3>
+                <div style="height: 400px;">
+                    <canvas id="simulationChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interventions View -->
+        <div id="interventionsView" class="view-section">
+            <div class="dashboard">
+                <div class="card">
+                    <h3>💊 Available Interventions</h3>
+                    <div class="intervention-card" id="socialDistancing">
+                        <h4>Social Distancing</h4>
+                        <p>Reduces transmission rate by limiting contact between individuals</p>
+                        <div style="margin-top: 1rem;">
+                            <label>Effectiveness: <span id="sdEffectiveness">30%</span></label>
+                            <input type="range" id="sdSlider" min="10" max="80" value="30" onchange="updateIntervention('socialDistancing')">
+                        </div>
+                        <button class="btn btn-warning btn-block" onclick="toggleIntervention('socialDistancing')">Activate</button>
+                    </div>
+
+                    <div class="intervention-card" id="maskMandate">
+                        <h4>Mask Mandate</h4>
+                        <p>Reduces transmission through respiratory droplets</p>
+                        <div style="margin-top: 1rem;">
+                            <label>Effectiveness: <span id="maskEffectiveness">40%</span></label>
+                            <input type="range" id="maskSlider" min="10" max="70" value="40" onchange="updateIntervention('maskMandate')">
+                        </div>
+                        <button class="btn btn-warning btn-block" onclick="toggleIntervention('maskMandate')">Activate</button>
+                    </div>
+
+                    <div class="intervention-card" id="vaccination">
+                        <h4>Vaccination Campaign</h4>
+                        <p>Reduces susceptibility and severity of infection</p>
+                        <div style="margin-top: 1rem;">
+                            <label>Coverage: <span id="vaxCoverage">50%</span></label>
+                            <input type="range" id="vaxSlider" min="10" max="90" value="50" onchange="updateIntervention('vaccination')">
+                        </div>
+                        <button class="btn btn-warning btn-block" onclick="toggleIntervention('vaccination')">Activate</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📈 Intervention Impact</h3>
+                    <div style="height: 400px;">
+                        <canvas id="interventionChart"></canvas>
+                    </div>
+                    <div class="stat-grid" style="margin-top: 1rem;">
+                        <div class="stat-box">
+                            <div class="stat-value" id="peakReduction">0%</div>
+                            <div class="stat-label">Peak Reduction</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="casesAverted">0</div>
+                            <div class="stat-label">Cases Averted</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="deathsAverted">0</div>
+                            <div class="stat-label">Deaths Averted</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Regional View -->
+        <div id="regionalView" class="view-section">
+            <div class="card">
+                <h3>🗺️ Regional Outbreak Monitoring</h3>
+                <div class="region-selector">
+                    <button class="region-btn active" onclick="switchRegion('global')">Global</button>
+                    <button class="region-btn" onclick="switchRegion('northAmerica')">North America</button>
+                    <button class="region-btn" onclick="switchRegion('europe')">Europe</button>
+                    <button class="region-btn" onclick="switchRegion('asia')">Asia</button>
+                    <button class="region-btn" onclick="switchRegion('africa')">Africa</button>
+                </div>
+                <div style="height: 500px; background: var(--dark); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin: 1rem 0;">
+                    <div style="text-align: center;">
+                        <i class="fas fa-globe-americas" style="font-size: 4rem; color: var(--muted); margin-bottom: 1rem;"></i>
+                        <p>Interactive outbreak map visualization</p>
+                        <p style="font-size: 0.9rem; opacity: 0.7;">(Map data would be integrated in production)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📊 Regional Comparison</h3>
+                <div style="height: 400px;">
+                    <canvas id="regionalChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📋 Regional Data</h3>
+                <div style="max-height: 300px; overflow: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Region</th>
+                                <th>R₀</th>
+                                <th>Infected</th>
+                                <th>Growth Rate</th>
+                                <th>Risk Level</th>
+                            </tr>
+                        </thead>
+                        <tbody id="regionalData">
+                            <!-- Data will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Forecast View -->
+        <div id="forecastView" class="view-section">
+            <div class="dashboard">
+                <div class="card">
+                    <h3>🔮 30-Day Forecast</h3>
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="stat-value" id="forecastPeak">12,450</div>
+                            <div class="stat-label">Peak Cases</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="forecastPeakDay">Day 24</div>
+                            <div class="stat-label">Peak Day</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="forecastTotal">84,200</div>
+                            <div class="stat-label">Total Cases</div>
+                        </div>
+                    </div>
+                    <div style="height: 300px; margin-top: 1rem;">
+                        <canvas id="forecastChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📈 Forecast Scenarios</h3>
+                    <div style="height: 400px;">
+                        <canvas id="scenarioChart"></canvas>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <button class="btn btn-primary" onclick="updateForecast('optimistic')">Optimistic</button>
+                        <button class="btn btn-warning" onclick="updateForecast('baseline')">Baseline</button>
+                        <button class="btn btn-danger" onclick="updateForecast('pessimistic')">Pessimistic</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📋 Forecast Details</h3>
+                <div style="max-height: 300px; overflow: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Susceptible</th>
+                                <th>Exposed</th>
+                                <th>Infected</th>
+                                <th>Recovered</th>
+                                <th>Deceased</th>
+                            </tr>
+                        </thead>
+                        <tbody id="forecastData">
+                            <!-- Data will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Sources View -->
+        <div id="dataSourcesView" class="view-section">
+            <div class="dashboard">
+                <div class="card">
+                    <h3>📥 Data Ingestion Hub</h3>
+                    <p style="margin-bottom: 1rem; opacity: 0.8;">Connect to multiple data sources for real-time pandemic intelligence</p>
+                    
+                    <div class="data-quality">
+                        <div class="quality-metric">
+                            <div class="quality-value quality-good" id="dataCompleteness">92%</div>
+                            <div class="stat-label">Data Completeness</div>
+                        </div>
+                        <div class="quality-metric">
+                            <div class="quality-value quality-good" id="dataFreshness">85%</div>
+                            <div class="stat-label">Data Freshness</div>
+                        </div>
+                        <div class="quality-metric">
+                            <div class="quality-value quality-warning" id="dataAccuracy">78%</div>
+                            <div class="stat-label">Data Accuracy</div>
+                        </div>
+                        <div class="quality-metric">
+                            <div class="quality-value quality-good" id="sourcesActive">4/6</div>
+                            <div class="stat-label">Active Sources</div>
+                        </div>
+                    </div>
+
+                    <div class="simulation-controls">
+                        <button class="btn btn-success" onclick="connectAllSources()">🔗 Connect All Sources</button>
+                        <button class="btn btn-warning" onclick="refreshAllData()">🔄 Refresh Data</button>
+                        <button class="btn btn-primary" onclick="showDataUploadModal()">📁 Upload Data</button>
+                        <button class="btn" onclick="exportAllData()">📤 Export Data</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🌐 API Data Feeds</h3>
+                    
+                    <div class="data-source-card">
+                        <div class="data-source-header">
+                            <h4>WHO Global Health Data</h4>
+                            <div class="data-source-status">
+                                <div class="status-indicator status-active"></div>
+                                <span>Connected</span>
+                                <span class="integration-badge badge-api">REST API</span>
+                                <span class="integration-badge badge-real-time">Real-time</span>
+                            </div>
+                        </div>
+                        <p>World Health Organization outbreak data and epidemiological reports</p>
+                        <div class="api-config">
+                            <label>API Endpoint:</label>
+                            <input type="text" value="https://dashboards.who.int/api/data" readonly>
+                            <label>Update Frequency:</label>
+                            <select onchange="updateAPIFrequency('who', this.value)">
+                                <option value="3600000">1 hour</option>
+                                <option value="86400000" selected>24 hours</option>
+                                <option value="604800000">7 days</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="fetchWHOData()">🔄 Fetch Latest Data</button>
+                        <div class="data-preview" id="whoDataPreview">
+                            {/* Data preview will be populated here */}
+                        </div>
+                    </div>
+
+                    <div class="data-source-card">
+                        <div class="data-source-header">
+                            <h4>Johns Hopkins CSSE</h4>
+                            <div class="data-source-status">
+                                <div class="status-indicator status-active"></div>
+                                <span>Connected</span>
+                                <span class="integration-badge badge-api">REST API</span>
+                                <span class="integration-badge badge-real-time">Real-time</span>
+                            </div>
+                        </div>
+                        <p>COVID-19 and emerging pathogen data from JHU Center for Systems Science and Engineering</p>
+                        <div class="api-config">
+                            <label>API Endpoint:</label>
+                            <input type="text" value="https://api.github.com/repos/CSSEGISandData/COVID-19" readonly>
+                            <label>Data Type:</label>
+                            <select onchange="updateJHUDataType(this.value)">
+                                <option value="confirmed">Confirmed Cases</option>
+                                <option value="deaths">Deaths</option>
+                                <option value="recovered">Recovered</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="fetchJHUData()">🔄 Fetch JHU Data</button>
+                        <div class="data-preview" id="jhuDataPreview">
+                            {/* Data preview will be populated here */}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard">
+                <div class="card">
+                    <h3>📊 Local Data Sources</h3>
+                    
+                    <div class="data-source-card">
+                        <div class="data-source-header">
+                            <h4>Hospital Reports</h4>
+                            <div class="data-source-status">
+                                <div class="status-indicator status-active"></div>
+                                <span>Streaming</span>
+                                <span class="integration-badge badge-csv">CSV Upload</span>
+                                <span class="integration-badge badge-real-time">Real-time</span>
+                            </div>
+                        </div>
+                        <p>Daily hospital admissions, ICU capacity, and patient outcomes</p>
+                        <div class="upload-area" id="hospitalUploadArea" ondragover="handleDragOver(event)" ondrop="handleHospitalDrop(event)">
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.7;"></i>
+                            <p>Drag & drop hospital report CSV files here</p>
+                            <p style="font-size: 0.8rem; opacity: 0.6;">or</p>
+                            <button class="btn" onclick="document.getElementById('hospitalFileInput').click()">Browse Files</button>
+                            <input type="file" id="hospitalFileInput" accept=".csv,.xlsx,.json" style="display: none;" onchange="handleHospitalFileSelect(this.files)">
+                        </div>
+                        <div class="data-stream" id="hospitalDataStream">
+                            <div class="stream-header">
+                                <h5>Latest Hospital Data</h5>
+                                <div class="stream-metrics">
+                                    <div class="metric">📊 <span id="hospitalRecords">0</span> records</div>
+                                    <div class="metric">🕒 <span id="hospitalLastUpdate">Never</span></div>
+                                </div>
+                            </div>
+                            <div id="hospitalDataPoints">
+                                {/* Data points will appear here */}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📈 Data Integration Status</h3>
+                    <div style="height: 300px;">
+                        <canvas id="dataIntegrationChart"></canvas>
+                    </div>
+                    
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="stat-value" id="processedRecords">0</div>
+                            <div class="stat-label">Processed Records</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="dataErrors">0</div>
+                            <div class="stat-label">Data Errors</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="avgProcessingTime">0ms</div>
+                            <div class="stat-label">Avg. Processing</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API & Integration View -->
+        <div id="apiView" class="view-section">
+            <div class="dashboard">
+                <div class="card">
+                    <h3>🔌 API Gateway</h3>
+                    <p style="margin-bottom: 1rem; opacity: 0.8;">RESTful API endpoints for external applications</p>
+                    
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="stat-value" id="apiRequests">0</div>
+                            <div class="stat-label">API Requests</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="activeConnections">0</div>
+                            <div class="stat-label">Active Connections</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="apiUptime">100%</div>
+                            <div class="stat-label">API Uptime</div>
+                        </div>
+                    </div>
+
+                    <div class="simulation-controls">
+                        <button class="btn btn-success" onclick="startAPIServer()">🚀 Start API Server</button>
+                        <button class="btn btn-danger" onclick="stopAPIServer()">⏹️ Stop API Server</button>
+                        <button class="btn btn-primary" onclick="generateAPIKey()">🔑 Generate API Key</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📡 Available Endpoints</h3>
+                    
+                    <div class="api-endpoint-list">
+                        <div class="endpoint-card">
+                            <div class="endpoint-header">
+                                <h4>GET /api/v1/seird/current</h4>
+                                <span class="badge badge-success">PUBLIC</span>
+                            </div>
+                            <p>Get current SEIRD model state and predictions</p>
+                            <div class="endpoint-example">
+                                <code>curl -X GET "http://localhost:3000/api/v1/seird/current"</code>
+                            </div>
+                            <button class="btn btn-sm" onclick="testEndpoint('seird-current')">Test Endpoint</button>
+                            <button class="btn btn-sm" onclick="copyCurlCommand('seird-current')">📋 Copy</button>
+                        </div>
+
+                        <div class="endpoint-card">
+                            <div class="endpoint-header">
+                                <h4>POST /api/v1/seird/simulate</h4>
+                                <span class="badge badge-warning">PRIVATE</span>
+                            </div>
+                            <p>Run SEIRD simulation with custom parameters</p>
+                            <div class="endpoint-example">
+                                <code>curl -X POST "http://localhost:3000/api/v1/seird/simulate" \<br>
+  -H "Authorization: Bearer YOUR_API_KEY" \<br>
+  -H "Content-Type: application/json" \<br>
+  -d '{"beta": 0.3, "sigma": 0.2, "gamma": 0.1, "days": 30}'</code>
+                            </div>
+                            <button class="btn btn-sm" onclick="testEndpoint('seird-simulate')">Test Endpoint</button>
+                            <button class="btn btn-sm" onclick="copyCurlCommand('seird-simulate')">📋 Copy</button>
+                        </div>
+
+                        <div class="endpoint-card">
+                            <div class="endpoint-header">
+                                <h4>GET /api/v1/data/outbreaks</h4>
+                                <span class="badge badge-success">PUBLIC</span>
+                            </div>
+                            <p>Get latest outbreak data from all sources</p>
+                            <div class="endpoint-example">
+                                <code>curl -X GET "http://localhost:3000/api/v1/data/outbreaks"</code>
+                            </div>
+                            <button class="btn btn-sm" onclick="testEndpoint('outbreaks')">Test Endpoint</button>
+                            <button class="btn btn-sm" onclick="copyCurlCommand('outbreaks')">📋 Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard">
+                <div class="card">
+                    <h3>🔑 API Management</h3>
+                    
+                    <div class="api-keys-list" id="apiKeysList">
+                        <!-- API keys will be populated here -->
+                    </div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <h4>Generate New API Key</h4>
+                        <div class="api-config">
+                            <label>Key Name:</label>
+                            <input type="text" id="newKeyName" placeholder="e.g., Mobile App">
+                            <label>Permissions:</label>
+                            <select id="keyPermissions">
+                                <option value="read">Read Only</option>
+                                <option value="read_write">Read & Write</option>
+                                <option value="admin">Full Access</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="createNewAPIKey()">Generate Key</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📊 API Analytics</h3>
+                    <div style="height: 300px;">
+                        <canvas id="apiAnalyticsChart"></canvas>
+                    </div>
+                    
+                    <div class="stat-grid" style="margin-top: 1rem;">
+                        <div class="stat-box">
+                            <div class="stat-value" id="totalRequests">0</div>
+                            <div class="stat-label">Total Requests</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="successRate">100%</div>
+                            <div class="stat-label">Success Rate</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="avgResponseTime">0ms</div>
+                            <div class="stat-label">Avg Response</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🔗 Integration Examples</h3>
+                
+                <div class="integration-examples">
+                    <div class="example-card">
+                        <h4>JavaScript Client</h4>
+                        <pre><code>class PandemicAPI {
+  constructor(apiKey) {
+    this.baseURL = 'http://localhost:3000/api/v1';
+    this.apiKey = apiKey;
+  }
+
+  async getCurrentOutbreak() {
+    const response = await fetch(`${this.baseURL}/seird/current`);
+    return await response.json();
+  }
+
+  async runSimulation(params) {
+    const response = await fetch(`${this.baseURL}/seird/simulate`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(params)
+    });
+    return await response.json();
+  }
+}
+
+// Usage
+const api = new PandemicAPI('your-api-key');
+const outbreak = await api.getCurrentOutbreak();</code></pre>
+                        <button class="btn btn-sm" onclick="copyCode('javascript')">📋 Copy Code</button>
+                    </div>
+
+                    <div class="example-card">
+                        <h4>Python Client</h4>
+                        <pre><code>import requests
+
+class PandemicAPIClient:
+    def __init__(self, api_key):
+        self.base_url = "http://localhost:3000/api/v1"
+        self.api_key = api_key
+        
+    def get_risk_assessment(self, region):
+        response = requests.get(
+            f"{self.base_url}/risk/{region}"
+        )
+        return response.json()
+    
+    def simulate_intervention(self, intervention_data):
+        response = requests.post(
+            f"{self.base_url}/interventions/simulate",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json=intervention_data
+        )
+        return response.json()
+
+# Usage
+client = PandemicAPIClient("your-api-key")
+risk_data = client.get_risk_assessment("europe")</code></pre>
+                        <button class="btn btn-sm" onclick="copyCode('python')">📋 Copy Code</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Data Upload Modal -->
+    <div id="dataUploadModal" class="modal">
+        <div class="card modal-content">
+            <h3>📁 Upload Data File</h3>
+            <p>Select the type of data you're uploading:</p>
+            
+            <div style="margin: 1rem 0;">
+                <select id="uploadDataType" style="width: 100%; margin-bottom: 1rem;">
+                    <option value="caseReports">Case Reports</option>
+                    <option value="hospitalData">Hospital Data</option>
+                    <option value="labResults">Laboratory Results</option>
+                    <option value="mobility">Mobility Data</option>
+                    <option value="vaccination">Vaccination Data</option>
+                </select>
+                
+                <div class="upload-area" id="modalUploadArea" ondragover="handleDragOver(event)" ondrop="handleModalDrop(event)">
+                    <i class="fas fa-file-upload" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.7;"></i>
+                    <p>Drag & drop your data file here</p>
+                    <p style="font-size: 0.8rem; opacity: 0.6;">Supports: CSV, JSON, Excel</p>
+                    <button class="btn" onclick="document.getElementById('modalFileInput').click()">Select File</button>
+                    <input type="file" id="modalFileInput" style="display: none;" onchange="handleModalFileSelect(this.files)">
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button class="btn btn-danger" onclick="hideDataUploadModal()">Cancel</button>
+                <button class="btn btn-success" onclick="processUploadedData()" id="processDataBtn" disabled>Process Data</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // ========== STATE MANAGEMENT ==========
+        let state = {
+            simulation: {
+                running: false,
+                speed: 3,
+                day: 0,
+                interval: null,
+                baseline: null,
+                withInterventions: null,
+                parameters: {
+                    beta: 0.3,
+                    sigma: 0.2,
+                    gamma: 0.1,
+                    mu: 0.01,
+                    population: 1000000,
+                    initialInfected: 100,
+                    initialExposed: 50
+                }
+            },
+            interventions: {
+                socialDistancing: { active: false, effectiveness: 0.3 },
+                maskMandate: { active: false, effectiveness: 0.4 },
+                vaccination: { active: false, coverage: 0.5 }
+            },
+            regions: {
+                current: 'global',
+                data: {
+                    global: { r0: 1.2, infected: 1200, growth: 0.08, risk: 'Medium' },
+                    northAmerica: { r0: 1.1, infected: 450, growth: 0.06, risk: 'Low' },
+                    europe: { r0: 1.3, infected: 520, growth: 0.09, risk: 'Medium' },
+                    asia: { r0: 1.4, infected: 180, growth: 0.12, risk: 'High' },
+                    africa: { r0: 1.0, infected: 50, growth: 0.04, risk: 'Low' }
+                }
+            },
+            forecast: {
+                scenario: 'baseline',
+                days: 30,
+                data: []
+            },
+            api: {
+                server: {
+                    running: false,
+                    port: 3000,
+                    baseURL: 'http://localhost:3000',
+                    endpoints: []
+                },
+                keys: [
+                    {
+                        id: 'key_1',
+                        name: 'Production Key',
+                        value: 'pk_1234567890abcdef',
+                        permissions: 'read_write',
+                        requests: 1234,
+                        lastUsed: new Date(Date.now() - 2 * 60 * 60 * 1000),
+                        created: new Date('2024-01-15'),
+                        active: true
+                    }
+                ],
+                analytics: {
+                    totalRequests: 0,
+                    successfulRequests: 0,
+                    failedRequests: 0,
+                    responseTimes: [],
+                    endpoints: {}
+                }
+            },
+            dataSources: {
+                sources: {
+                    who: { connected: true, lastUpdate: null, data: null },
+                    jhu: { connected: true, lastUpdate: null, data: null },
+                    owid: { connected: false, lastUpdate: null, data: null },
+                    hospital: { connected: true, lastUpdate: null, data: [] },
+                    laboratory: { connected: false, lastUpdate: null, data: null },
+                    fhir: { connected: false, lastUpdate: null, data: null }
+                },
+                uploads: {
+                    pending: [],
+                    processing: false
+                },
+                metrics: {
+                    processedRecords: 0,
+                    dataErrors: 0,
+                    processingTimes: []
+                }
+            }
+        };
+
+        let charts = {
+            seird: null,
+            simulation: null,
+            intervention: null,
+            regional: null,
+            forecast: null,
+            scenario: null,
+            dataIntegration: null,
+            apiAnalytics: null
+        };
+
+        // ========== UTILITY FUNCTIONS ==========
+        function showNotification(msg, type = 'success') {
+            const notif = document.getElementById('notification');
+            notif.textContent = msg;
+            notif.className = `notification ${type}`;
+            notif.classList.add('show');
+            setTimeout(() => notif.classList.remove('show'), 4000);
+        }
+
+        function logActivity(msg) {
+            const log = document.getElementById('simLog');
+            if (log) {
+                const timestamp = new Date().toLocaleTimeString();
+                log.textContent = `[${timestamp}] ${msg}\n` + log.textContent;
+                const lines = log.textContent.split('\n').slice(0, 20);
+                log.textContent = lines.join('\n');
+            }
+        }
+
+        function formatTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            return `${days}d ago`;
+        }
+
+        // ========== VIEW SWITCHING ==========
+        function switchView(viewName) {
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show the selected view
+            const targetView = document.getElementById(`${viewName}View`);
+            if (targetView) {
+                targetView.classList.add('active');
+            }
+            
+            // Activate the clicked tab
+            const activeTab = document.querySelector(`[data-view="${viewName}"]`);
+            if (activeTab) {
+                activeTab.classList.add('active');
+            }
+            
+            // Call view-specific initialization
+            initializeView(viewName);
+        }
+
+        function initializeView(viewName) {
+            switch(viewName) {
+                case 'dashboard':
+                    updateDashboard();
+                    break;
+                case 'simulation':
+                    // Already initialized
+                    break;
+                case 'interventions':
+                    updateInterventionChart();
+                    break;
+                case 'regional':
+                    updateRegionalView();
+                    break;
+                case 'forecast':
+                    updateForecastView();
+                    break;
+                case 'dataSources':
+                    updateDataSourcesView();
+                    break;
+                case 'api':
+                    initializeAPIView();
+                    break;
+            }
+        }
+
+        // ========== SEIRD MODEL IMPLEMENTATION ==========
+        function runSEIRDModel(parameters, days, initialConditions = null) {
+            const {
+                beta, sigma, gamma, mu, population,
+                initialInfected = 100, initialExposed = 50
+            } = parameters;
+            
+            let S = initialConditions?.S || population - initialInfected - initialExposed;
+            let E = initialConditions?.E || initialExposed;
+            let I = initialConditions?.I || initialInfected;
+            let R = initialConditions?.R || 0;
+            let D = initialConditions?.D || 0;
+            
+            const results = [];
+            
+            for (let day = 0; day < days; day++) {
+                let effectiveBeta = beta;
+                if (state.interventions.socialDistancing.active) {
+                    effectiveBeta *= (1 - state.interventions.socialDistancing.effectiveness);
+                }
+                if (state.interventions.maskMandate.active) {
+                    effectiveBeta *= (1 - state.interventions.maskMandate.effectiveness);
+                }
+                
+                const N = S + E + I + R;
+                const newExposed = (effectiveBeta * S * I) / Math.max(N, 1);
+                const newInfected = sigma * E;
+                const newRecovered = gamma * I;
+                const newDeceased = mu * I;
+                
+                S = Math.max(0, S - newExposed);
+                E = Math.max(0, E + newExposed - newInfected);
+                I = Math.max(0, I + newInfected - newRecovered - newDeceased);
+                R = Math.max(0, R + newRecovered);
+                D = Math.max(0, D + newDeceased);
+                
+                results.push({
+                    day,
+                    S: Math.round(S),
+                    E: Math.round(E),
+                    I: Math.round(I),
+                    R: Math.round(R),
+                    D: Math.round(D),
+                    newCases: Math.round(newInfected)
+                });
+            }
+            
+            return results;
+        }
+
+        function calculateRO(beta, gamma, mu) {
+            return beta / (gamma + mu);
+        }
+
+        function calculateDoublingTime(r0, gamma, mu) {
+            const r = Math.log(r0) / (1 / (gamma + mu));
+            return (Math.log(2) / r).toFixed(1);
+        }
+
+        // ========== SIMULATION CONTROLS ==========
+        function startSimulation() {
+            if (state.simulation.running) {
+                showNotification('Simulation already running', 'warning');
+                return;
+            }
+            
+            state.simulation.running = true;
+            state.simulation.day = 0;
+            
+            state.simulation.baseline = runSEIRDModel(state.simulation.parameters, 120);
+            state.simulation.withInterventions = runSEIRDModel(state.simulation.parameters, 120);
+            
+            showNotification('Simulation started', 'success');
+            logActivity('🚀 SEIRD simulation initiated');
+            
+            updateSimulationCharts();
+            updateDashboard();
+            
+            state.simulation.interval = setInterval(() => {
+                state.simulation.day++;
+                if (state.simulation.day >= 120) {
+                    stopSimulation();
+                    return;
+                }
+                
+                updateSimulationCharts();
+                updateDashboard();
+                checkAlerts();
+                
+            }, 1000 / state.simulation.speed);
+        }
+
+        function stopSimulation() {
+            if (!state.simulation.running) return;
+            
+            clearInterval(state.simulation.interval);
+            state.simulation.running = false;
+            
+            showNotification('Simulation stopped', 'info');
+            logActivity('⏹️ Simulation halted');
+        }
+
+        function resetSimulation() {
+            stopSimulation();
+            state.simulation.day = 0;
+            
+            state.simulation.parameters = {
+                beta: 0.3,
+                sigma: 0.2,
+                gamma: 0.1,
+                mu: 0.01,
+                population: 1000000,
+                initialInfected: 100,
+                initialExposed: 50
+            };
+            
+            updateParameterDisplays();
+            updateSimulationCharts();
+            updateDashboard();
+            
+            showNotification('Simulation reset', 'info');
+            logActivity('🔄 Simulation reset to defaults');
+        }
+
+        function updateSimulationSpeed() {
+            const speed = document.getElementById('simulationSpeed').value;
+            state.simulation.speed = parseInt(speed);
+            document.getElementById('speedValue').textContent = `${speed}x`;
+            
+            if (state.simulation.running) {
+                stopSimulation();
+                startSimulation();
+            }
+        }
+
+        function updateParameter(param) {
+            const value = parseFloat(document.getElementById(`${param}Param`).value);
+            state.simulation.parameters[param] = value;
+            document.getElementById(`${param}Value`).textContent = value.toFixed(param === 'mu' ? 3 : 2);
+            
+            if (state.simulation.running) {
+                state.simulation.baseline = runSEIRDModel(state.simulation.parameters, 120);
+                state.simulation.withInterventions = runSEIRDModel(state.simulation.parameters, 120);
+            }
+            
+            updateDashboard();
+            logActivity(`Parameter updated: ${param} = ${value}`);
+        }
+
+        function updateParameterDisplays() {
+            document.getElementById('betaParam').value = state.simulation.parameters.beta;
+            document.getElementById('betaValue').textContent = state.simulation.parameters.beta.toFixed(2);
+            document.getElementById('sigmaParam').value = state.simulation.parameters.sigma;
+            document.getElementById('sigmaValue').textContent = state.simulation.parameters.sigma.toFixed(2);
+            document.getElementById('gammaParam').value = state.simulation.parameters.gamma;
+            document.getElementById('gammaValue').textContent = state.simulation.parameters.gamma.toFixed(2);
+            document.getElementById('muParam').value = state.simulation.parameters.mu;
+            document.getElementById('muValue').textContent = state.simulation.parameters.mu.toFixed(3);
+        }
+
+        // ========== INTERVENTION MANAGEMENT ==========
+        function toggleIntervention(intervention) {
+            state.interventions[intervention].active = !state.interventions[intervention].active;
+            const button = document.querySelector(`#${intervention} button`);
+            
+            if (state.interventions[intervention].active) {
+                button.textContent = 'Deactivate';
+                button.classList.remove('btn-warning');
+                button.classList.add('btn-success');
+                document.getElementById(intervention).classList.add('active');
+                showNotification(`${intervention.replace(/([A-Z])/g, ' $1')} activated`, 'success');
+            } else {
+                button.textContent = 'Activate';
+                button.classList.remove('btn-success');
+                button.classList.add('btn-warning');
+                document.getElementById(intervention).classList.remove('active');
+                showNotification(`${intervention.replace(/([A-Z])/g, ' $1')} deactivated`, 'info');
+            }
+            
+            if (state.simulation.running) {
+                state.simulation.withInterventions = runSEIRDModel(state.simulation.parameters, 120);
+                updateInterventionChart();
+            }
+            
+            logActivity(`Intervention ${state.interventions[intervention].active ? 'activated' : 'deactivated'}: ${intervention}`);
+        }
+
+        function updateIntervention(intervention) {
+            const value = parseInt(document.getElementById(`${intervention.slice(0,2)}Slider`).value);
+            state.interventions[intervention].effectiveness = value / 100;
+            document.getElementById(`${intervention.slice(0,2)}Effectiveness`).textContent = `${value}%`;
+            
+            if (state.simulation.running && state.interventions[intervention].active) {
+                state.simulation.withInterventions = runSEIRDModel(state.simulation.parameters, 120);
+                updateInterventionChart();
+            }
+        }
+
+        // ========== REGIONAL MANAGEMENT ==========
+        function switchRegion(region) {
+            document.querySelectorAll('.region-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            state.regions.current = region;
+            updateRegionalView();
+        }
+
+        function updateRegionalView() {
+            updateRegionalChart();
+            updateRegionalTable();
+        }
+
+        function updateRegionalChart() {
+            const ctx = document.getElementById('regionalChart').getContext('2d');
+            
+            if (charts.regional) {
+                charts.regional.destroy();
+            }
+            
+            const regions = Object.keys(state.regions.data);
+            const r0Values = regions.map(r => state.regions.data[r].r0);
+            const infectedValues = regions.map(r => state.regions.data[r].infected);
+            const growthValues = regions.map(r => state.regions.data[r].growth * 100);
+            
+            charts.regional = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: regions.map(r => r.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())),
+                    datasets: [
+                        {
+                            label: 'R₀ Value',
+                            data: r0Values,
+                            backgroundColor: 'rgba(79, 195, 247, 0.8)',
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Active Infections',
+                            data: infectedValues,
+                            backgroundColor: 'rgba(239, 83, 80, 0.8)',
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Growth Rate (%)',
+                            data: growthValues,
+                            backgroundColor: 'rgba(255, 183, 77, 0.8)',
+                            yAxisID: 'y2',
+                            type: 'line'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'R₀ Value'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Active Infections'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        },
+                        y2: {
+                            type: 'linear',
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateRegionalTable() {
+            const tableBody = document.getElementById('regionalData');
+            tableBody.innerHTML = '';
+            
+            Object.entries(state.regions.data).forEach(([region, data]) => {
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td>${region.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</td>
+                    <td>${data.r0.toFixed(2)}</td>
+                    <td>${data.infected.toLocaleString()}</td>
+                    <td>${(data.growth * 100).toFixed(1)}%</td>
+                    <td><span class="badge badge-${data.risk.toLowerCase()}">${data.risk}</span></td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // ========== FORECAST MANAGEMENT ==========
+        function updateForecastView() {
+            updateForecastChart();
+            updateScenarioChart();
+            updateForecastTable();
+        }
+
+        function updateForecastChart() {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            
+            if (charts.forecast) {
+                charts.forecast.destroy();
+            }
+            
+            const forecastData = runSEIRDModel(state.simulation.parameters, state.forecast.days);
+            const labels = forecastData.map(d => `Day ${d.day}`);
+            const infected = forecastData.map(d => d.I);
+            
+            const peakInfections = Math.max(...infected);
+            const peakDay = infected.indexOf(peakInfections);
+            const totalCases = forecastData.reduce((sum, d) => sum + d.newCases, 0);
+            
+            document.getElementById('forecastPeak').textContent = peakInfections.toLocaleString();
+            document.getElementById('forecastPeakDay').textContent = `Day ${peakDay}`;
+            document.getElementById('forecastTotal').textContent = totalCases.toLocaleString();
+            
+            charts.forecast = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Forecasted Infections',
+                            data: infected,
+                            borderColor: '#ef5350',
+                            backgroundColor: 'rgba(239, 83, 80, 0.1)',
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Active Infections'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Days'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateScenarioChart() {
+            const ctx = document.getElementById('scenarioChart').getContext('2d');
+            
+            if (charts.scenario) {
+                charts.scenario.destroy();
+            }
+            
+            const optimisticParams = { ...state.simulation.parameters, beta: state.simulation.parameters.beta * 0.7 };
+            const pessimisticParams = { ...state.simulation.parameters, beta: state.simulation.parameters.beta * 1.3 };
+            
+            const baselineData = runSEIRDModel(state.simulation.parameters, state.forecast.days);
+            const optimisticData = runSEIRDModel(optimisticParams, state.forecast.days);
+            const pessimisticData = runSEIRDModel(pessimisticParams, state.forecast.days);
+            
+            const labels = baselineData.map(d => `Day ${d.day}`);
+            
+            charts.scenario = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Optimistic',
+                            data: optimisticData.map(d => d.I),
+                            borderColor: '#66bb6a',
+                            backgroundColor: 'rgba(102, 187, 106, 0.1)',
+                            fill: false
+                        },
+                        {
+                            label: 'Baseline',
+                            data: baselineData.map(d => d.I),
+                            borderColor: '#ffb74d',
+                            backgroundColor: 'rgba(255, 183, 77, 0.1)',
+                            fill: false
+                        },
+                        {
+                            label: 'Pessimistic',
+                            data: pessimisticData.map(d => d.I),
+                            borderColor: '#ef5350',
+                            backgroundColor: 'rgba(239, 83, 80, 0.1)',
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Active Infections'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Days'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateForecast(scenario) {
+            state.forecast.scenario = scenario;
+            updateScenarioChart();
+            showNotification(`Forecast updated: ${scenario} scenario`, 'info');
+        }
+
+        function updateForecastTable() {
+            const tableBody = document.getElementById('forecastData');
+            tableBody.innerHTML = '';
+            
+            const forecastData = runSEIRDModel(state.simulation.parameters, state.forecast.days);
+            
+            for (let i = 0; i < forecastData.length; i += 5) {
+                const dayData = forecastData[i];
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td>${dayData.day}</td>
+                    <td>${dayData.S.toLocaleString()}</td>
+                    <td>${dayData.E.toLocaleString()}</td>
+                    <td>${dayData.I.toLocaleString()}</td>
+                    <td>${dayData.R.toLocaleString()}</td>
+                    <td>${dayData.D.toLocaleString()}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            }
+        }
+
+        // ========== DATA SOURCES MANAGEMENT ==========
+        function updateDataSourcesView() {
+            updateDataSourceStatus();
+            updateDataIntegrationChart();
+            updateDataQualityMetrics();
+            updateHospitalDataDisplay();
+        }
+
+        function updateDataSourceStatus() {
+            // Update status indicators based on connection state
+            Object.entries(state.dataSources.sources).forEach(([source, data]) => {
+                const statusElement = document.querySelector(`[data-source="${source}"] .status-indicator`);
+                if (statusElement) {
+                    statusElement.className = `status-indicator ${data.connected ? 'status-active' : 'status-inactive'}`;
+                }
+            });
+        }
+
+        async function fetchWHOData() {
+            showNotification('Fetching WHO data...', 'info');
+            
+            try {
+                // Simulated API call
+                const mockData = {
+                    timestamp: new Date().toISOString(),
+                    outbreaks: [
+                        { region: "Global", cases: 12500, deaths: 345, r0: 1.2 },
+                        { region: "Southeast Asia", cases: 4200, deaths: 89, r0: 1.4 },
+                        { region: "Europe", cases: 3800, deaths: 120, r0: 1.1 }
+                    ],
+                    alerts: ["Influenza A(H5N1) cluster detected", "COVID-19 variant monitoring active"]
+                };
+                
+                state.dataSources.sources.who.data = mockData;
+                state.dataSources.sources.who.lastUpdate = new Date();
+                
+                document.getElementById('whoDataPreview').textContent = 
+                    JSON.stringify(mockData, null, 2).substring(0, 300) + '...';
+                
+                showNotification('WHO data updated successfully', 'success');
+                
+            } catch (error) {
+                showNotification('Failed to fetch WHO data', 'error');
+            }
+        }
+
+        async function fetchJHUData() {
+            showNotification('Fetching JHU CSSE data...', 'info');
+            
+            try {
+                // Simulated JHU data
+                const mockData = {
+                    last_updated: new Date().toISOString(),
+                    global: {
+                        confirmed: 6754321,
+                        deaths: 154321,
+                        recovered: 5890123
+                    },
+                    countries: [
+                        { name: "USA", confirmed: 1234567, deaths: 45678 },
+                        { name: "India", confirmed: 987654, deaths: 23456 },
+                        { name: "Brazil", confirmed: 765432, deaths: 19876 }
+                    ]
+                };
+                
+                state.dataSources.sources.jhu.data = mockData;
+                state.dataSources.sources.jhu.lastUpdate = new Date();
+                
+                document.getElementById('jhuDataPreview').textContent = 
+                    JSON.stringify(mockData, null, 2).substring(0, 300) + '...';
+                
+                showNotification('JHU data updated successfully', 'success');
+                
+            } catch (error) {
+                showNotification('Failed to fetch JHU data', 'error');
+            }
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('dragover');
+        }
+
+        function handleHospitalDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('dragover');
+            const files = event.dataTransfer.files;
+            processHospitalFiles(files);
+        }
+
+        function handleHospitalFileSelect(files) {
+            processHospitalFiles(files);
+        }
+
+        function processHospitalFiles(files) {
+            if (files.length === 0) return;
+            
+            const file = files[0];
+            showNotification(`Processing hospital file: ${file.name}`, 'info');
+            
+            // Simulate file processing
+            setTimeout(() => {
+                const data = parseHealthData();
+                state.dataSources.sources.hospital.data = state.dataSources.sources.hospital.data.concat(data);
+                state.dataSources.sources.hospital.lastUpdate = new Date();
+                
+                updateHospitalDataDisplay();
+                showNotification(`Processed ${data.length} hospital records`, 'success');
+                
+            }, 1500);
+        }
+
+        function parseHealthData() {
+            // Simulate data parsing
+            const mockRecords = [];
+            const recordCount = Math.floor(Math.random() * 50) + 10;
+            
+            for (let i = 0; i < recordCount; i++) {
+                mockRecords.push({
+                    id: `HSP_${Date.now()}_${i}`,
+                    timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+                    facility: `Hospital ${String.fromCharCode(65 + (i % 5))}`,
+                    admissions: Math.floor(Math.random() * 10),
+                    icu_cases: Math.floor(Math.random() * 5),
+                    deaths: Math.floor(Math.random() * 2),
+                    test_positivity: (Math.random() * 0.3).toFixed(2)
+                });
+            }
+            
+            return mockRecords;
+        }
+
+        function updateHospitalDataDisplay() {
+            const dataPointsContainer = document.getElementById('hospitalDataPoints');
+            const recordsCount = document.getElementById('hospitalRecords');
+            const lastUpdate = document.getElementById('hospitalLastUpdate');
+            
+            const data = state.dataSources.sources.hospital.data;
+            recordsCount.textContent = data.length;
+            lastUpdate.textContent = state.dataSources.sources.hospital.lastUpdate 
+                ? formatTimeAgo(state.dataSources.sources.hospital.lastUpdate)
+                : 'Never';
+            
+            // Show latest 5 records
+            dataPointsContainer.innerHTML = '';
+            const recentData = data.slice(-5).reverse();
+            
+            recentData.forEach(record => {
+                const pointElement = document.createElement('div');
+                pointElement.className = 'data-point';
+                pointElement.innerHTML = `
+                    <span>${record.facility}</span>
+                    <span>${record.admissions} admissions</span>
+                    <span>${record.icu_cases} ICU</span>
+                    <span style="color: ${record.test_positivity > 0.1 ? 'var(--danger)' : 'var(--success)'}">
+                        ${(record.test_positivity * 100).toFixed(1)}% positive
+                    </span>
+                `;
+                dataPointsContainer.appendChild(pointElement);
+            });
+        }
+
+        function updateDataQualityMetrics() {
+            // Calculate data quality metrics
+            const completeness = 85 + Math.random() * 15;
+            const freshness = 80 + Math.random() * 20;
+            const accuracy = 75 + Math.random() * 20;
+            
+            document.getElementById('dataCompleteness').textContent = `${Math.round(completeness)}%`;
+            document.getElementById('dataFreshness').textContent = `${Math.round(freshness)}%`;
+            document.getElementById('dataAccuracy').textContent = `${Math.round(accuracy)}%`;
+            
+            // Update quality value colors
+            document.getElementById('dataCompleteness').className = 
+                `quality-value ${completeness > 90 ? 'quality-good' : completeness > 70 ? 'quality-warning' : 'quality-poor'}`;
+            document.getElementById('dataFreshness').className = 
+                `quality-value ${freshness > 85 ? 'quality-good' : freshness > 65 ? 'quality-warning' : 'quality-poor'}`;
+            document.getElementById('dataAccuracy').className = 
+                `quality-value ${accuracy > 80 ? 'quality-good' : accuracy > 60 ? 'quality-warning' : 'quality-poor'}`;
+            
+            // Count active sources
+            const activeSources = Object.values(state.dataSources.sources).filter(s => s.connected).length;
+            document.getElementById('sourcesActive').textContent = `${activeSources}/${Object.keys(state.dataSources.sources).length}`;
+        }
+
+        function updateDataIntegrationChart() {
+            const ctx = document.getElementById('dataIntegrationChart').getContext('2d');
+            
+            if (charts.dataIntegration) {
+                charts.dataIntegration.destroy();
+            }
+            
+            const sources = Object.keys(state.dataSources.sources);
+            const status = sources.map(source => state.dataSources.sources[source].connected ? 1 : 0);
+            const lastUpdate = sources.map(source => {
+                const update = state.dataSources.sources[source].lastUpdate;
+                return update ? (Date.now() - update.getTime()) / (60 * 60 * 1000) : 24; // hours since update
+            });
+            
+            charts.dataIntegration = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sources.map(s => s.toUpperCase()),
+                    datasets: [
+                        {
+                            label: 'Connection Status',
+                            data: status,
+                            backgroundColor: status.map(s => s ? 'rgba(102, 187, 106, 0.8)' : 'rgba(239, 83, 80, 0.8)'),
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Hours Since Update',
+                            data: lastUpdate,
+                            backgroundColor: 'rgba(255, 183, 77, 0.8)',
+                            type: 'line',
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            min: 0,
+                            max: 1,
+                            ticks: {
+                                callback: function(value) {
+                                    return value === 1 ? 'Connected' : 'Disconnected';
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            min: 0,
+                            max: 24,
+                            title: {
+                                display: true,
+                                text: 'Hours Since Update'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function connectAllSources() {
+            showNotification('Connecting to all data sources...', 'info');
+            
+            Object.keys(state.dataSources.sources).forEach(source => {
+                if (!state.dataSources.sources[source].connected) {
+                    state.dataSources.sources[source].connected = true;
+                    state.dataSources.sources[source].lastUpdate = new Date();
+                }
+            });
+            
+            setTimeout(() => {
+                updateDataSourceStatus();
+                showNotification('All data sources connected', 'success');
+            }, 1500);
+        }
+
+        function refreshAllData() {
+            showNotification('Refreshing all data sources...', 'info');
+            
+            // Refresh connected sources
+            if (state.dataSources.sources.who.connected) fetchWHOData();
+            if (state.dataSources.sources.jhu.connected) fetchJHUData();
+            
+            // Update timestamps
+            Object.keys(state.dataSources.sources).forEach(source => {
+                if (state.dataSources.sources[source].connected) {
+                    state.dataSources.sources[source].lastUpdate = new Date();
+                }
+            });
+        }
+
+        function exportAllData() {
+            showNotification('Preparing data export...', 'info');
+            
+            // Combine all data sources
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                metadata: {
+                    version: '1.0',
+                    sources: Object.keys(state.dataSources.sources).filter(s => state.dataSources.sources[s].connected)
+                },
+                data: {}
+            };
+            
+            Object.keys(state.dataSources.sources).forEach(source => {
+                if (state.dataSources.sources[source].connected && state.dataSources.sources[source].data) {
+                    exportData.data[source] = state.dataSources.sources[source].data;
+                }
+            });
+            
+            // Create and trigger download
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `pandemic_data_export_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            showNotification('Data exported successfully', 'success');
+        }
+
+        // ========== API MANAGEMENT ==========
+        function initializeAPIView() {
+            updateAPIStatus();
+            updateAPIKeysDisplay();
+            updateAPIAnalyticsChart();
+        }
+
+        function startAPIServer() {
+            if (state.api.server.running) {
+                showNotification('API server is already running', 'warning');
+                return;
+            }
+
+            showNotification('Starting API server...', 'info');
+            
+            // Simulate server startup
+            setTimeout(() => {
+                state.api.server.running = true;
+                updateAPIStatus();
+                showNotification(`API server started on port ${state.api.server.port}`, 'success');
+                
+                // Start simulating API traffic
+                simulateAPITraffic();
+            }, 2000);
+        }
+
+        function stopAPIServer() {
+            if (!state.api.server.running) {
+                showNotification('API server is not running', 'warning');
+                return;
+            }
+
+            state.api.server.running = false;
+            updateAPIStatus();
+            showNotification('API server stopped', 'info');
+        }
+
+        function updateAPIStatus() {
+            document.getElementById('apiRequests').textContent = 
+                state.api.analytics.totalRequests.toLocaleString();
+            document.getElementById('activeConnections').textContent = 
+                state.api.server.running ? '5' : '0';
+            document.getElementById('apiUptime').textContent = '100%';
+        }
+
+        function generateAPIKey() {
+            const newKey = {
+                id: 'key_' + Date.now(),
+                name: document.getElementById('newKeyName').value || 'New Key',
+                value: 'pk_' + Math.random().toString(36).substr(2, 16),
+                permissions: document.getElementById('keyPermissions').value,
+                requests: 0,
+                lastUsed: null,
+                created: new Date(),
+                active: true
+            };
+            
+            state.api.keys.push(newKey);
+            updateAPIKeysDisplay();
+            showNotification('New API key generated', 'success');
+        }
+
+        function createNewAPIKey() {
+            generateAPIKey();
+        }
+
+        function updateAPIKeysDisplay() {
+            const keysList = document.getElementById('apiKeysList');
+            keysList.innerHTML = '';
+            
+            state.api.keys.forEach(key => {
+                const keyCard = document.createElement('div');
+                keyCard.className = 'api-key-card';
+                keyCard.innerHTML = `
+                    <div class="key-header">
+                        <h4>${key.name}</h4>
+                        <span class="badge ${key.active ? 'badge-success' : 'badge-danger'}">
+                            ${key.active ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
+                    </div>
+                    <div class="key-value">
+                        <code>${key.value}</code>
+                        <button class="btn btn-sm" onclick="copyToClipboard('${key.value}')">📋 Copy</button>
+                    </div>
+                    <div class="key-metrics">
+                        <span>Requests: ${key.requests.toLocaleString()}</span>
+                        <span>Last Used: ${key.lastUsed ? formatTimeAgo(key.lastUsed) : 'Never'}</span>
+                        <span>Created: ${key.created.toLocaleDateString()}</span>
+                    </div>
+                    <div style="margin-top: 0.5rem;">
+                        <button class="btn btn-sm btn-danger" onclick="revokeAPIKey('${key.id}')">Revoke</button>
+                        <button class="btn btn-sm" onclick="regenerateAPIKey('${key.id}')">Regenerate</button>
+                    </div>
+                `;
+                keysList.appendChild(keyCard);
+            });
+        }
+
+        function revokeAPIKey(keyId) {
+            const key = state.api.keys.find(k => k.id === keyId);
+            if (key) {
+                key.active = false;
+                updateAPIKeysDisplay();
+                showNotification('API key revoked', 'success');
+            }
+        }
+
+        function regenerateAPIKey(keyId) {
+            const key = state.api.keys.find(k => k.id === keyId);
+            if (key) {
+                key.value = 'pk_' + Math.random().toString(36).substr(2, 16);
+                key.lastUsed = new Date();
+                updateAPIKeysDisplay();
+                showNotification('API key regenerated', 'success');
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification('API key copied to clipboard', 'success');
+            });
+        }
+
+        function testEndpoint(endpointType) {
+            if (!state.api.server.running) {
+                showNotification('Start API server first', 'warning');
+                return;
+            }
+            
+            let response;
+            switch(endpointType) {
+                case 'seird-current':
+                    response = handleAPIRequest('/api/v1/seird/current');
+                    break;
+                case 'seird-simulate':
+                    response = handleAPIRequest('/api/v1/seird/simulate', 'POST', {
+                        beta: 0.4,
+                        days: 60
+                    });
+                    break;
+                case 'outbreaks':
+                    response = handleAPIRequest('/api/v1/data/outbreaks');
+                    break;
+            }
+            
+            showNotification(`Tested ${endpointType} endpoint - Response: ${response.status}`, 'success');
+        }
+
+        function handleAPIRequest(endpoint, method = 'GET', data = null) {
+            if (!state.api.server.running) {
+                return { error: 'API server is not running', status: 503 };
+            }
+
+            // Track analytics
+            state.api.analytics.totalRequests++;
+            if (!state.api.analytics.endpoints[endpoint]) {
+                state.api.analytics.endpoints[endpoint] = 0;
+            }
+            state.api.analytics.endpoints[endpoint]++;
+            
+            updateAPIStatus();
+            updateAPIAnalyticsChart();
+
+            // Simulate API response
+            switch(endpoint) {
+                case '/api/v1/seird/current':
+                    return {
+                        status: 'success',
+                        data: {
+                            timestamp: new Date().toISOString(),
+                            model: 'SEIRD',
+                            parameters: state.simulation.parameters,
+                            currentState: state.simulation.baseline ? 
+                                state.simulation.baseline[0] : null,
+                            riskLevel: 'MEDIUM',
+                            r0: calculateRO(
+                                state.simulation.parameters.beta,
+                                state.simulation.parameters.gamma,
+                                state.simulation.parameters.mu
+                            )
+                        }
+                    };
+
+                case '/api/v1/seird/simulate':
+                    if (method !== 'POST') {
+                        return { error: 'Method not allowed', status: 405 };
+                    }
+                    const simResults = runSEIRDModel(
+                        { ...state.simulation.parameters, ...data },
+                        data?.days || 30
+                    );
+                    return {
+                        status: 'success',
+                        data: {
+                            simulationId: 'sim_' + Date.now(),
+                            parameters: { ...state.simulation.parameters, ...data },
+                            results: simResults,
+                            summary: {
+                                peakInfections: Math.max(...simResults.map(r => r.I)),
+                                totalCases: simResults.reduce((sum, r) => sum + r.newCases, 0),
+                                totalDeaths: simResults[simResults.length - 1].D
+                            }
+                        }
+                    };
+
+                case '/api/v1/data/outbreaks':
+                    return {
+                        status: 'success',
+                        data: {
+                            timestamp: new Date().toISOString(),
+                            outbreaks: [
+                                { region: 'Global', cases: 12500, deaths: 345, r0: 1.2, risk: 'MEDIUM' },
+                                { region: 'Europe', cases: 3800, deaths: 120, r0: 1.1, risk: 'LOW' },
+                                { region: 'Asia', cases: 4200, deaths: 89, r0: 1.4, risk: 'HIGH' }
+                            ]
+                        }
+                    };
+
+                default:
+                    return { error: 'Endpoint not found', status: 404 };
+            }
+        }
+
+        function copyCurlCommand(endpointType) {
+            let curlCommand = '';
+            switch(endpointType) {
+                case 'seird-current':
+                    curlCommand = 'curl -X GET "http://localhost:3000/api/v1/seird/current"';
+                    break;
+                case 'seird-simulate':
+                    curlCommand = `curl -X POST "http://localhost:3000/api/v1/seird/simulate" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"beta": 0.3, "sigma": 0.2, "gamma": 0.1, "days": 30}'`;
+                    break;
+                case 'outbreaks':
+                    curlCommand = 'curl -X GET "http://localhost:3000/api/v1/data/outbreaks"';
+                    break;
+            }
+            
+            navigator.clipboard.writeText(curlCommand).then(() => {
+                showNotification('cURL command copied to clipboard', 'success');
+            });
+        }
+
+        function copyCode(language) {
+            let code = '';
+            if (language === 'javascript') {
+                code = `class PandemicAPI {
+  constructor(apiKey) {
+    this.baseURL = 'http://localhost:3000/api/v1';
+    this.apiKey = apiKey;
+  }
+
+  async getCurrentOutbreak() {
+    const response = await fetch(\`\${this.baseURL}/seird/current\`);
+    return await response.json();
+  }
+
+  async runSimulation(params) {
+    const response = await fetch(\`\${this.baseURL}/seird/simulate\`, {
+      method: 'POST',
+      headers: {
+        'Authorization': \`Bearer \${this.apiKey}\`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(params)
+    });
+    return await response.json();
+  }
+}`;
+            } else if (language === 'python') {
+                code = `import requests
+
+class PandemicAPIClient:
+    def __init__(self, api_key):
+        self.base_url = "http://localhost:3000/api/v1"
+        self.api_key = api_key
+        
+    def get_risk_assessment(self, region):
+        response = requests.get(
+            f"{self.base_url}/risk/{region}"
+        )
+        return response.json()
+    
+    def simulate_intervention(self, intervention_data):
+        response = requests.post(
+            f"{self.base_url}/interventions/simulate",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json=intervention_data
+        )
+        return response.json()`;
+            }
+            
+            navigator.clipboard.writeText(code).then(() => {
+                showNotification(`${language} code copied to clipboard`, 'success');
+            });
+        }
+
+        function simulateAPITraffic() {
+            if (!state.api.server.running) return;
+            
+            setInterval(() => {
+                if (Math.random() > 0.7) { // 30% chance of API call
+                    const endpoints = [
+                        '/api/v1/seird/current',
+                        '/api/v1/data/outbreaks'
+                    ];
+                    const randomEndpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
+                    
+                    handleAPIRequest(randomEndpoint);
+                }
+            }, 5000); // Simulate traffic every 5 seconds
+        }
+
+        function updateAPIAnalyticsChart() {
+            const ctx = document.getElementById('apiAnalyticsChart').getContext('2d');
+            
+            if (charts.apiAnalytics) {
+                charts.apiAnalytics.destroy();
+            }
+            
+            const endpoints = Object.keys(state.api.analytics.endpoints);
+            const requests = endpoints.map(ep => state.api.analytics.endpoints[ep]);
+            
+            charts.apiAnalytics = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: endpoints.map(ep => ep.split('/').pop()),
+                    datasets: [{
+                        label: 'API Requests',
+                        data: requests,
+                        backgroundColor: 'rgba(79, 195, 247, 0.8)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            // Update analytics numbers
+            document.getElementById('totalRequests').textContent = state.api.analytics.totalRequests;
+            document.getElementById('successRate').textContent = 
+                state.api.analytics.totalRequests > 0 ? 
+                Math.round((state.api.analytics.successfulRequests / state.api.analytics.totalRequests) * 100) + '%' : '100%';
+            document.getElementById('avgResponseTime').textContent = '45ms';
+        }
+
+        // ========== MODAL FUNCTIONS ==========
+        function showDataUploadModal() {
+            document.getElementById('dataUploadModal').style.display = 'flex';
+        }
+
+        function hideDataUploadModal() {
+            document.getElementById('dataUploadModal').style.display = 'none';
+        }
+
+        function handleModalDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('dragover');
+            const files = event.dataTransfer.files;
+            handleModalFileSelect(files);
+        }
+
+        function handleModalFileSelect(files) {
+            if (files.length > 0) {
+                document.getElementById('processDataBtn').disabled = false;
+                showNotification(`File selected: ${files[0].name}`, 'info');
+            }
+        }
+
+        function processUploadedData() {
+            const dataType = document.getElementById('uploadDataType').value;
+            showNotification(`Processing ${dataType}...`, 'info');
+            
+            setTimeout(() => {
+                hideDataUploadModal();
+                showNotification(`${dataType} processed successfully`, 'success');
+            }, 2000);
+        }
+
+        // ========== CHART MANAGEMENT ==========
+        function updateSimulationCharts() {
+            if (!state.simulation.baseline) return;
+            
+            const currentDay = Math.min(state.simulation.day, state.simulation.baseline.length - 1);
+            const baselineData = state.simulation.baseline.slice(0, currentDay + 1);
+            const interventionData = state.simulation.withInterventions.slice(0, currentDay + 1);
+            
+            updateSEIRDChart(baselineData);
+            updateSimulationChart(baselineData, interventionData);
+            updateInterventionChart();
+        }
+
+        function updateSEIRDChart(data) {
+            const ctx = document.getElementById('seirdChart').getContext('2d');
+            
+            if (charts.seird) {
+                charts.seird.destroy();
+            }
+            
+            const labels = data.map(d => `Day ${d.day}`);
+            const susceptible = data.map(d => d.S);
+            const exposed = data.map(d => d.E);
+            const infected = data.map(d => d.I);
+            const recovered = data.map(d => d.R);
+            const deceased = data.map(d => d.D);
+            
+            charts.seird = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Susceptible',
+                            data: susceptible,
+                            borderColor: '#4fc3f7',
+                            backgroundColor: 'rgba(79, 195, 247, 0.1)',
+                            fill: true
+                        },
+                        {
+                            label: 'Exposed',
+                            data: exposed,
+                            borderColor: '#ffb74d',
+                            backgroundColor: 'rgba(255, 183, 77, 0.1)',
+                            fill: true
+                        },
+                        {
+                            label: 'Infected',
+                            data: infected,
+                            borderColor: '#ef5350',
+                            backgroundColor: 'rgba(239, 83, 80, 0.1)',
+                            fill: true
+                        },
+                        {
+                            label: 'Recovered',
+                            data: recovered,
+                            borderColor: '#66bb6a',
+                            backgroundColor: 'rgba(102, 187, 106, 0.1)',
+                            fill: true
+                        },
+                        {
+                            label: 'Deceased',
+                            data: deceased,
+                            borderColor: '#78909c',
+                            backgroundColor: 'rgba(120, 144, 156, 0.1)',
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Population'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Days'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateSimulationChart(baselineData, interventionData) {
+            const ctx = document.getElementById('simulationChart').getContext('2d');
+            
+            if (charts.simulation) {
+                charts.simulation.destroy();
+            }
+            
+            const labels = baselineData.map(d => `Day ${d.day}`);
+            const baselineInfected = baselineData.map(d => d.I);
+            const interventionInfected = interventionData.map(d => d.I);
+            
+            charts.simulation = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Baseline (No Interventions)',
+                            data: baselineInfected,
+                            borderColor: '#ef5350',
+                            backgroundColor: 'rgba(239, 83, 80, 0.1)',
+                            borderDash: [5, 5],
+                            fill: false
+                        },
+                        {
+                            label: 'With Interventions',
+                            data: interventionInfected,
+                            borderColor: '#66bb6a',
+                            backgroundColor: 'rgba(102, 187, 106, 0.1)',
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Active Infections'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Days'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateInterventionChart() {
+            if (!state.simulation.baseline || !state.simulation.withInterventions) return;
+            
+            const ctx = document.getElementById('interventionChart').getContext('2d');
+            
+            if (charts.intervention) {
+                charts.intervention.destroy();
+            }
+            
+            const baselinePeak = Math.max(...state.simulation.baseline.map(d => d.I));
+            const interventionPeak = Math.max(...state.simulation.withInterventions.map(d => d.I));
+            const baselineTotal = state.simulation.baseline.reduce((sum, d) => sum + d.newCases, 0);
+            const interventionTotal = state.simulation.withInterventions.reduce((sum, d) => sum + d.newCases, 0);
+            const baselineDeaths = state.simulation.baseline[state.simulation.baseline.length - 1].D;
+            const interventionDeaths = state.simulation.withInterventions[state.simulation.withInterventions.length - 1].D;
+            
+            document.getElementById('peakReduction').textContent = `${Math.round((1 - interventionPeak / baselinePeak) * 100)}%`;
+            document.getElementById('casesAverted').textContent = (baselineTotal - interventionTotal).toLocaleString();
+            document.getElementById('deathsAverted').textContent = (baselineDeaths - interventionDeaths).toLocaleString();
+            
+            charts.intervention = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Peak Infections', 'Total Cases', 'Total Deaths'],
+                    datasets: [
+                        {
+                            label: 'Baseline',
+                            data: [baselinePeak, baselineTotal, baselineDeaths],
+                            backgroundColor: 'rgba(239, 83, 80, 0.8)'
+                        },
+                        {
+                            label: 'With Interventions',
+                            data: [interventionPeak, interventionTotal, interventionDeaths],
+                            backgroundColor: 'rgba(102, 187, 106, 0.8)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // ========== DASHBOARD UPDATES ==========
+        function updateDashboard() {
+            if (!state.simulation.baseline || state.simulation.baseline.length === 0) return;
+            
+            const currentData = state.simulation.baseline[Math.min(state.simulation.day, state.simulation.baseline.length - 1)];
+            
+            document.getElementById('susceptibleCount').textContent = currentData.S.toLocaleString();
+            document.getElementById('exposedCount').textContent = currentData.E.toLocaleString();
+            document.getElementById('infectedCount').textContent = currentData.I.toLocaleString();
+            document.getElementById('recoveredCount').textContent = currentData.R.toLocaleString();
+            document.getElementById('deceasedCount').textContent = currentData.D.toLocaleString();
+            
+            const r0 = calculateRO(state.simulation.parameters.beta, state.simulation.parameters.gamma, state.simulation.parameters.mu);
+            const doublingTime = calculateDoublingTime(r0, state.simulation.parameters.gamma, state.simulation.parameters.mu);
+            const infectionRate = (currentData.I / state.simulation.parameters.population * 100).toFixed(2);
+            
+            document.getElementById('r0Value').textContent = r0.toFixed(2);
+            document.getElementById('doublingTime').textContent = doublingTime;
+            document.getElementById('infectionRate').textContent = `${infectionRate}%`;
+            
+            updateRiskAssessment(currentData, r0);
+        }
+
+        function updateRiskAssessment(data, r0) {
+            const riskIndicator = document.getElementById('pandemicRisk');
+            const riskBadge = document.getElementById('riskBadge');
+            const riskProgress = document.getElementById('riskProgress');
+            
+            let riskLevel, riskClass, progressWidth;
+            
+            if (r0 < 1.0) {
+                riskLevel = 'Low Risk';
+                riskClass = 'indicator-low';
+                progressWidth = '25%';
+            } else if (r0 < 1.3) {
+                riskLevel = 'Medium Risk';
+                riskClass = 'indicator-medium';
+                progressWidth = '50%';
+            } else if (r0 < 1.6) {
+                riskLevel = 'High Risk';
+                riskClass = 'indicator-high';
+                progressWidth = '75%';
+            } else {
+                riskLevel = 'Critical Risk';
+                riskClass = 'indicator-critical';
+                progressWidth = '100%';
+            }
+            
+            riskIndicator.textContent = riskLevel;
+            riskIndicator.className = `indicator ${riskClass}`;
+            riskBadge.textContent = riskLevel;
+            riskBadge.className = `badge badge-${riskClass.split('-')[1]}`;
+            riskProgress.style.width = progressWidth;
+            
+            const alertBanner = document.getElementById('alertBanner');
+            if (r0 >= 1.3) {
+                alertBanner.classList.add('show');
+            } else {
+                alertBanner.classList.remove('show');
+            }
+        }
+
+        function checkAlerts() {
+            if (!state.simulation.baseline) return;
+            
+            const currentData = state.simulation.baseline[Math.min(state.simulation.day, state.simulation.baseline.length - 1)];
+            const r0 = calculateRO(state.simulation.parameters.beta, state.simulation.parameters.gamma, state.simulation.parameters.mu);
+            
+            if (r0 > 1.5 && state.simulation.day % 10 === 0) {
+                showNotification('High transmission rate detected. Consider interventions.', 'warning');
+            }
+            
+            const healthcareCapacity = 1 - (currentData.I / 5000);
+            if (healthcareCapacity < 0.2 && state.simulation.day % 5 === 0) {
+                showNotification('Healthcare system approaching capacity', 'error');
+            }
+            
+            document.getElementById('healthcareCapacity').textContent = `${Math.max(0, Math.round(healthcareCapacity * 100))}%`;
+            document.getElementById('testPositivity').textContent = `${(currentData.I / state.simulation.parameters.population * 100).toFixed(1)}%`;
+            document.getElementById('mobilityIndex').textContent = `${-(currentData.I / 100).toFixed(0)}%`;
+        }
+
+        // ========== INITIALIZATION ==========
+        function initializeApp() {
+            console.log('🌍 Pandemic Intelligence Platform initializing...');
+            
+            // Set up tab event listeners
+            document.querySelectorAll('.tab-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const viewName = this.getAttribute('data-view');
+                    switchView(viewName);
+                });
+            });
+            
+            updateParameterDisplays();
+            
+            // Initialize simulation data
+            state.simulation.baseline = runSEIRDModel(state.simulation.parameters, 120);
+            state.simulation.withInterventions = runSEIRDModel(state.simulation.parameters, 120);
+            
+            // Initialize charts
+            updateSimulationCharts();
+            updateRegionalView();
+            updateForecastView();
+            updateDataSourcesView();
+            initializeAPIView();
+            
+            // Initialize data sources
+            setTimeout(() => {
+                fetchWHOData();
+                fetchJHUData();
+            }, 1000);
+            
+            showNotification('Pandemic Intelligence Platform ready', 'success');
+            console.log('✅ Platform initialized');
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+
+        // PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                const CACHE_NAME = 'pandemic-ews-v1';
+                const urlsToCache = [
+                    './',
+                    'https://cdn.jsdelivr.net/npm/chart.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css'
+                ];
+                
+                self.addEventListener('install', e => {
+                    e.waitUntil(
+                        caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+                    );
+                });
+                
+                self.addEventListener('fetch', e => {
+                    e.respondWith(
+                        caches.match(e.request).then(response => response || fetch(e.request))
+                    );
+                });
+            `;
+            
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const url = URL.createObjectURL(blob);
+            
+            navigator.serviceWorker.register(url)
+                .then(() => console.log('Service Worker registered'))
+                .catch(err => console.error('SW registration failed:', err));
+        }
+    </script>
+</body>
+</html>

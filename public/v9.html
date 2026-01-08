@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetStream Blockchain v9 - Full PWA</title>
+<meta name="theme-color" content="#6366f1">
+<meta name="description" content="Decentralized streaming, TTFB tests, Livepeer demo, and ERC-20 rewards PWA">
+<link rel="manifest" href="#">
+
+<!-- UI / Charts / Ethereum -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root{--bg:#0f0f23;--panel:#1a1a2e;--node:#16213e;--node-border:#3b4d6b;--accent:#6366f1;--text:#e2e8f0;--success:#10b981;--warning:#f59e0b;--error:#ef4444}
+*{box-sizing:border-box}html,body{height:100%;background:var(--bg);color:var(--text);margin:0;font-family:Inter,system-ui,-apple-system,sans-serif}
+.app{display:flex;flex-direction:column;min-height:100vh}
+.panel{background:var(--panel);border-bottom:1px solid var(--node-border);padding:12px}
+.flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}.gap-3{gap:12px}
+.btn{background:var(--node);border:1px solid var(--node-border);border-radius:8px;padding:8px 12px;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.streaming{background:#ff6b6b;border-color:#ff6b6b;color:#fff}
+.container{display:flex;gap:16px;padding:16px;align-items:flex-start}
+.column{flex:1;min-width:300px}
+.card{background:var(--panel);border:1px solid var(--node-border);border-radius:12px;padding:16px;margin-bottom:16px}
+.stat-value{font-weight:700;font-size:1.25rem}
+input.url-input{width:100%;padding:10px;border-radius:8px;border:1px solid var(--node-border);background:var(--node);color:var(--text)}
+canvas{background:transparent;border-radius:8px}
+#results, #stream-results{color:#e6eef8}
+#exportBtn{display:none}
+.small{font-size:0.9rem;color:#9ca3af}
+.flex-row{display:flex;gap:8px}
+.muted{color:#94a3b8}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="panel flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <h1 style="margin:0;font-size:1.1rem;"><i class="fas fa-satellite-dish" style="color:#16c784"></i> NetStream Blockchain v9</h1>
+      <span class="small muted">Full Offline + Rewards PWA</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="btn-toggle-blockchain" class="btn primary"><i class="fas fa-link"></i> Enable Blockchain</button>
+      <button id="btn-run-full" class="btn streaming"><i class="fas fa-play"></i> Run Full Suite</button>
+      <button id="exportBtn" class="btn"><i class="fas fa-file-pdf"></i> Export PDF</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="column">
+      <!-- Network Diagnostics -->
+      <div class="card">
+        <h2>Network Diagnostics</h2>
+        <div class="flex-row" style="margin-bottom:8px;">
+          <select id="connection-type" class="url-input" style="max-width:160px">
+            <option value="auto">Auto-detect</option>
+            <option value="ethernet">Ethernet</option>
+            <option value="wifi">Wi-Fi</option>
+            <option value="broadband">Broadband</option>
+            <option value="cellular">Cellular</option>
+          </select>
+          <label class="small muted" style="margin-left:8px;">Auto-run</label>
+          <input type="checkbox" id="autoDiagnostics" style="transform:scale(1.2)">
+        </div>
+        <div id="results" class="small">Press <strong>Run Full Suite</strong> to start diagnostics.</div>
+        <div style="margin-top:12px;"><canvas id="networkChart" height="160"></canvas></div>
+        <div style="margin-top:12px;" class="flex-row">
+          <button id="btn-run-net" class="btn primary"><i class="fas fa-play"></i> Run Network Test</button>
+          <button id="btn-clear-net" class="btn"><i class="fas fa-trash"></i> Clear</button>
+        </div>
+      </div>
+
+      <!-- Blockchain -->
+      <div class="card">
+        <h3>Blockchain Status</h3>
+        <div id="blockchain-status" class="small muted">Blockchain Streaming: <strong id="bc-mode">OFF</strong></div>
+        <div id="blockchain-stats" class="small" style="margin-top:8px"></div>
+      </div>
+
+      <!-- Token panel -->
+      <div class="card">
+        <h3>NetStream Tokens (local/queued)</h3>
+        <div class="small">Balance: <strong id="token-balance">0</strong></div>
+        <div style="margin-top:8px;" class="flex-row">
+          <button id="btn-award-local" class="btn">Award 10 Tokens</button>
+          <button id="btn-reset-tokens" class="btn">Reset</button>
+        </div>
+        <div class="muted small" style="margin-top:8px;">(ERC-20 rewards queue + local simulation)</div>
+      </div>
+    </div>
+
+    <!-- Right column: Streaming -->
+    <div class="column">
+      <div class="card">
+        <h2>Streaming Comparison (CDN vs IPFS + Livepeer)</h2>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input id="cdn-url" class="url-input" placeholder="CDN video URL" value="https://cdn.jsdelivr.net/gh/video-dev/hls.js@master/docs/example.mp4" />
+          <input id="ipfs-url" class="url-input" placeholder="IPFS video URL" value="" />
+          <input id="livepeer-url" class="url-input" placeholder="Livepeer video URL" value="" />
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button id="btn-compare" class="btn streaming"><i class="fas fa-exchange-alt"></i> Compare Streams</button>
+          <button id="btn-play-cdn" class="btn">Play CDN</button>
+          <button id="btn-play-ipfs" class="btn">Play IPFS</button>
+          <button id="btn-play-livepeer" class="btn">Play Livepeer</button>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div class="video-container" style="aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;">
+            <video id="test-video" controls style="width:100%;height:100%;background:#000"></video>
+          </div>
+        </div>
+        <div id="stream-results" class="small muted">No comparison run yet.</div>
+        <div style="margin-top:12px;"><canvas id="streamCompareChart" height="140"></canvas></div>
+      </div>
+
+      <div class="card">
+        <h3>Summary & Reports</h3>
+        <div id="full-summary" class="small muted">Run the full suite to generate a combined report.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" style="position:fixed;right:16px;bottom:16px;background:#111827;color:#fff;padding:10px;border-radius:8px;display:none;box-shadow:0 6px 18px rgba(0,0,0,0.6)"></div>
+
+<script>
+/* ------------------- Toast ------------------- */
+function toast(msg,type='info'){
+  const el=document.getElementById('toast');
+  el.innerText=msg;
+  el.style.display='block';
+  el.style.background= type==='error'?'#b91c1c': type==='success'?'#065f46':'#111827';
+  setTimeout(()=>el.style.display='none',3000);
+}
+
+/* ------------------- Service Worker ------------------- */
+(function registerSW(){
+  const swScript=`const staticCacheName='netstream-static-v9';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(staticCacheName).then(c=>c.addAll(['/'])))});self.addEventListener('activate',e=>{e.waitUntil(self.clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>new Response('{"error":"offline"}',{headers:{"Content-Type":"application/json"}}))))});`;
+  const swBlob=new Blob([swScript],{type:'application/javascript'});
+  const swURL=URL.createObjectURL(swBlob);
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register(swURL).then(()=>console.log('SW v9 registered')).catch(()=>console.log('SW reg failed')));}
+})();
+
+/* ------------------- Global state ------------------- */
+let isBlockchainEnabled=false,provider=null,blockchainStats=null,tokenBalance=0,rewardQueue=[];
+
+/* ------------------- Blockchain & Wallet ------------------- */
+async function enableBlockchain(){
+  if(!window.ethereum){toast('MetaMask not detected','error');return;}
+  provider=new ethers.providers.Web3Provider(window.ethereum);
+  await provider.send("eth_requestAccounts",[]);
+  isBlockchainEnabled=true;
+  document.getElementById('bc-mode').innerText='ON';
+  toast('Blockchain enabled','success');
+}
+document.getElementById('btn-toggle-blockchain').addEventListener('click',enableBlockchain);
+
+document.getElementById('btn-award-local').addEventListener('click',()=>{
+  rewardQueue.push(10); tokenBalance+=10;
+  document.getElementById('token-balance').innerText=tokenBalance;
+  toast('10 tokens queued locally');
+});
+
+/* ------------------- Network Test ------------------- */
+function simulateTTFB(url){
+  const start=performance.now();
+  return fetch(url,{mode:'no-cors'}).then(()=>performance.now()-start).catch(()=>performance.now()-start);
+}
+
+async function runNetworkTest(){
+  const resultsEl=document.getElementById('results');
+  const urls=['https://cdn.jsdelivr.net','https://ipfs.io/ipfs','https://livepeer.studio'];
+  resultsEl.innerText='Running TTFB tests...';
+  const metrics=[];
+  for(const u of urls){
+    const ttfb=await simulateTTFB(u);
+    metrics.push({url:u,ttfb:Math.round(ttfb)});
+  }
+  resultsEl.innerText='TTFB results:\n'+metrics.map(m=>m.url+': '+m.ttfb+'ms').join('\n');
+  renderNetworkChart(metrics);
+}
+
+/* ------------------- Network Chart ------------------- */
+let netChart=null;
+function renderNetworkChart(metrics){
+  const ctx=document.getElementById('networkChart').getContext('2d');
+  const labels=metrics.map(m=>m.url),data=metrics.map(m=>m.ttfb);
+  if(netChart) netChart.destroy();
+  netChart=new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{label:'TTFB (ms)',data:data,backgroundColor:'#6366f1'}]},options:{responsive:true,plugins:{legend:{display:false}}}});
+}
+
+/* ------------------- Streaming ------------------- */
+async function playVideo(url){
+  const vid=document.getElementById('test-video');
+  vid.src=url; await vid.play().catch(()=>toast('Play failed','error'));
+}
+
+document.getElementById('btn-play-cdn').addEventListener('click',()=>playVideo(document.getElementById('cdn-url').value));
+document.getElementById('btn-play-ipfs').addEventListener('click',()=>playVideo(document.getElementById('ipfs-url').value));
+document.getElementById('btn-play-livepeer').addEventListener('click',()=>playVideo(document.getElementById('livepeer-url').value));
+
+/* ------------------- Stream Compare ------------------- */
+async function compareStreams(){
+  const urls=[
+    {label:'CDN',url:document.getElementById('cdn-url').value},
+    {label:'IPFS',url:document.getElementById('ipfs-url').value},
+    {label:'Livepeer',url:document.getElementById('livepeer-url').value}
+  ];
+  const resultsEl=document.getElementById('stream-results');
+  resultsEl.innerText='Comparing streams...';
+  const metrics=[];
+  for(const u of urls){
+    const ttfb=await simulateTTFB(u.url);
+    metrics.push({label:u.label,ttfb:Math.round(ttfb)});
+  }
+  resultsEl.innerText=metrics.map(m=>m.label+': '+m.ttfb+'ms').join('\n');
+  renderStreamChart(metrics);
+}
+document.getElementById('btn-compare').addEventListener('click',compareStreams);
+
+/* ------------------- Stream Chart ------------------- */
+let streamChart=null;
+function renderStreamChart(metrics){
+  const ctx=document.getElementById('streamCompareChart').getContext('2d');
+  const labels=metrics.map(m=>m.label),data=metrics.map(m=>m.ttfb);
+  if(streamChart) streamChart.destroy();
+  streamChart=new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{label:'TTFB (ms)',data:data,backgroundColor:['#6366f1','#10b981','#f59e0b']}]},options:{responsive:true,plugins:{legend:{display:false}}}});
+}
+
+/* ------------------- Full Suite ------------------- */
+document.getElementById('btn-run-full').addEventListener('click',async ()=>{
+  await enableBlockchain().catch(()=>{});
+  await runNetworkTest();
+  await compareStreams();
+  document.getElementById('full-summary').innerText='Full suite completed. Metrics visualized above. Reward queue length: '+rewardQueue.length;
+});
+</script>
+</body>
+</html>

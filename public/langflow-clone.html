@@ -1,0 +1,319 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Langflow Clone — Pandemic Early Warning Workflow (Updated)</title>
+  <meta name="theme-color" content="#0ea5e9" />
+  <meta name="description" content="Visual node editor that runs a Pandemic Early Warning simulation end-to-end in the browser (Langflow-style)." />
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <!-- In-browser Transformers (Xenova) -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
+  <style>
+    :root{ --bg:#0f172a; --panel:#0b1220; --node:#111827; --node-border:#334155; --edge:#22d3ee; --accent:#0ea5e9; --good:#10b981; --warn:#f59e0b; --bad:#ef4444; }
+    html,body{height:100%; background:var(--bg); color:white; margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial}
+    .app{display:flex; flex-direction:column; height:100vh}
+    .panel{background:var(--panel); border-top:1px solid #0f172a}
+    .toolbar .btn{background:#1f2937; border:1px solid #334155; border-radius:8px; padding:8px 12px; font-size:0.85rem; display:flex; align-items:center; gap:8px}
+    .toolbar .btn:hover{background:#293345}
+    .btn.primary{background:#0284c7; border-color:#0284c7}
+    .btn.success{background:#059669; border-color:#059669}
+    .btn.danger{background:#ef4444; border-color:#ef4444}
+    .btn.warn{background:#f59e0b; border-color:#f59e0b; color:#111827}
+
+    /* Canvas + Nodes */
+    #canvas-wrap{position:relative; flex:1; overflow:auto}
+    #canvas{position:relative; min-height:800px}
+    #edges, #drag-line{position:absolute; inset:0; pointer-events:none}
+    .node{position:absolute; min-width:260px; max-width:360px; background:var(--node); border:2px solid var(--node-border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.25); cursor:grab}
+    .node:active{cursor:grabbing}
+    .node .head{display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-bottom:1px solid #0f172a}
+    .node .title{font-weight:700; font-size:0.95rem}
+    .node .body{padding:10px 12px; font-size:0.9rem}
+    .node .ports{position:absolute; top:50%; transform:translateY(-50%)}
+    .node .port{width:14px; height:14px; border-radius:50%; box-shadow:0 0 0 2px #0b1220}
+    .node .port.out{right:-7px; background:#38bdf8; position:absolute}
+    .node .port.in{left:-7px; background:#22c55e; position:absolute}
+    .node.selected{outline:2px solid #facc15; outline-offset:2px}
+    .node.Input{border-color:#22c55e}
+    .node.Preprocessor{border-color:#0ea5e9}
+    .node.FeatureExtractor{border-color:#8b5cf6}
+    .node.StatisticalAnalysis{border-color:#f59e0b}
+    .node.LLM{border-color:#ec4899}
+    .node.Validation{border-color:#ef4444}
+    .node.Output{border-color:#facc15}
+
+    .edge{stroke: var(--edge); stroke-width:3; fill:none; stroke-linecap:round}
+    .edge:hover{stroke:#67e8f9}
+    .toast{position:fixed; top:16px; right:16px; background:#111827; border-left:4px solid var(--good); padding:12px 14px; border-radius:8px; opacity:0; transform:translateX(100px); transition:.25s; z-index:1000}
+    .toast.show{opacity:1; transform:none}
+    .textarea{background:#0b1220; border:1px solid #1f2937; color:white; border-radius:10px; padding:10px; width:100%; min-height:120px}
+
+    /* responsive tweaks */
+    @media (max-width:900px){ .node{min-width:220px} }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="panel p-4">
+    <div class="flex gap-4 items-start">
+      <div class="flex-1">
+        <label class="text-sm font-semibold">Workflow JSON (schema & params)</label>
+        <textarea id="schema" class="textarea" spellcheck="false">{
+  "workflow": {
+    "id": "pandemic-ews",
+    "name": "Pandemic Early Warning Workflow",
+    "nodes": [
+      {"id":"n1","type":"Input","label":"Parameters","params":{"days":120,"seed":42,"source":"simulation"}},
+      {"id":"n2","type":"Preprocessor","label":"Preprocess","params":{"deduplicate":true,"fill_missing":"zero"}},
+      {"id":"n3","type":"FeatureExtractor","label":"Features","params":{"features":["rt","growth","positivity"]}},
+      {"id":"n4","type":"StatisticalAnalysis","label":"Stats","params":{"window":7,"zscore":2.0}},
+      {"id":"n5","type":"LLM","label":"Analyst","params":{"mode":"auto","prompt":"Summarize the current outbreak risk succinctly."}},
+      {"id":"n6","type":"Validation","label":"Validate","params":{"thresholds":{"rt":1.2,"growth":0.15,"positivity":0.05}}},
+      {"id":"n7","type":"Output","label":"Output","params":{"format":"json"}}
+    ],
+    "edges": [
+      {"from":"n1","to":"n2"}, {"from":"n2","to":"n3"}, {"from":"n3","to":"n4"},
+      {"from":"n4","to":"n5"}, {"from":"n5","to":"n6"}, {"from":"n6","to":"n7"}
+    ]
+  }
+}</textarea>
+      </div>
+      <div class="w-72 flex flex-col gap-2">
+        <button id="btn-load" class="btn primary w-full"><i class="fa fa-file-import"></i> Load Workflow</button>
+        <button id="btn-run" class="btn success w-full"><i class="fa fa-play"></i> Run</button>
+        <button id="btn-stop" class="btn danger w-full"><i class="fa fa-stop"></i> Stop</button>
+        <button id="btn-export" class="btn w-full"><i class="fa fa-download"></i> Export Result</button>
+        <button id="download-sample-csv" class="btn w-full"><i class="fa fa-download"></i> Download Sample CSV</button>
+        <button id="btn-stream-toggle" class="btn warn w-full"><i class="fa fa-spinner"></i> Start Stream</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar panel p-2 flex gap-2 items-center">
+    <button id="btn-add-input" class="btn"><i class="fa fa-sliders"></i> Input</button>
+    <button id="btn-add-pre" class="btn"><i class="fa fa-broom"></i> Preprocessor</button>
+    <button id="btn-add-feat" class="btn"><i class="fa fa-flask"></i> Feature</button>
+    <button id="btn-add-stats" class="btn"><i class="fa fa-chart-line"></i> Stats</button>
+    <button id="btn-add-llm" class="btn"><i class="fa fa-brain"></i> LLM</button>
+    <button id="btn-add-val" class="btn"><i class="fa fa-check-circle"></i> Validation</button>
+    <button id="btn-add-out" class="btn"><i class="fa fa-file-export"></i> Output</button>
+    <div class="mx-3 w-px h-6 bg-slate-700"></div>
+    <button id="btn-connect" class="btn"><i class="fa fa-plug"></i> Connect</button>
+    <button id="btn-clear" class="btn danger"><i class="fa fa-trash"></i> Clear</button>
+    <div class="ml-auto text-xs opacity-70">Drag to move, Connect to link nodes</div>
+  </div>
+
+  <div id="canvas-wrap">
+    <div id="canvas"></div>
+    <svg id="edges"></svg>
+    <svg id="drag-line"></svg>
+  </div>
+
+  <div class="panel p-4 grid grid-cols-3 gap-4">
+    <div class="col-span-2">
+      <div class="text-sm mb-1 font-semibold">Execution Log</div>
+      <div id="log" class="bg-black/30 rounded-lg p-3 h-48 overflow-y-auto font-mono text-sm"></div>
+    </div>
+    <div>
+      <div class="text-sm mb-1 font-semibold">Result</div>
+      <pre id="result" class="bg-black/30 rounded-lg p-3 h-48 overflow-y-auto text-xs"></pre>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast">Hi</div>
+
+<script>
+// All listeners and UI wiring happen after DOMContentLoaded to avoid issues
+window.addEventListener('DOMContentLoaded', () => {
+  /*****************
+   * Shared helpers *
+   *****************/
+  const $ = (q) => document.querySelector(q);
+  const canvas = $('#canvas');
+  const edgesSvg = $('#edges');
+  const dragLineSvg = $('#drag-line');
+  const logEl = $('#log');
+  const resultEl = $('#result');
+  const toast = $('#toast');
+
+  function toastMsg(msg, ok=true){
+    toast.textContent = msg;
+    toast.style.borderLeftColor = ok ? '#10b981' : '#ef4444';
+    toast.classList.add('show');
+    setTimeout(()=>toast.classList.remove('show'), 2200);
+  }
+  function log(msg, type='info'){
+    const d=document.createElement('div'); d.textContent = msg;
+    if(type==='good') d.style.color='#86efac';
+    if(type==='bad') d.style.color='#fca5a5';
+    logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight;
+  }
+  function pretty(obj){ return JSON.stringify(obj, null, 2); }
+
+  /**********************
+   * Graph state & nodes *
+   **********************/
+  let NODE_ID = 1;
+  let nodes = [];
+  let edges = [];
+  let connecting = false; let connectFrom = null; let running = false;
+  let streamInterval = null; let streamDayOffset = 0;
+
+  const typeColors = { Input: '#22c55e', Preprocessor: '#0ea5e9', FeatureExtractor: '#8b5cf6', StatisticalAnalysis: '#f59e0b', LLM: '#ec4899', Validation: '#ef4444', Output: '#facc15' };
+
+  function addNode(type, x=120, y=100, label=null, params={}){
+    const id = `node-${NODE_ID++}`;
+    const el = document.createElement('div'); el.className = `node ${type}`;
+    el.style.left = x+'px'; el.style.top = y+'px';
+    el.innerHTML = `
+      <div class="head">
+        <div class="title">${label||type}</div>
+        <div class="flex gap-2 items-center">
+          <span class="pill" style="background:rgba(255,255,255,.06); color:${typeColors[type]}"><i class="fa fa-circle" style="font-size:6px"></i> ${type}</span>
+          <button class="text-slate-300 hover:text-white" title="Delete"><i class="fa fa-times"></i></button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="text-xs opacity-70 mb-2">${Object.keys(params).length? 'Params: '+Object.entries(params).map(([k,v])=>`${k}=${typeof v==='object'? JSON.stringify(v): v}`).join(', ') : 'No parameters'}</div>
+        <textarea class="w-full bg-black/20 border border-slate-700 rounded p-2 text-xs" spellcheck="false">${pretty(params)}</textarea>
+      </div>
+      <div class="ports">
+        <div class="port in" style="top: 50%"></div>
+        <div class="port out" style="top: 50%"></div>
+      </div>`;
+    canvas.appendChild(el);
+
+    const node = { id, type, label: label||type, params, x, y, el, output: null };
+    nodes.push(node);
+    makeDraggable(node);
+
+    el.querySelector('button').addEventListener('click', (e)=>{ e.stopPropagation(); removeNode(node.id); });
+
+    const out = el.querySelector('.port.out');
+    out.addEventListener('mousedown', (e)=>{ e.stopPropagation(); if(!connectMode) return; connecting = true; connectFrom = node; startDragLine(node, e); });
+
+    el.querySelector('textarea').addEventListener('change', (e)=>{ try{ node.params = JSON.parse(e.target.value); toastMsg(`${node.type} params updated`); }catch(err){ toastMsg('Invalid JSON in node params', false); } });
+
+    renderEdges();
+    return node;
+  }
+  function removeNode(id){ const i = nodes.findIndex(n=>n.id===id); if(i>=0){ try{ canvas.removeChild(nodes[i].el); }catch(e){} nodes.splice(i,1); edges = edges.filter(e=> e.from!==id && e.to!==id); renderEdges(); }}
+
+  function makeDraggable(node){
+    let dragging=false, sx=0, sy=0;
+    node.el.addEventListener('mousedown', (e)=>{ if(e.target.closest('textarea') || e.target.closest('.port') || e.target.closest('button')) return; dragging = true; sx = e.clientX - node.el.offsetLeft; sy = e.clientY - node.el.offsetTop; node.el.classList.add('selected'); });
+    document.addEventListener('mousemove', (e)=>{ if(!dragging) return; node.el.style.left = (e.clientX - sx)+'px'; node.el.style.top = (e.clientY - sy)+'px'; renderEdges(); });
+    document.addEventListener('mouseup', ()=>{ dragging=false; nodes.forEach(n=>n.el.classList.remove('selected')); });
+  }
+
+  function createEdge(from, to){ if(edges.some(e=>e.from===from && e.to===to)) return; edges.push({from, to}); renderEdges(); toastMsg('Edge created'); }
+
+  function renderEdges(){ edgesSvg.innerHTML=''; edges.forEach(e=>{ const a = nodes.find(n=>n.id===e.from); const b = nodes.find(n=>n.id===e.to); if(!a||!b) return; const x1 = a.el.offsetLeft + a.el.offsetWidth - 7, y1 = a.el.offsetTop + a.el.offsetHeight/2; const x2 = b.el.offsetLeft + 7, y2 = b.el.offsetTop + b.el.offsetHeight/2; const dx = Math.abs(x2-x1); const c1 = x1 + Math.min(140, dx*.5); const c2 = x2 - Math.min(140, dx*.5); const p = document.createElementNS('http://www.w3.org/2000/svg','path'); p.setAttribute('d', `M ${x1} ${y1} C ${c1} ${y1} ${c2} ${y2} ${x2} ${y2}`); p.setAttribute('class','edge'); p.setAttribute('stroke', '#22d3ee'); p.setAttribute('fill','none'); edgesSvg.appendChild(p); }); }
+
+  function startDragLine(node, ev){ dragLineSvg.innerHTML=''; dragLineSvg.style.display='block'; updateDragLine(ev); }
+  function updateDragLine(ev){ dragLineSvg.innerHTML=''; const rect = canvas.getBoundingClientRect(); const src = connectFrom.el; const x1 = src.offsetLeft + src.offsetWidth - 7; const y1 = src.offsetTop + src.offsetHeight/2; const x2 = ev.clientX - rect.left; const y2 = ev.clientY - rect.top; const dx = Math.abs(x2-x1); const c1 = x1 + Math.min(140, dx*.5); const c2 = x2 - Math.min(140, dx*.5); const p = document.createElementNS('http://www.w3.org/2000/svg','path'); p.setAttribute('d', `M ${x1} ${y1} C ${c1} ${y1} ${c2} ${y2} ${x2} ${y2}`); p.setAttribute('stroke','#facc15'); p.setAttribute('fill','none'); p.setAttribute('stroke-width','2'); p.setAttribute('stroke-dasharray','6,6'); dragLineSvg.appendChild(p); }
+  function stopDragLine(){ connecting=false; connectFrom=null; dragLineSvg.innerHTML=''; dragLineSvg.style.display='none'; }
+
+  let connectMode = false; document.getElementById('btn-connect').addEventListener('click', ()=>{ connectMode = !connectMode; toastMsg('Connect mode '+ (connectMode?'ON':'OFF')); });
+  document.getElementById('btn-clear').addEventListener('click', ()=>{ nodes.forEach(n=>{ try{ canvas.removeChild(n.el) }catch(e){} }); nodes=[]; edges=[]; renderEdges(); toastMsg('Workspace cleared'); });
+
+  /*******************************
+   * Epidemiology core functions *
+   *******************************/
+  function generateSimulatedData(day){ const outbreakFactor = (day>50 && day<80) ? Math.exp((day-50)*0.08) : 1; const baseline = 5; const clinicalCases = Math.max(0, Math.floor(baseline*outbreakFactor + Math.random()*5)); const laboratoryTests = Math.floor(100 + Math.random()*50); const positiveTests = Math.min(laboratoryTests, Math.floor((baseline*outbreakFactor + Math.random()*5) * 1.1)); return { day, timestamp: new Date(Date.now() + day*86400000).toISOString(), clinicalCases, laboratoryTests, positiveTests, syndromicSignals: Math.floor(10*outbreakFactor + Math.random()*5), environmentalSignals: Math.random()*100*outbreakFactor, mobilityIndex: 100 - (outbreakFactor-1)*20 + Math.random()*10, hospitalizations: Math.floor(baseline*outbreakFactor*0.1 + Math.random()*2), icu: Math.floor(baseline*outbreakFactor*0.02 + Math.random()), deaths: Math.floor(baseline*outbreakFactor*0.005) } }
+  function detectAberrations(series, field, windowSize=7, z=2){ if(series.length < windowSize*2) return { isAberrant:false, score:0 }; const recent = series.slice(-windowSize); const base = series.slice(-(windowSize*2), -windowSize); const rMean = recent.reduce((s,d)=>s+d[field],0)/recent.length; const bMean = base.reduce((s,d)=>s+d[field],0)/base.length; const bStd = Math.sqrt(base.reduce((s,d)=> s + Math.pow(d[field]-bMean,2),0)/base.length); const zscore = bStd>0 ? (rMean - bMean)/bStd : 0; return { isAberrant: zscore>z, score:zscore } }
+  function calculateRt(series, serialInterval=7){ if(series.length < serialInterval*2) return 1; const recent = series.slice(-serialInterval).reduce((s,d)=>s+d.clinicalCases,0); const prev = series.slice(-serialInterval*2, -serialInterval).reduce((s,d)=>s+d.clinicalCases,0); return prev>0 ? recent/prev : 1 }
+
+  /***********************
+   * Node runtime handlers *
+   ***********************/
+  const runtimes = {
+    async Input(node){ const p = node.params||{}; const days = Number(p.days)||90; if(p.data && Array.isArray(p.data) && p.data.length){ return { type:'timeseries', data: p.data } } const out=[]; for(let d=0; d<days; d++) out.push(generateSimulatedData(d)); return { type:'timeseries', data: out } },
+    async Preprocessor(node, inputs){ const ts = (inputs?.[0]?.data)||[]; const map = new Map(); ts.forEach(r=> map.set(r.day, r)); const sorted = Array.from(map.values()).sort((a,b)=>a.day-b.day); return { type:'timeseries', data: sorted } },
+    async FeatureExtractor(node, inputs){ const ts = (inputs?.[0]?.data)||[]; const rt = calculateRt(ts); const growth = (()=>{ if(ts.length<8) return 0; const last = ts.slice(-8); const prev = last[0].clinicalCases; const now = last[last.length-1].clinicalCases; return prev>0? (now-prev)/prev : 0 })(); const latest = ts[ts.length-1]||{}; const positivity = latest.laboratoryTests? latest.positiveTests/latest.laboratoryTests : 0; return { type:'features', data: { rt, growth, positivity }, series: ts } },
+    async StatisticalAnalysis(node, inputs){ const { series } = inputs?.[0]||{ series:[] }; const win = Number(node.params?.window)||7; const z = Number(node.params?.zscore)||2; const clinical = detectAberrations(series, 'clinicalCases', win, z); const posSeries = series.map(s=> ({ clinicalCases: s.laboratoryTests? s.positiveTests/s.laboratoryTests : 0 })); const positivity = detectAberrations(posSeries, 'clinicalCases', win, z); return { type:'stats', data: { clinical, positivity }, series } },
+    async LLM(node, inputs){ const feat = inputs?.find(i=>i.type==='features')?.data||{}; const stats = inputs?.find(i=>i.type==='stats')?.data||{}; const summary = []; if(feat.rt!==undefined) summary.push(`R_t≈${feat.rt.toFixed(2)}`); if(feat.growth!==undefined) summary.push(`growth ${(feat.growth*100).toFixed(1)}%`); if(feat.positivity!==undefined) summary.push(`positivity ${(feat.positivity*100).toFixed(1)}%`); if(stats.clinical) summary.push(`z(clinical)=${stats.clinical.score.toFixed(2)}`); let localNote = ''; try{ const pipe = await window.transformers?.pipeline?.("text-classification", "Xenova/distilbert-base-uncased-finetuned-sst-2-english"); const txt = `Outbreak summary: ${summary.join(', ')}.`; const out = await pipe(txt); localNote = ` Local model says: ${out?.[0]?.label||'NEUTRAL'} (${(out?.[0]?.score||0).toFixed(2)})` }catch(err){ localNote = ' Local model unavailable.' } return { type:'llm', data: { text: `Summary: ${summary.join(', ')}.${localNote}` } } },
+    async Validation(node, inputs){ const feat = inputs.find(i=>i.type==='features')?.data; const stats = inputs.find(i=>i.type==='stats')?.data; const txt = inputs.find(i=>i.type==='llm')?.data?.text || ''; const th = node.params?.thresholds || { rt:1.2, growth:0.15, positivity:0.05 }; const flags = { rt: (feat?.rt||0) > th.rt, growth: (feat?.growth||0) > th.growth, positivity: (feat?.positivity||0) > th.positivity, aberration: !!(stats?.clinical?.isAberrant) }; const riskScore = (flags.rt + flags.growth + flags.positivity + flags.aberration) / 4; let level = 'GREEN'; if(riskScore>=0.75) level='RED'; else if(riskScore>=0.5) level='ORANGE'; else if(riskScore>=0.25) level='YELLOW'; return { type:'validation', data: { level, riskScore, flags, narrative: txt } } },
+    async Output(node, inputs){ const obj = Object.fromEntries(inputs.map(i=>[i.type, i.data])); return { type:'output', data: obj } }
+  };
+
+  /****************
+   * Charts & CSV *
+   ****************/
+  const chartScript = document.createElement('script'); chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js'; document.head.appendChild(chartScript);
+  let charts = { clinical: null, positivity: null };
+  function ensureChartCanvases(){ if(document.getElementById('chart-area')) return; const area = document.createElement('div'); area.id='chart-area'; area.className='col-span-2 grid grid-cols-2 gap-4 mt-2'; const container = document.querySelector('.panel.p-4.grid'); const c1 = document.createElement('canvas'); c1.id='chart-clinical'; c1.style.background='rgba(0,0,0,0.15)'; const c2 = document.createElement('canvas'); c2.id='chart-positivity'; c2.style.background='rgba(0,0,0,0.15)'; area.appendChild(c1); area.appendChild(c2); document.querySelector('.app').appendChild(area); }
+  function updateCharts(series){ if(!window.Chart) return; ensureChartCanvases(); const labels = series.map(d=>d.day); const clinicalData = series.map(d=>d.clinicalCases); const positivityData = series.map(d=> d.laboratoryTests? (d.positiveTests/d.laboratoryTests*100):0 ); const ctx1 = document.getElementById('chart-clinical').getContext('2d'); if(charts.clinical) charts.clinical.destroy(); charts.clinical = new Chart(ctx1, { type:'line', data:{ labels, datasets:[{ label:'Clinical Cases', data:clinicalData, fill:false, tension:0.2 }]}, options:{ plugins:{ legend:{ display:true }}, scales:{ y:{ beginAtZero:true } } } }); const ctx2 = document.getElementById('chart-positivity').getContext('2d'); if(charts.positivity) charts.positivity.destroy(); charts.positivity = new Chart(ctx2, { type:'line', data:{ labels, datasets:[{ label:'Positivity %', data:positivityData, fill:false, tension:0.2 }]}, options:{ plugins:{ legend:{ display:true }}, scales:{ y:{ beginAtZero:true } } } }); }
+
+  function parseCSV(text){ const lines = text.split(/\r?\n/).filter(Boolean); const headers = lines[0].split(',').map(h=>h.trim().toLowerCase()); const rows = lines.slice(1).map((ln,i)=>{ const vals = ln.split(','); return { day: i, timestamp: new Date().toISOString(), clinicalCases: Number(vals[headers.indexOf('cases')])||Number(vals[1])||0, laboratoryTests: Number(vals[headers.indexOf('tests')])||Number(vals[2])||100, positiveTests: Number(vals[headers.indexOf('positive')])||Number(vals[3])||0, syndromicSignals: Number(vals[headers.indexOf('syndromic')])||Number(vals[4])||0, environmentalSignals: Number(vals[headers.indexOf('environmental')])||Number(vals[5])||0, mobilityIndex: Number(vals[headers.indexOf('mobility')])||Number(vals[6])||100, socialMentions: Number(vals[headers.indexOf('social')])||Number(vals[7])||0, hospitalizations: Number(vals[headers.indexOf('hospital')])||Number(vals[8])||0, icu: Number(vals[headers.indexOf('icu')])||Number(vals[9])||0, deaths: Number(vals[headers.indexOf('deaths')])||Number(vals[10])||0 }; }); return rows }
+
+  // CSV upload input
+  const csvInput = document.createElement('input'); csvInput.type='file'; csvInput.accept='.csv'; csvInput.style.display='none'; document.body.appendChild(csvInput);
+  const csvBtn = document.createElement('button'); csvBtn.className='btn'; csvBtn.innerHTML='<i class="fa fa-file-csv"></i> Load CSV'; const toolbarEl = document.querySelector('.toolbar'); toolbarEl.insertBefore(csvBtn, toolbarEl.children[1] || null);
+  csvBtn.addEventListener('click', ()=> csvInput.click());
+  csvInput.addEventListener('change', (e)=>{ const f = e.target.files[0]; if(!f) return; const reader = new FileReader(); reader.onload = ()=>{ try{ const parsed = parseCSV(reader.result); const n = addNode('Input', 120, 120, 'CSV Input', { days: parsed.length, data: parsed }); toastMsg('CSV loaded into Input node'); }catch(err){ toastMsg('CSV parse error: '+err.message, false); } }; reader.readAsText(f); });
+
+  // sample CSV download
+  const sampleCsvBtn = document.getElementById('download-sample-csv'); sampleCsvBtn.addEventListener('click', ()=>{
+    const sample = ['cases,tests,positive,syndromic,environmental,mobility,social,hospital,icu,deaths'];
+    for(let i=0;i<120;i++){ const s = Math.max(0, Math.round(5 * (i>50&&i<80? Math.exp((i-50)*0.08):1) + Math.random()*5)); const tests = 100 + Math.round(Math.random()*40); const pos = Math.min(tests, Math.round(s * 1.1)); sample.push([s, tests, pos, 10, Math.round(Math.random()*100), 100, Math.round(Math.random()*50), 1, 0, 0].join(',')); }
+    const blob = new Blob([sample.join('\n')], {type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'sample_ews.csv'; a.click(); URL.revokeObjectURL(a.href); toastMsg('Sample CSV downloaded'); });
+
+  /****************
+   * Run pipeline *
+   ****************/
+  async function run(){ if(running) return; running=true; logEl.innerHTML=''; resultEl.textContent=''; log('=== Run start ===','good'); nodes.forEach(n=>n.output=null);
+    const getInputs = (node)=> edges.filter(e=>e.to===node.id).map(e=> nodes.find(n=>n.id===e.from)?.output).filter(Boolean);
+    for(let iter=0; iter< nodes.length+5; iter++){ for(const node of nodes){ if(!running) return; if(node.output) continue; const deps = edges.filter(e=>e.to===node.id).map(e=> nodes.find(n=>n.id===e.from)); if(deps.some(d=>!d || !d.output)) continue; log(`→ ${node.type} (${node.label})`); try{ const inputs = getInputs(node); const rt = runtimes[node.type]; if(!rt) throw new Error('No runtime for '+node.type); node.output = await rt(node, inputs); log(`✔ ${node.type} done`,'good'); }catch(err){ log(`✖ ${node.type} error: ${err.message||err}`,'bad'); running=false; return; } } }
+    const out = nodes.find(n=>n.type==='Output'); if(out?.output){ resultEl.textContent = pretty(out.output.data); log('=== Run complete ===','good'); const ts = nodes.find(n=>n.type==='Input')?.output?.data || nodes.find(n=>n.type==='Preprocessor')?.output?.data || null; if(ts && ts.length) updateCharts(ts); } else { resultEl.textContent = '// No Output node or output missing'; log('No final output','bad'); }
+    running=false; }
+
+  document.getElementById('btn-run').addEventListener('click', run);
+  document.getElementById('btn-stop').addEventListener('click', ()=>{ running=false; log('Stopped','bad'); });
+  document.getElementById('btn-export').addEventListener('click', ()=>{ const data = resultEl.textContent || '{}'; const blob = new Blob([data], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ews_result.json'; a.click(); URL.revokeObjectURL(a.href); toastMsg('Exported results'); });
+
+  /********************
+   * Load JSON schema *
+   ********************/
+  document.getElementById('btn-load').addEventListener('click', ()=>{ try{ const j = JSON.parse(document.getElementById('schema').value); const wf = j.workflow; if(!wf) throw new Error('Missing workflow'); nodes.forEach(n=>canvas.removeChild(n.el)); nodes=[]; edges=[]; renderEdges(); wf.nodes.forEach((n,i)=>{ const x = 100 + (i*260); const y = 60 + ((i%2)*80); addNode(n.type, x, y, n.label, n.params); }); const idMap = {}; wf.nodes.forEach((n,i)=> idMap[n.id] = nodes[i].id); wf.edges.forEach(e=> createEdge(idMap[e.from], idMap[e.to])); toastMsg('Workflow loaded'); }catch(err){ toastMsg('Invalid schema: '+(err.message||err), false); } });
+
+  /*******************
+   * Quick-add nodes *
+   *******************/
+  document.getElementById('btn-add-input').addEventListener('click', ()=> addNode('Input', 120, 120, 'Parameters', { days: 120 }));
+  document.getElementById('btn-add-pre').addEventListener('click', ()=> addNode('Preprocessor', 380, 160, 'Preprocess', { fill_missing: 'zero' }));
+  document.getElementById('btn-add-feat').addEventListener('click', ()=> addNode('FeatureExtractor', 640, 200, 'Features', { features: ['rt','growth','positivity'] }));
+  document.getElementById('btn-add-stats').addEventListener('click', ()=> addNode('StatisticalAnalysis', 900, 160, 'Stats', { window: 7, zscore: 2 }));
+  document.getElementById('btn-add-llm').addEventListener('click', ()=> addNode('LLM', 1160, 200, 'Analyst', { mode: 'auto' }));
+  document.getElementById('btn-add-val').addEventListener('click', ()=> addNode('Validation', 1420, 160, 'Validate', { thresholds: { rt:1.2, growth:0.15, positivity:0.05 } }));
+  document.getElementById('btn-add-out').addEventListener('click', ()=> addNode('Output', 1680, 200, 'Output', { format:'json' }));
+
+  /*************
+   * Demo flow *
+   *************/
+  (function demo(){ const a=addNode('Input', 120, 120, 'Parameters', { days: 120 }); const b=addNode('Preprocessor', 380, 160, 'Preprocess', { fill_missing: 'zero' }); const c=addNode('FeatureExtractor', 640, 200, 'Features', { features:['rt','growth','positivity'] }); const d=addNode('StatisticalAnalysis', 900, 160, 'Stats', { window:7, zscore:2 }); const e=addNode('LLM', 1160, 200, 'Analyst', { mode:'auto' }); const f=addNode('Validation', 1420, 160, 'Validate', { thresholds:{ rt:1.2, growth:0.15, positivity:0.05 } }); const g=addNode('Output', 1680, 200, 'Output', { format:'json' }); [ [a,b],[b,c],[c,d],[d,e],[e,f],[f,g] ].forEach(([x,y])=> createEdge(x.id, y.id)); renderEdges(); })();
+
+  /*************
+   * Streaming (auto-refresh) *
+   *************/
+  function startStream(intervalMs=3000){ if(streamInterval) return; const inputNode = nodes.find(n=>n.type==='Input'); if(!inputNode){ toastMsg('Add an Input node to stream into', false); return; } streamDayOffset = inputNode.params && Array.isArray(inputNode.params.data) ? inputNode.params.data.length : 0; streamInterval = setInterval(()=>{ const newDatum = generateSimulatedData(streamDayOffset++); if(!inputNode.params) inputNode.params = {}; if(!Array.isArray(inputNode.params.data)) inputNode.params.data = []; inputNode.params.data.push(newDatum); // clear previous outputs so next run recomputes nodes.forEach(n=>n.output=null); log(`Stream: appended day ${newDatum.day}`); // optionally run
+      run(); }, intervalMs); document.getElementById('btn-stream-toggle').textContent = 'Stop Stream'; toastMsg('Stream started'); }
+  function stopStream(){ if(!streamInterval) return; clearInterval(streamInterval); streamInterval = null; document.getElementById('btn-stream-toggle').textContent = 'Start Stream'; toastMsg('Stream stopped'); }
+  document.getElementById('btn-stream-toggle').addEventListener('click', ()=>{ if(streamInterval) stopStream(); else startStream(3000); });
+
+  /*********
+   *  PWA  *
+   *********/
+  let deferredPrompt=null; window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredPrompt=e; toastMsg('Installable — use browser menu to install'); });
+  if('serviceWorker' in navigator){ try{ const sw = `const CACHE='ews-flow-v1'; self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./','https://cdn.tailwindcss.com','https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js','https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js'])))}); self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`; navigator.serviceWorker.register('data:application/javascript;base64,'+btoa(sw)); }catch(err){ console.warn('SW register failed', err); } }
+
+}); // DOMContentLoaded
+</script>
+</body>
+</html>

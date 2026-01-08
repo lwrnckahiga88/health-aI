@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>BPU-T1 Projector AI Chip — Full Synergized Simulation</title>
+  <meta name="theme-color" content="#0ea5e9"/>
+  <link rel="manifest" id="manifest-placeholder">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Prometheus client -->
+  <script src="https://cdn.jsdelivr.net/npm/prom-client-browser/dist/prom-client.min.js"></script>
+  <!-- LLaMA Tiny -->
+  <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; background:#111; color:#eee;}
+    header { background:#0ea5e9; padding:1em; text-align:center; font-size:1.4em; color:#fff;}
+    .chip { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; padding:20px;}
+    .zone { border:2px solid #0ea5e9; border-radius:12px; padding:16px; background:#1a1a1a;
+            position:relative; box-shadow:0 0 15px rgba(14,165,233,0.6);}
+    .zone h3 { margin:0 0 10px 0; color:#0ea5e9;}
+    canvas { background:#000; border-radius:12px; margin-top:10px;}
+    #validation { margin:20px; padding:20px; background:#222; border-radius:12px; text-align:center;}
+    #validation button { background:#0ea5e9; border:none; padding:10px 20px; color:#fff; border-radius:8px; cursor:pointer;}
+    #validation button:hover { background:#0284c7;}
+  </style>
+</head>
+<body>
+  <header>BPU-T1 Projector AI Chip — CVE + SEV + ZKPU + BioPU + Vault Synergy</header>
+
+  <section class="chip">
+    <!-- CVE -->
+    <div class="zone" id="input-zone">
+      <h3>Zone A — CVE (Compute Vector Engine + Consensus Validation)</h3>
+      <p>Handles raw input → vectorization + consensus validation.</p>
+      <button onclick="runInput()">Simulate CVE</button>
+      <div id="input-output"></div>
+    </div>
+
+    <!-- SEV -->
+    <div class="zone" id="tensor-zone">
+      <h3>Zone B — SEV (Scalar + Eigenvector Engine + Secure Vault)</h3>
+      <p>Executes tensor ops with secure vault lock/unlock.</p>
+      <button onclick="toggleSEV()">Toggle SEV Vault</button>
+      <p id="sev-status">Locked 🔒</p>
+      <canvas id="tensorChart"></canvas>
+    </div>
+
+    <!-- NoC -->
+    <div class="zone" id="routing-zone">
+      <h3>Zone C — NoC (Optical Switch Fabric)</h3>
+      <p>Routes packets across chip.</p>
+      <button onclick="simulateRouting()">Test Routing</button>
+      <div id="routing-output"></div>
+    </div>
+
+    <!-- SRAM -->
+    <div class="zone" id="memory-zone">
+      <h3>Zone D — On-Chip SRAM + Cache</h3>
+      <p>Temporary storage for activations/weights.</p>
+      <button onclick="simulateMemory()">Test Memory</button>
+      <div id="memory-output"></div>
+    </div>
+
+    <!-- ZKPU -->
+    <div class="zone" id="zkpu-zone">
+      <h3>Zone E — ZKPU (Zero-Knowledge Proving Unit + Audit Layer)</h3>
+      <p>Generates ZK-proofs and audit hashes of computation correctness.</p>
+      <button onclick="simulateZKPU()">Generate Proof</button>
+      <div id="zkpu-output"></div>
+    </div>
+
+    <!-- Secure Vault -->
+    <div class="zone" id="vault-zone">
+      <h3>Zone F — Secure Vault + SKV (Key Vault)</h3>
+      <p>Protects keys and rotates secrets.</p>
+      <button onclick="simulateVault()">Access Vault</button>
+      <div id="vault-output"></div>
+    </div>
+
+    <!-- BioPU Interaction Canvas -->
+    <div class="zone" id="biopu-zone" style="grid-column: span 2;">
+      <h3>Zone G — BioPU Interaction (Hormones + Feedback Loops)</h3>
+      <p>Visualizes hormone levels interacting with SEV & ZKPU in real-time.</p>
+      <canvas id="biopuInteraction" width="800" height="300"></canvas>
+    </div>
+  </section>
+
+  <div id="validation">
+    <h2>Validation Block — Full BPU-T1 Pipeline</h2>
+    <button onclick="validateChip()">Run Full Pipeline</button>
+    <div id="validation-output"></div>
+  </div>
+
+  <script>
+    // ---------------- Prometheus ----------------
+    const register = new promClient.Registry();
+    const inputCounter = new promClient.Counter({ name: 'cve_requests', help: 'CVE inputs'});
+    const routingCounter = new promClient.Counter({ name: 'noc_routes', help: 'Routing ops'});
+    const memoryGauge = new promClient.Gauge({ name: 'sram_usage', help: 'SRAM cache usage'});
+    const zkpuCounter = new promClient.Counter({ name: 'zkpu_proofs', help: 'Proofs generated'});
+    const vaultCounter = new promClient.Counter({ name: 'vault_accesses', help: 'Vault access count'});
+    register.registerMetric(inputCounter);
+    register.registerMetric(routingCounter);
+    register.registerMetric(memoryGauge);
+    register.registerMetric(zkpuCounter);
+    register.registerMetric(vaultCounter);
+
+    // ---------------- LLaMA ----------------
+    let pipelineInstance;
+    async function loadModel() {
+      pipelineInstance = await window.transformers.pipeline('text-generation', 'Xenova/llama-3-tiny');
+    }
+    loadModel();
+
+    // ---------------- CVE ----------------
+    async function runInput() {
+      inputCounter.inc();
+      document.getElementById("input-output").innerHTML = "CVE vectorizing & validating...";
+
+      if (!pipelineInstance) {
+        document.getElementById("input-output").innerHTML = "Model loading...";
+        return;
+      }
+
+      let out = await pipelineInstance("Vectorize input for SEV", { max_new_tokens: 20 });
+      const consensus = Math.random() > 0.2 ? "Consensus ✅" : "Consensus ⚠️ Failed";
+
+      document.getElementById("input-output").innerHTML =
+        out[0].generated_text + "<br/>" + consensus;
+    }
+
+    // ---------------- SEV ----------------
+    let sevLocked = true;
+    function toggleSEV() {
+      sevLocked = !sevLocked;
+      const status = sevLocked ? "Locked 🔒" : "Unlocked 🔓";
+      document.getElementById("sev-status").innerText = "SEV Status: " + status;
+    }
+
+    const tensorCtx = document.getElementById("tensorChart").getContext("2d");
+    const tensorChart = new Chart(tensorCtx, {
+      type: "line",
+      data: {
+        labels: Array.from({length:10}, (_,i)=>`t${i}`),
+        datasets:[{label:"Eigenvector Ops", data:[1,3,7,10,8,12,15,14,18,20]}]
+      },
+      options: { scales:{ y:{ beginAtZero:true}}}
+    });
+
+    // ---------------- Routing ----------------
+    function simulateRouting() {
+      routingCounter.inc();
+      document.getElementById("routing-output").innerHTML =
+        "NoC routed packet at " + new Date().toLocaleTimeString();
+    }
+
+    // ---------------- Memory ----------------
+    function simulateMemory() {
+      let usage = Math.random() * 100;
+      memoryGauge.set(usage);
+      document.getElementById("memory-output").innerHTML = "SRAM usage: " + usage.toFixed(2) + "%";
+    }
+
+    // ---------------- ZKPU ----------------
+    function simulateZKPU() {
+      zkpuCounter.inc();
+      const proof = "ZK-Proof-" + Math.random().toString(36).substring(2,10);
+      const audit = "AuditHash-" + Math.random().toString(36).substring(2,6);
+
+      document.getElementById("zkpu-output").innerHTML =
+        "Proof: " + proof + "<br/>Audit: " + audit;
+
+      return proof;
+    }
+
+    // ---------------- Vault ----------------
+    function simulateVault() {
+      vaultCounter.inc();
+      const key = "Key-" + Math.random().toString(36).substring(2,8);
+      const rotation = "Rotated-" + Math.floor(Math.random() * 1000);
+
+      document.getElementById("vault-output").innerHTML =
+        "Vault accessed, key: " + key + "<br/>Rotation ID: " + rotation;
+
+      return key;
+    }
+
+    // ---------------- BioPU Interaction ----------------
+    const interactionCtx = document.getElementById("biopuInteraction").getContext("2d");
+    let hormones = ["Cortisol","Insulin","Adrenaline","Dopamine","Serotonin"];
+    let hormoneData = hormones.map(() => Math.random() * 100);
+
+    const bioPUChart = new Chart(interactionCtx, {
+      type: "line",
+      data: {
+        labels: Array.from({length:10}, (_,i)=>`t${i}`),
+        datasets: hormones.map((h, idx) => ({
+          label: h,
+          data: hormoneData.map(v => v + Math.random()*10 - 5),
+          borderColor: `hsl(${idx*60}, 70%, 50%)`,
+          fill: false,
+          tension: 0.3
+        }))
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'top', labels:{color:'#fff'} } },
+        scales: {
+          x: { ticks:{color:'#fff'} },
+          y: { ticks:{color:'#fff'}, min:0, max:150 }
+        }
+      }
+    });
+
+    function updateBioPU() {
+      bioPUChart.data.datasets.forEach(ds => {
+        ds.data = ds.data.map(v => Math.min(Math.max(v + Math.random()*10 - 5, 0), 150));
+      });
+      bioPUChart.update();
+    }
+
+    setInterval(updateBioPU, 2000); // simulate feedback/feedforward
+
+    // ---------------- Validation ----------------
+    async function validateChip() {
+      document.getElementById("validation-output").innerHTML = "Running pipeline...";
+
+      await runInput();      // CVE + Consensus
+      simulateRouting();     // NoC
+      simulateMemory();      // SRAM
+      let proof = simulateZKPU(); // ZKPU + Audit
+      let key = simulateVault();  // Vault + SKV
+
+      const tf = (Math.random() * 100 + 200).toFixed(2);
+
+      document.getElementById("validation-output").innerHTML =
+        `<p>Pipeline completed ✅</p>
+         <p><strong>Simulated Throughput:</strong> ${tf} TFLOPs</p>
+         <p>Generated Proof: ${proof}</p>
+         <p>Vault Key: ${key}</p>`;
+    }
+
+    // ---------------- Prometheus scrape ----------------
+    setInterval(async ()=>{
+      let metrics = await register.metrics();
+      console.log("Prometheus Metrics:\n", metrics);
+    }, 5000);
+
+  </script>
+
+  <!-- Manifest -->
+  <script type="application/json" id="manifest-placeholder">
+  {
+    "name": "BPU-T1 Projector AI Chip",
+    "short_name": "BPU-T1",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#111111",
+    "theme_color": "#0ea5e9",
+    "icons": []
+  }
+  </script>
+
+  <!-- Service Worker -->
+  <script>
+    const swCode = `
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => clients.claim());
+      self.addEventListener('fetch', e => {
+        e.respondWith(caches.open('v1').then(cache => cache.match(e.request).then(resp => resp || fetch(e.request))));
+      });
+    `;
+    const blob = new Blob([swCode], {type:'application/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(blob));
+  </script>
+
+</body>
+</html>

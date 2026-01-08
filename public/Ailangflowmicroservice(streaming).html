@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Langflow-style ClinVARnet — Unified PWA</title>
+  <meta name="theme-color" content="#0ea5e9" />
+  <!-- Manifest placeholder (will be attached inline) -->
+  <link rel="manifest" id="manifest-placeholder">
+
+  <!-- Tailwind for styling (keeps the original look) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FontAwesome for icons (used in original UI) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- pdf.js and mammoth for file parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.9.179/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.5.2/mammoth.browser.min.js"></script>
+
+  <!-- Xenova Transformers for offline LLM -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
+
+  <style>
+    :root { --bg:#0f172a; --panel:#0b1220; --node:#111827; --node-border:#334155; --edge:#22d3ee; --accent:#0ea5e9; --good:#10b981; --warn:#f59e0b; --bad:#ef4444; }
+    html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;background:var(--bg);color:white}
+    .app{display:flex;flex-direction:column;height:100vh}
+    .panel{background:var(--panel);border-top:1px solid #0f172a}
+    .toolbar .btn{background:#1f2937;border:1px solid #334155;border-radius:8px;padding:8px 12px;font-size:0.85rem;display:flex;align-items:center;gap:8px}
+    .toolbar .btn:hover{background:#293345}
+    .btn.primary{background:#0284c7;border-color:#0284c7}
+    .btn.success{background:#059669;border-color:#059669}
+    .btn.danger{background:#ef4444;border-color:#ef4444}
+    .btn.warn{background:#f59e0b;border-color:#f59e0b;color:#111827}
+    .node{transition: all 0.3s ease; position:absolute; width:180px; background:var(--node); border:1px solid var(--node-border); border-radius:8px; padding:8px; box-shadow:0 8px 24px rgba(2,6,23,0.6);}
+    .node .head{display:flex;justify-content:space-between;align-items:center}
+    .node .title{font-weight:600; font-size:13px}
+    .node .body{margin-top:8px}
+    #canvas-wrap{position:relative; flex:1; overflow:hidden}
+    #canvas{position:absolute; left:0; top:0; right:0; bottom:0}
+    svg#edges{position:absolute; inset:0; pointer-events:none}
+    svg#drag-line{position:absolute; inset:0; pointer-events:none}
+    .pill{font-size:11px;padding:3px 6px;border-radius:999px;background:rgba(255,255,255,0.04)}
+    .log{background:rgba(0,0,0,0.35); padding:12px; border-radius:8px; font-family:monospace; max-height:260px; overflow:auto}
+    .textarea{width:100%;height:180px;background:#0b1220;border:1px solid #1f2937;color:#fff;padding:8px;border-radius:6px}
+    .toolbar-top{display:flex; gap:12px; align-items:center}
+    .small{font-size:12px;color:rgba(255,255,255,0.7)}
+    .toast{position:fixed; right:24px; bottom:24px; background:#0f172a; padding:10px 14px; border-radius:6px; border:1px solid rgba(255,255,255,0.06); display:none; z-index:9999}
+    .node .ports{position:relative;height:0}
+    .node .port{position:absolute;width:12px;height:12px;background:#0ea5e9;border-radius:999px;right:-6px;top:50%;transform:translateY(-50%)}
+    .node .port.in{left:-6px; right:auto}
+    .node textarea{width:100%;height:72px;background:#071025;border:1px solid #142033;color:#fff;padding:6px;border-radius:6px;font-size:12px}
+    .panel-controls{display:flex;flex-direction:column;gap:8px}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="panel p-4">
+    <div class="flex gap-4 items-start">
+      <div class="flex-1">
+        <label class="text-sm font-semibold">Workflow JSON (schema & params)</label>
+        <textarea id="schema" class="textarea" spellcheck="false">
+{
+  "workflow": {
+    "id": "pandemic-ews",
+    "name": "Pandemic Early Warning Workflow",
+    "nodes": [
+      {"id":"n1","type":"Input","label":"Parameters","params":{"days":120,"seed":42,"source":"simulation"}},
+      {"id":"n2","type":"Preprocessor","label":"Preprocess","params":{"deduplicate":true,"fill_missing":"zero"}},
+      {"id":"n3","type":"FeatureExtractor","label":"Features","params":{"features":["rt","growth","positivity"]}},
+      {"id":"n4","type":"StatisticalAnalysis","label":"Stats","params":{"window":7,"zscore":2.0}},
+      {"id":"n5","type":"LLM","label":"Analyst","params":{"mode":"auto","prompt":"Summarize the current outbreak risk succinctly."}},
+      {"id":"n6","type":"Validation","label":"Validate","params":{"thresholds":{"rt":1.2,"growth":0.15,"positivity":0.05}}},
+      {"id":"n7","type":"Output","label":"Output","params":{"format":"json"}}
+    ],
+    "edges": [
+      {"from":"n1","to":"n2"}, {"from":"n2","to":"n3"}, {"from":"n3","to":"n4"},
+      {"from":"n4","to":"n5"}, {"from":"n5","to":"n6"}, {"from":"n6","to":"n7"}
+    ]
+  }
+}</textarea>
+      </div>
+      <div class="w-72 flex flex-col gap-2">
+        <div class="panel-controls">
+          <button id="btn-load" class="btn primary w-full"><i class="fa fa-file-import"></i> Load Workflow</button>
+          <button id="btn-run" class="btn success w-full"><i class="fa fa-play"></i> Run</button>
+          <button id="btn-stop" class="btn danger w-full"><i class="fa fa-stop"></i> Stop</button>
+          <button id="btn-export" class="btn w-full"><i class="fa fa-download"></i> Export Result</button>
+          <button id="download-sample-csv" class="btn w-full"><i class="fa fa-download"></i> Download Sample CSV</button>
+          <button id="btn-stream-toggle" class="btn warn w-full"><i class="fa fa-spinner"></i> Start Stream</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar panel p-2 flex gap-2 items-center">
+    <div class="toolbar-top">
+      <button id="btn-add-input" class="btn"><i class="fa fa-sliders"></i> Input</button>
+      <button id="btn-add-pre" class="btn"><i class="fa fa-broom"></i> Preprocessor</button>
+      <button id="btn-add-feat" class="btn"><i class="fa fa-flask"></i> Feature</button>
+      <button id="btn-add-stats" class="btn"><i class="fa fa-chart-line"></i> Stats</button>
+      <button id="btn-add-llm" class="btn"><i class="fa fa-brain"></i> LLM</button>
+      <button id="btn-add-val" class="btn"><i class="fa fa-check-circle"></i> Validation</button>
+      <button id="btn-add-out" class="btn"><i class="fa fa-file-export"></i> Output</button>
+    </div>
+    <div class="mx-3 w-px h-6 bg-slate-700"></div>
+    <div class="ml-auto text-xs opacity-70">Drag to move, Connect to link nodes</div>
+  </div>
+
+  <div id="canvas-wrap">
+    <div id="canvas"></div>
+    <svg id="edges"></svg>
+    <svg id="drag-line"></svg>
+  </div>
+
+  <div class="panel p-4 grid grid-cols-3 gap-4">
+    <div class="col-span-2">
+      <div class="text-sm mb-1 font-semibold">Execution Log</div>
+      <div id="log" class="log"></div>
+    </div>
+    <div>
+      <div class="text-sm mb-1 font-semibold">Result</div>
+      <pre id="result" class="log" style="height:220px;white-space:pre-wrap;"></pre>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- Inline manifest (will be attached programmatically) -->
+<script id="inline-manifest" type="application/json">
+{
+  "name": "ClinVARnet Langflow PWA",
+  "short_name": "ClinVARnet",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0ea5e9",
+  "description": "Offline Langflow-style workflow for pandemic early warning and AI microservices",
+  "icons": [{"src":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAARUlEQVQoz2NkoBAwUqifgYGBoYGB4z//f3+YzDMyM8+fP/58xDgaHn4AgJw2xCuQT3I5QHgVqRwiEyMQwCDJg1DoA7uHgVJcxiFlS5ghZ2Xj8Aw0T9DScmInRj4gZCqEcQvN/LxzMwkzRzODtG6Ng4vPnz8fBwRnz/+/3+H9mT1ZEXjDkgwRBogmAPx/Gdg5HhA8k2wxhLB+3IEFL8lIgaD8cPnmM1Zf3v/jww8cPHz+eMmD7hyMnbyyNjY3xBiOhjgD5L0JYSAIAbP0xC5WFT0RAAAAAElFTkSuQmCC","sizes":"16x16","type":"image/png"}]
+}
+</script>
+
+<!-- Inline service worker code -->
+<script id="inline-sw" type="application/javascript">
+const CACHE_NAME = 'clinvarnet-cache-v1';
+const PRE_CACHE = [
+  '.',
+  // you can list additional CDNs or static assets here if you want cached copies
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(PRE_CACHE)));
+  self.skipWaiting();
+});
+self.addEventListener('activate', event => {
+  event.waitUntil(self.clients.claim());
+});
+self.addEventListener('fetch', event => {
+  event.respondWith(caches.match(event.request).then(resp => resp || fetch(event.request).then(response => {
+    // optional: put responses in cache
+    return caches.open(CACHE_NAME).then(cache => { try { cache.put(event.request, response.clone()); } catch(e){} return response; });
+  })).catch(()=>caches.match('/')));
+});
+</script>
+
+<script>
+/* ---------- Core app logic (keeps the original Langflow-style UI) ---------- */
+
+(async function(){
+  // Basic helpers and DOM references
+  const $ = q => document.querySelector(q);
+  const canvas = $('#canvas');
+  const edgesSvg = $('#edges');
+  const dragLineSvg = $('#drag-line');
+  const logEl = $('#log');
+  const resultEl = $('#result');
+  const schemaEl = $('#schema');
+  const toastEl = document.getElementById('toast');
+
+  function toast(msg, ok=true, t=2200){
+    toastEl.textContent = msg;
+    toastEl.style.display = 'block';
+    toastEl.style.background = ok ? '#052e22' : '#3b0b0b';
+    setTimeout(()=> toastEl.style.display='none', t);
+  }
+
+  function log(msg, type='info'){
+    const d = document.createElement('div');
+    d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    if(type==='good') d.style.color = '#86efac';
+    if(type==='bad') d.style.color = '#fca5a5';
+    logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // Node/graph state
+  let NODE_ID = 1;
+  let nodes = [];
+  let edges = [];
+  let connecting = false;
+  let connectFrom = null;
+  let connectMode = false;
+  let running = false;
+  let streamInterval = null;
+
+  const typeColors = {
+    Input: '#22c55e', Preprocessor: '#0ea5e9', FeatureExtractor: '#8b5cf6',
+    StatisticalAnalysis: '#f59e0b', LLM: '#ec4899', Validation: '#ef4444', Output: '#facc15',
+    Pandemic: '#10b981', WebScraper: '#f59e0b', File: '#fb7185', Generic: '#4f46e5'
+  };
+
+  // Create node element (Langflow-like)
+  function createNodeElement(type, id, label, params){
+    const el = document.createElement('div');
+    el.className = 'node';
+    el.style.left = `${params.x || 120}px`;
+    el.style.top = `${params.y || 100}px`;
+    el.dataset.id = id;
+    el.innerHTML = `
+      <div class="head">
+        <div class="title">${label}</div>
+        <div class="flex gap-2 items-center">
+          <span class="pill" style="color:${typeColors[type] || typeColors.Generic}">${type}</span>
+          <button class="delete text-slate-300 hover:text-white" title="Delete"><i class="fa fa-times"></i></button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="text-xs opacity-70 mb-2">${Object.keys(params.params||{}).length ? 'Params: ' + Object.entries(params.params||{}).map(([k,v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`).join(', ') : 'No parameters'}</div>
+        <textarea class="node-params" spellcheck="false">${JSON.stringify(params.params || {}, null, 2)}</textarea>
+      </div>
+      <div class="ports">
+        <div class="port in" style="top:50%"></div>
+        <div class="port out" style="top:50%"></div>
+      </div>
+    `;
+    canvas.appendChild(el);
+    return el;
+  }
+
+  function addNode(type='Generic', x=120, y=100, label=null, params={}){
+    const id = `node-${NODE_ID++}`;
+    const node = { id, type, label: label || type, x, y, params: params.params || {}, el: null, output: null, files: params.files || [] };
+    node.el = createNodeElement(type, id, node.label, { x, y, params: node.params });
+    nodes.push(node);
+    makeDraggable(node);
+    wireNodeEvents(node);
+    renderEdges();
+    return node;
+  }
+
+  // Initial demo nodes
+  addNode('Input', 80, 120, 'Parameters', { params: { days: 120, source: 'simulation' }});
+  addNode('FeatureExtractor', 320, 120, 'Features', { params: { features: ['temp','rt'] }});
+  addNode('LLM', 560, 200, 'Analyst', { params: { prompt: 'Summarize risk' }});
+  addNode('Pandemic', 800, 120, 'Pandemic SEIRD', { params: { beta:0.3, sigma:1/5.1, gamma:1/10, mu:0.001, days:120 }});
+  addNode('Validation', 1040, 200, 'Validate', { params: { threshold: 0.05 }});
+
+  // Make node draggable
+  function makeDraggable(node){
+    let dragging=false, sx=0, sy=0;
+    node.el.addEventListener('mousedown', (e)=>{
+      if(e.target.closest('textarea') || e.target.closest('.port') || e.target.closest('button')) return;
+      dragging=true; sx = e.clientX - node.el.offsetLeft; sy = e.clientY - node.el.offsetTop;
+      node.el.classList.add('selected');
+    });
+    document.addEventListener('mousemove',(e)=>{
+      if(!dragging) return;
+      node.el.style.left = `${e.clientX - sx}px`;
+      node.el.style.top = `${e.clientY - sy}px`;
+      renderEdges();
+    });
+    document.addEventListener('mouseup', ()=>{ dragging=false; node.el.classList.remove('selected'); saveState(); });
+  }
+
+  // Node delete and parameter update wiring
+  function wireNodeEvents(node){
+    const del = node.el.querySelector('.delete');
+    del.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      removeNode(node.id);
+    });
+    const outPort = node.el.querySelector('.port.out');
+    outPort.addEventListener('mousedown', (e)=>{
+      e.stopPropagation();
+      if(!connectMode) return;
+      connecting = true; connectFrom = node;
+      startDragLine(node, e);
+    });
+    node.el.querySelector('.node-params').addEventListener('change', (e)=>{
+      try{
+        node.params = JSON.parse(e.target.value);
+        log(`${node.label} params updated`);
+        saveState();
+      }catch(err){ toast('Invalid JSON in params', false); }
+    });
+  }
+
+  // Remove node
+  function removeNode(id){
+    const i = nodes.findIndex(n => n.id === id);
+    if(i>=0){
+      try { canvas.removeChild(nodes[i].el); } catch(e){}
+      nodes.splice(i,1);
+      edges = edges.filter(e => e.from !== id && e.to !== id);
+      renderEdges(); saveState();
+    }
+  }
+
+  // Render edges (SVG Bezier)
+  function renderEdges(){
+    edgesSvg.innerHTML = '';
+    edges.forEach(e => {
+      const a = nodes.find(n => n.id === e.from);
+      const b = nodes.find(n => n.id === e.to);
+      if(!a || !b) return;
+      const x1 = a.el.offsetLeft + a.el.offsetWidth - 7, y1 = a.el.offsetTop + a.el.offsetHeight/2;
+      const x2 = b.el.offsetLeft + 7, y2 = b.el.offsetTop + b.el.offsetHeight/2;
+      const dx = Math.abs(x2 - x1);
+      const c1 = x1 + Math.min(140, dx*0.5);
+      const c2 = x2 - Math.min(140, dx*0.5);
+      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', `M ${x1} ${y1} C ${c1} ${y1} ${c2} ${y2} ${x2} ${y2}`);
+      p.setAttribute('stroke', '#22d3ee'); p.setAttribute('fill','none');
+      edgesSvg.appendChild(p);
+    });
+  }
+
+  // Drag-line while connecting
+  function startDragLine(node, ev){
+    dragLineSvg.innerHTML = ''; dragLineSvg.style.display = 'block'; updateDragLine(ev);
+    document.addEventListener('mousemove', updateDragLine);
+  }
+  function updateDragLine(ev){
+    dragLineSvg.innerHTML = '';
+    if(!connectFrom) return;
+    const src = connectFrom.el;
+    const rect = canvas.getBoundingClientRect();
+    const x1 = src.offsetLeft + src.offsetWidth - 7;
+    const y1 = src.offsetTop + src.offsetHeight/2;
+    const x2 = ev.clientX - rect.left;
+    const y2 = ev.clientY - rect.top;
+    const dx = Math.abs(x2 - x1);
+    const c1 = x1 + Math.min(140, dx*0.5);
+    const c2 = x2 - Math.min(140, dx*0.5);
+    const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d', `M ${x1} ${y1} C ${c1} ${y1} ${c2} ${y2} ${x2} ${y2}`);
+    p.setAttribute('stroke','#facc15'); p.setAttribute('fill','none'); p.setAttribute('stroke-width','2'); p.setAttribute('stroke-dasharray','6,6');
+    dragLineSvg.appendChild(p);
+  }
+  function stopDragLine(){
+    connecting=false; connectFrom=null; dragLineSvg.innerHTML=''; dragLineSvg.style.display='none';
+    document.removeEventListener('mousemove', updateDragLine);
+  }
+  document.addEventListener('mouseup', stopDragLine);
+
+  // Toggle connect mode
+  const connectToggleBtn = document.createElement('button');
+  connectToggleBtn.className='btn'; connectToggleBtn.innerHTML = '<i class="fa fa-plug"></i> Connect';
+  connectToggleBtn.onclick = ()=>{ connectMode = !connectMode; toast(connectMode ? 'Connect mode ON' : 'Connect mode OFF'); };
+  document.querySelector('.toolbar').appendChild(connectToggleBtn);
+
+  // Toolbar node-add buttons wiring (keep original)
+  $('#btn-add-input').addEventListener('click', ()=> addNode('Input', 100, 140, 'Input'));
+  $('#btn-add-pre').addEventListener('click', ()=> addNode('Preprocessor', 220, 140, 'Preprocessor'));
+  $('#btn-add-feat').addEventListener('click', ()=> addNode('FeatureExtractor', 340, 140, 'FeatureExtractor'));
+  $('#btn-add-stats').addEventListener('click', ()=> addNode('StatisticalAnalysis', 460, 140, 'StatisticalAnalysis'));
+  $('#btn-add-llm').addEventListener('click', ()=> addNode('LLM', 580, 140, 'LLM'));
+  $('#btn-add-val').addEventListener('click', ()=> addNode('Validation', 700, 140, 'Validation'));
+  $('#btn-add-out').addEventListener('click', ()=> addNode('Output', 820, 140, 'Output'));
+
+  // Save/Load workflow
+  function saveState(){
+    try{
+      const nodesSer = nodes.map(n => ({
+        id: n.id,
+        type: n.type,
+        label: n.label,
+        x: n.el.offsetLeft,
+        y: n.el.offsetTop,
+        params: n.params,
+        files: n.files || []
+      }));
+      const edgesSer = edges.map(e => ({ from: e.from, to: e.to }));
+      localStorage.setItem('clinvarnet_nodes', JSON.stringify(nodesSer));
+      localStorage.setItem('clinvarnet_edges', JSON.stringify(edgesSer));
+      log('Workflow saved', 'good');
+    }catch(e){ log('Save failed','bad'); }
+  }
+
+  function loadState(){
+    try{
+      const ns = JSON.parse(localStorage.getItem('clinvarnet_nodes')||'[]');
+      const es = JSON.parse(localStorage.getItem('clinvarnet_edges')||'[]');
+      // clear current
+      nodes.forEach(n => { try{ canvas.removeChild(n.el);}catch(e){} });
+      nodes = []; edges = [];
+      NODE_ID = 1;
+      ns.forEach(obj => {
+        const n = addNode(obj.type, obj.x, obj.y, obj.label, { params: obj.params, files: obj.files });
+        // override id to keep original IDs
+        n.id = obj.id;
+        // keep NODE_ID consistent
+        NODE_ID = Math.max(NODE_ID, parseInt(obj.id.replace('node-','')) + 1);
+      });
+      es.forEach(e => {
+        edges.push({ from: e.from, to: e.to });
+      });
+      renderEdges();
+      log('Workflow loaded','good');
+    }catch(e){ log('Load failed','bad'); }
+  }
+
+  $('#btn-load').addEventListener('click', ()=> {
+    // allow load from JSON textarea or localStorage
+    try{
+      const j = JSON.parse(schemaEl.value);
+      // optionally parse and add nodes/edges
+      toast('Loaded workflow JSON into editor (not auto-run). Edit & press Run to apply.', true, 2500);
+    }catch(err){ toast('Invalid JSON in text area', false); }
+  });
+
+  // Export result button
+  $('#btn-export').addEventListener('click', ()=>{
+    const exportObj = { nodes: nodes.map(n => ({ id:n.id, type:n.type, label:n.label, params:n.params, output:n.output })), edges };
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'workflow_result.json'; a.click();
+  });
+
+  // Sample CSV download
+  $('#download-sample-csv').addEventListener('click', ()=>{
+    const csv = 'day,S,E,I,R,D\n0,999900,50,50,0,0\n1,999899,52,48,1,0\n';
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download='sample.csv'; a.click();
+  });
+
+  // Stream toggle
+  let streaming = false;
+  $('#btn-stream-toggle').addEventListener('click', ()=>{
+    streaming = !streaming;
+    if(streaming){
+      toast('Stream started', true);
+      streamInterval = setInterval(()=> { executeWorkflowStreaming(); }, 1000);
+    } else {
+      clearInterval(streamInterval);
+      toast('Stream stopped', true);
+    }
+  });
+
+  // Execution logic for nodes (AI, Pandemic, Webscraper, File)
+  // Use Xenova Transformers (must have loaded)
+  async function executeNode(node){
+    const t = node.type.toLowerCase();
+    log(`Executing ${node.label}`);
+    if(t === 'llm' || t === 'llm' || node.type === 'LLM'){
+      // combine prompt & file contents if any
+      let prompt = (node.params && node.params.prompt) ? node.params.prompt : '';
+      if(node.files && node.files.length){
+        // include brief file names or extracted text if available
+        for(const f of node.files){
+          if(f.extractedText) prompt += `\n\n[FILE: ${f.name}]\n${f.extractedText.substring(0,800)}`;
+          else prompt += `\n\n[FILE: ${f.name}]`;
+        }
+      }
+      if(window.transformers && typeof window.transformers.AutoTokenizer !== 'undefined' && tokenizer && model){
+        try{
+          const inputIds = await tokenizer.encode(prompt);
+          // streaming-style: generate in chunks
+          const gen = await model.generate(inputIds, { max_new_tokens: 60 });
+          const decoded = await tokenizer.decode(gen[0]);
+          node.output = decoded;
+        }catch(e){ node.output = 'LLM error'; console.error(e); }
+      } else {
+        node.output = 'LLM not ready';
+      }
+    } else if(node.type === 'Pandemic' || node.type === 'pandemic'){
+      // Run SEIRD using params
+      const p = node.params || {};
+      // provide defaults if missing
+      const beta = parseFloat(p.beta || 0.3);
+      const sigma = parseFloat(p.sigma || (1/5.1));
+      const gamma = parseFloat(p.gamma || (1/10));
+      const mu = parseFloat(p.mu || 0.001);
+      const days = parseInt(p.days || 120);
+      const interventionDay = parseInt(p.interventionDay || 30);
+      // initial
+      let S = parseFloat(p.S || 999900);
+      let E = parseFloat(p.E || 50);
+      let I = parseFloat(p.I || 50);
+      let R = parseFloat(p.R || 0);
+      let D = parseFloat(p.D || 0);
+      const data = [];
+      for(let day=0; day<days; day++){
+        const effectiveBeta = day >= interventionDay ? beta * (1 - (p.alpha||0)) : beta;
+        const N = S + E + I + R;
+        const newE = (effectiveBeta * S * I / N);
+        const newI = sigma * E;
+        const newR = gamma * I;
+        const newD = mu * I;
+        S = Math.max(S - newE, 0);
+        E = Math.max(E + newE - newI, 0);
+        I = Math.max(I + newI - newR - newD, 0);
+        R = Math.max(R + newR, 0);
+        D = Math.max(D + newD, 0);
+        data.push({ day, S, E, I, R, D });
+      }
+      node.output = { summary: `Simulated ${days} days`, series: data };
+      node.simulation = data;
+    } else if(node.type === 'WebScraper' || node.type === 'webscraper'){
+      const urls = (node.params && node.params.urls) ? (Array.isArray(node.params.urls) ? node.params.urls : [node.params.urls]) : [];
+      let combined = '';
+      for(const u of urls){
+        try{
+          const resp = await fetch(u);
+          const text = await resp.text();
+          combined += `\n\n--- ${u} ---\n` + text.substring(0,2000);
+        }catch(e){ combined += `\n\n--- ${u} (fetch error or offline) ---\n`; }
+      }
+      // Optionally pass to LLM for structuring
+      let structured = combined;
+      if(tokenizer && model){
+        try{
+          const inputIds = await tokenizer.encode(`Structure the following content into JSON:\n\n${combined.substring(0,4000)}`);
+          const out = await model.generate(inputIds,{ max_new_tokens: 200 });
+          structured = await tokenizer.decode(out[0]);
+        }catch(e){ structured = combined.substring(0,1000); }
+      }
+      node.output = structured;
+    } else if(node.type === 'File' || node.type === 'file'){
+      // Expect node.files[] to hold File objects with extractedText optionally
+      if(node.files && node.files.length){
+        for(const f of node.files){
+          // if file is PDF or DOCX and not yet extracted, extract
+          if(!f.extractedText && f.blob){
+            if(f.name.endsWith('.pdf')){
+              try{
+                const arrayBuffer = await f.blob.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let ft = '';
+                for(let p=1;p<=pdf.numPages;p++){
+                  const page = await pdf.getPage(p);
+                  const content = await page.getTextContent();
+                  ft += content.items.map(i=>i.str).join(' ') + '\n';
+                }
+                f.extractedText = ft;
+              }catch(e){ f.extractedText = 'PDF parse error'; }
+            } else if(f.name.endsWith('.docx')){
+              try{
+                const ab = await f.blob.arrayBuffer();
+                const res = await mammoth.extractRawText({ arrayBuffer: ab });
+                f.extractedText = res.value;
+              }catch(e){ f.extractedText = 'DOCX parse error'; }
+            } else {
+              // simple text
+              try{ f.extractedText = await f.blob.text(); }catch(e){ f.extractedText = 'Unreadable file'; }
+            }
+          }
+        }
+        node.output = node.files.map(f => ({ name: f.name, excerpt: (f.extractedText||'').substring(0,500) }));
+      } else {
+        node.output = 'No files attached';
+      }
+    } else {
+      // default behavior: echo params
+      node.output = { info: node.params || {} };
+    }
+    // propagate outputs to connected nodes (simple)
+    edges.filter(e => e.from === node.id).forEach(e => {
+      const toNode = nodes.find(n => n.id === e.to);
+      if(toNode) {
+        toNode.params['input'] = node.output;
+      }
+    });
+    // show result in panel
+    resultEl.textContent = typeof node.output === 'string' ? node.output : JSON.stringify(node.output, null, 2);
+    log(`${node.label} executed`);
+    return node.output;
+  }
+
+  // Execute entire workflow in topological-ish order (simple approach)
+  async function executeWorkflowStreaming(){
+    for(const n of nodes){
+      await executeNode(n);
+    }
+  }
+
+  // Node UI interactions for attaching files
+  // Allow drag-and-drop onto node element to add File
+  canvas.addEventListener('dragover', e => e.preventDefault());
+  canvas.addEventListener('drop', async e => {
+    e.preventDefault();
+    const mx = e.clientX, my = e.clientY;
+    const targetNode = nodes.find(n => {
+      const rect = n.el.getBoundingClientRect();
+      return mx >= rect.left && mx <= rect.right && my >= rect.top && my <= rect.bottom;
+    });
+    if(targetNode && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){
+      const file = e.dataTransfer.files[0];
+      const blob = new Blob([file], { type: file.type });
+      targetNode.files = targetNode.files || [];
+      targetNode.files.push({ name: file.name, blob, extractedText: null });
+      toast(`File ${file.name} attached to ${targetNode.label}`, true, 2200);
+      saveState();
+    }
+  });
+
+  // Buttons: Run / Stop
+  $('#btn-run').addEventListener('click', ()=> {
+    executeWorkflowStreaming();
+  });
+  $('#btn-stop').addEventListener('click', ()=> {
+    clearInterval(streamInterval); running=false; toast('Execution stopped');
+  });
+
+  // Save current state on unload
+  window.addEventListener('beforeunload', (e) => {
+    saveState();
+  });
+
+  // Wiring for Save/Load UI controls
+  // simple UI: save state to localStorage
+  // implement export/import via schema textarea
+  $('#btn-load').addEventListener('click', ()=> {
+    loadState();
+  });
+
+  // small helper: connect nodes manually by selecting two and clicking 'Connect' (already provided)
+  // but we track edges as {from, to}
+  // implement programmatic connect from edges created earlier when saving/loading
+
+  // Edge creation when dropping dragline onto an in-port
+  canvas.addEventListener('mouseup', (ev) => {
+    if(!connecting || !connectFrom) return;
+    // find node under mouse
+    const mx = ev.clientX, my = ev.clientY;
+    const rectCanvas = canvas.getBoundingClientRect();
+    const x = mx - rectCanvas.left, y = my - rectCanvas.top;
+    const dest = nodes.find(n => {
+      const r = n.el.getBoundingClientRect();
+      return mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom;
+    });
+    if(dest && dest !== connectFrom){
+      // add edge
+      edges.push({ from: connectFrom.id, to: dest.id });
+      renderEdges();
+      saveState();
+      toast('Edge created', true);
+    }
+    stopDragLine();
+  });
+
+  // register inline manifest + service worker
+  try{
+    const manifestContent = document.getElementById('inline-manifest').textContent;
+    const blob = new Blob([manifestContent],{type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    document.getElementById('manifest-placeholder').setAttribute('href', url);
+  }catch(e){ console.warn('manifest attach failed', e); }
+
+  try{
+    const swScript = document.getElementById('inline-sw').textContent;
+    const swBlob = new Blob([swScript],{type:'application/javascript'});
+    const swUrl = URL.createObjectURL(swBlob);
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register(swUrl).then(()=> log('Service Worker registered','good')).catch(err => log('SW registration failed','bad'));
+    }
+  }catch(e){ console.warn('sw attach failed', e); }
+
+  // expose some functions for debug
+  window.clinvarnet = { nodes, edges, addNode, saveState, loadState, executeWorkflowStreaming, toast };
+  log('ClinVARnet Langflow UI up', 'good');
+
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Langflow Clone — Pandemic Early Warning PWA</title>
+<meta name="theme-color" content="#0ea5e9" />
+<meta name="description" content="Visual node editor for Pandemic Early Warning and Clinical workflow simulation with PWA support." />
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Font Awesome Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<!-- Xenova Transformers (in-browser LLM) -->
+<script type="module" src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
+
+<!-- Manifest for PWA -->
+<link rel="manifest" href="manifest.json">
+
+<style>
+:root {
+  --bg:#0f172a; --panel:#0b1220; --node:#111827; --node-border:#334155; 
+  --edge:#22d3ee; --accent:#0ea5e9; --good:#10b981; --warn:#f59e0b; --bad:#ef4444;
+}
+html, body {
+  height:100%; background:var(--bg); color:white; margin:0; font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+}
+.app { display:flex; flex-direction:column; height:100vh; }
+.panel { background:var(--panel); border-top:1px solid #0f172a; }
+.toolbar .btn {
+  background:#1f2937; border:1px solid #334155; border-radius:8px; padding:8px 12px; font-size:0.85rem; display:flex; align-items:center; gap:8px;
+}
+.toolbar .btn:hover { background:#293345 }
+.btn.primary { background:#0284c7; border-color:#0284c7; }
+.btn.success { background:#059669; border-color:#059669; }
+.btn.danger { background:#ef4444; border-color:#ef4444; }
+.btn.warn { background:#f59e0b; border-color:#f59e0b; color:#111827; }
+
+/* Node animations */
+.node { transition: all 0.3s ease; }
+.node.selected { transform: scale(1.05); box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+
+/* Toast */
+.toast {
+  display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  background-color: #10b981; color:white; padding:10px; border-radius:5px; font-size:14px;
+  transition: opacity 0.3s;
+}
+.toast.show { display:block; opacity:1; }
+
+/* Canvas */
+#canvas-wrap { flex:1; position:relative; overflow:hidden; }
+#canvas { width:100%; height:100%; position:relative; }
+#edges, #drag-line { position:absolute; width:100%; height:100%; top:0; left:0; pointer-events:none; }
+
+textarea { background:rgba(0,0,0,0.2); color:white; border:1px solid #334155; border-radius:4px; padding:4px; width:100%; resize:none; font-family:monospace; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Workflow Panel -->
+  <div class="panel p-4 flex gap-4">
+    <div class="flex-1 flex flex-col">
+      <label class="text-sm font-semibold">Workflow JSON (schema & params)</label>
+      <textarea id="schema" spellcheck="false" rows="20">
+{
+  "workflow": {
+    "id": "pandemic-ews",
+    "name": "Pandemic Early Warning Workflow",
+    "nodes": [
+      {"id":"n1","type":"Input","label":"Parameters","params":{"days":120,"seed":42,"source":"simulation"}},
+      {"id":"n2","type":"Preprocessor","label":"Preprocess","params":{"deduplicate":true,"fill_missing":"zero"}},
+      {"id":"n3","type":"FeatureExtractor","label":"Features","params":{"features":["rt","growth","positivity"]}},
+      {"id":"n4","type":"StatisticalAnalysis","label":"Stats","params":{"window":7,"zscore":2.0}},
+      {"id":"n5","type":"LLM","label":"Analyst","params":{"mode":"auto","prompt":"Summarize outbreak risk succinctly."}},
+      {"id":"n6","type":"Validation","label":"Validate","params":{"thresholds":{"rt":1.2,"growth":0.15,"positivity":0.05}}},
+      {"id":"n7","type":"Output","label":"Output","params":{"format":"json"}}
+    ],
+    "edges": [
+      {"from":"n1","to":"n2"}, {"from":"n2","to":"n3"}, {"from":"n3","to":"n4"},
+      {"from":"n4","to":"n5"}, {"from":"n5","to":"n6"}, {"from":"n6","to":"n7"}
+    ]
+  }
+}</textarea>
+    </div>
+    <div class="w-72 flex flex-col gap-2">
+      <button id="btn-load" class="btn primary w-full"><i class="fa fa-file-import"></i> Load Workflow</button>
+      <button id="btn-run" class="btn success w-full"><i class="fa fa-play"></i> Run</button>
+      <button id="btn-stop" class="btn danger w-full"><i class="fa fa-stop"></i> Stop</button>
+      <button id="btn-export" class="btn w-full"><i class="fa fa-download"></i> Export Result</button>
+      <button id="btn-stream-toggle" class="btn warn w-full"><i class="fa fa-spinner"></i> Start Stream</button>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar panel p-2 flex gap-2 items-center">
+    <button id="btn-add-input" class="btn"><i class="fa fa-sliders"></i> Input</button>
+    <button id="btn-add-pre" class="btn"><i class="fa fa-broom"></i> Preprocessor</button>
+    <button id="btn-add-feat" class="btn"><i class="fa fa-flask"></i> Feature</button>
+    <button id="btn-add-stats" class="btn"><i class="fa fa-chart-line"></i> Stats</button>
+    <button id="btn-add-llm" class="btn"><i class="fa fa-brain"></i> LLM</button>
+    <button id="btn-add-val" class="btn"><i class="fa fa-check-circle"></i> Validation</button>
+    <button id="btn-add-out" class="btn"><i class="fa fa-file-export"></i> Output</button>
+    <div class="mx-3 w-px h-6 bg-slate-700"></div>
+    <button id="btn-connect" class="btn"><i class="fa fa-plug"></i> Connect</button>
+    <button id="btn-clear" class="btn danger"><i class="fa fa-trash"></i> Clear</button>
+    <div class="ml-auto text-xs opacity-70">Drag nodes, connect to link, double-click to edit params</div>
+  </div>
+
+  <!-- Canvas -->
+  <div id="canvas-wrap">
+    <div id="canvas"></div>
+    <svg id="edges"></svg>
+    <svg id="drag-line"></svg>
+  </div>
+
+  <!-- Logs & Results -->
+  <div class="panel p-4 grid grid-cols-3 gap-4">
+    <div class="col-span-2">
+      <div class="text-sm mb-1 font-semibold">Execution Log</div>
+      <div id="log" class="bg-black/30 rounded-lg p-3 h-48 overflow-y-auto font-mono text-sm"></div>
+    </div>
+    <div>
+      <div class="text-sm mb-1 font-semibold">Result</div>
+      <pre id="result" class="bg-black/30 rounded-lg p-3 h-48 overflow-y-auto text-xs"></pre>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast">Notification</div>
+
+</div>
+
+<!-- Service Worker registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(() => console.log('Service Worker registered'));
+}
+</script>
+
+<!-- Core JS -->
+<script type="module">
+window.addEventListener('DOMContentLoaded', () => {
+  const $ = (q)=>document.querySelector(q);
+  const canvas=$('#canvas'), edgesSvg=$('#edges'), dragLineSvg=$('#drag-line');
+  const logEl=$('#log'), resultEl=$('#result'), toast=$('#toast');
+
+  function toastMsg(msg,ok=true){ toast.textContent=msg; toast.style.borderLeftColor=ok?'#10b981':'#ef4444'; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),2200);}
+  function log(msg,type='info'){ const d=document.createElement('div'); d.textContent=msg; if(type==='good')d.style.color='#86efac'; if(type==='bad')d.style.color='#fca5a5'; logEl.appendChild(d); logEl.scrollTop=logEl.scrollHeight;}
+  function pretty(obj){return JSON.stringify(obj,null,2);}
+
+  let NODE_ID=1, nodes=[], edges=[], connecting=false, connectFrom=null, running=false, streamInterval=null, streamDayOffset=0;
+  const typeColors={Input:'#22c55e',Preprocessor:'#0ea5e9',FeatureExtractor:'#8b5cf6',StatisticalAnalysis:'#f59e0b',LLM:'#ec4899',Validation:'#ef4444',Output:'#facc15'};
+
+  function addNode(type,x=120,y=100,label=null,params={}) {
+    const id=`node-${NODE_ID++}`;
+    const el=document.createElement('div'); el.className=`node ${type}`; el.style.left=`${x}px`; el.style.top=`${y}px`;
+    el.innerHTML=`
+      <div class="head">
+        <div class="title">${label||type}</div>
+        <div class="flex gap-2 items-center">
+          <span class="pill" style="background:rgba(255,255,255,.06); color:${typeColors[type]}"><i class="fa fa-circle" style="font-size:6px"></i> ${type}</span>
+          <button class="text-slate-300 hover:text-white" title="Delete"><i class="fa fa-times"></i></button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="text-xs opacity-70 mb-2">${Object.keys(params).length ? 'Params: '+Object.entries(params).map(([k,v])=>`${k}=${typeof v==='object'?JSON.stringify(v):v}`).join(', '):'No parameters'}</div>
+        <textarea class="w-full bg-black/20 border border-slate-700 rounded p-2 text-xs" spellcheck="false">${pretty(params)}</textarea>
+      </div>
+      <div class="ports">
+        <div class="port in" style="top:50%"></div>
+        <div class="port out" style="top:50%"></div>
+      </div>
+    `;
+    canvas.appendChild(el);
+    const node={id,type,label:label||type,params,x,y,el,output:null};
+    nodes.push(node);
+
+    el.querySelector('button').addEventListener('click',e=>{e.stopPropagation(); removeNode(node.id);});
+    el.querySelector('.port.out').addEventListener('mousedown',e=>{e.stopPropagation(); if(!connectMode)return; connecting=true; connectFrom=node; startDragLine(node,e);});
+    el.querySelector('textarea').addEventListener('change',e=>{try{node.params=JSON.parse(e.target.value); toastMsg(`${node.type} params updated`);}catch(err){toastMsg('Invalid JSON in node params',false);}});
+    renderEdges();
+    makeDraggable(node);
+    return node;
+  }
+
+  function removeNode(id){ const i=nodes.findIndex(n=>n.id===id); if(i>=0){ try{canvas.removeChild(nodes[i].el);}catch(e){} nodes.splice(i,1); edges=edges.filter(e=>e.from!==id && e.to!==id); renderEdges(); }}
+
+  function makeDraggable(node){ let dragging=false,sx=0,sy=0; node.el.addEventListener('mousedown',e=>{if(e.target.closest('textarea')||e.target.closest('.port')||e.target.closest('button'))return; dragging=true; sx=e.clientX-node.el.offsetLeft; sy=e.clientY-node.el.offsetTop; node.el.classList.add('selected');}); 
+    document.addEventListener('mousemove',e=>{if(!dragging)return; node.el.style.left=`${e.clientX-sx}px`; node.el.style.top=`${e.clientY-sy}px`; renderEdges();});
+    document.addEventListener('mouseup',()=>{dragging=false; nodes.forEach(n=>n.el.classList.remove('selected'));}); 
+  }
+
+  function createEdge(from,to){if(edges.some(e=>e.from===from && e.to===to))return; edges.push({from,to}); renderEdges(); toastMsg('Edge created');}
+  function renderEdges(){edgesSvg.innerHTML=''; edges.forEach(e=>{const a=nodes.find(n=>n.id===e.from),b=nodes.find(n=>n.id===e.to); if(!a||!b)return; const x1=a.el.offsetLeft+a.el.offsetWidth-7,y1=a.el.offsetTop+a.el.offsetHeight/2; const x2=b.el.offsetLeft+7,y2=b.el.offsetTop+b.el.offsetHeight/2; const dx=Math.abs(x2-x1); const c1=x1+Math.min(140,dx*0.5); const c2=x2-Math.min(140,dx*0.5); const p=document.createElementNS('http://www.w3.org/2000/svg','path'); p.setAttribute('d',`M ${x1} ${y1} C ${c1} ${y1} ${c2} ${y2} ${x2} ${y2}`); p.setAttribute('stroke','#22d3ee'); p.setAttribute('fill','none'); edgesSvg.appendChild(p);});}
+  function startDragLine(node,ev){dragLineSvg.innerHTML=''; dragLineSvg.style.display='block'; updateDragLine(ev);}
+  function updateDragLine(ev){dragLineSvg.innerHTML=''; const rect=canvas.getBoundingClientRect(); const src=connectFrom.el; const x1=src.offsetLeft+src.offsetWidth-7; const y1=src.offsetTop+src.offsetHeight/2; const x2=ev.clientX-rect.left; const y2=ev.clientY-rect.top; const dx=Math.abs(x2-x1); const c1=x1+Math.min(140,dx*0.5); const c2=x2-Math.min(140,dx*0.5); const p=document.createElementNS('http://www.w3.org/2000/svg','path'); p.setAttribute('d',`M ${x1} ${y1} C ${c1} ${y1} ${c2} ${y2} ${x2} ${y2}`); p.setAttribute('stroke','#facc15'); p.setAttribute('fill','none'); p.setAttribute('stroke-width','2'); p.setAttribute('stroke-dasharray','6,6'); dragLineSvg.appendChild(p);}
+  function stopDragLine(){connecting=false; connectFrom=null; dragLineSvg.innerHTML=''; dragLineSvg.style.display='none';}
+
+  let connectMode=false;
+  $('#btn-connect').addEventListener('click',()=>{connectMode=!connectMode; toastMsg(connectMode?'Connect Mode Enabled':'Connect Mode Disabled',connectMode);});
+
+  // Simulation
+  let simulationDay=0;
+  $('#btn-run').addEventListener('click',()=>{
+    if(running){toastMsg('Simulation already running!',false); return;}
+    running=true;
+    toastMsg('Starting Pandemic Simulation...',true);
+    simulationDay=0;
+    streamInterval=setInterval(()=>{
+      if(simulationDay>=100){clearInterval(streamInterval); toastMsg('Simulation complete!',true); running=false;} else{ simulationDay++; updatePandemicSimulation(simulationDay); }
+    },1000);
+  });
+  $('#btn-stop').addEventListener('click',()=>{clearInterval(streamInterval); running=false; toastMsg('Simulation stopped',false);});
+  function updatePandemicSimulation(day){ log(`Day ${day}: Pandemic update`); resultEl.textContent=`Day ${day} Pandemic Status: Moderate Risk`;}
+
+  // Initial demo nodes
+  addNode('Input',120,120,'Data Input',{severity:'high',location:'Kenya'});
+  addNode('FeatureExtractor',300,200,'Feature Extraction',{data:'temperature,rainfall'});
+  addNode('LLM',500,300,'Pandemic Prediction',{model:'mlp',data:'vectorized data'});
+  addNode('Validation',700,400,'Results Validation',{threshold:'0.7'});
+  toastMsg('Welcome! Connect nodes and run simulations.',true);
+
+  document.addEventListener('mouseup', stopDragLine);
+});
+</script>
+
+<!-- Inline Service Worker -->
+<script type="text/javascript">
+const swCode = `
+self.addEventListener('install', e => { e.waitUntil(self.skipWaiting()); });
+self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
+self.addEventListener('fetch', e => { e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))); });
+`;
+const swBlob = new Blob([swCode], {type:'application/javascript'});
+const swUrl = URL.createObjectURL(swBlob);
+navigator.serviceWorker.register(swUrl).then(()=>console.log('Inline SW registered'));
+</script>
+
+<!-- Inline Manifest -->
+<script type="application/json" id="manifest-json">
+{
+  "name": "Langflow Pandemic PWA",
+  "short_name": "PandemicEWS",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0ea5e9",
+  "description": "Visual node editor for Pandemic Early Warning workflow",
+  "icons":[
+    {"src":"icon-192.png","sizes":"192x192","type":"image/png"},
+    {"src":"icon-512.png","sizes":"512x512","type":"image/png"}
+  ]
+}
+</script>
+</body>
+</html>
+

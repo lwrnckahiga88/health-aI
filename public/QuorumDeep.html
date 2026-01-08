@@ -4,2515 +4,1506 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuorumED Genomic Analysis Platform</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .gene-suggestions-container {
-            position: absolute;
-            z-index: 1000;
-            width: 100%;
-            max-height: 200px;
-            overflow-y: auto;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 0 0 4px 4px;
-            display: none;
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --dark-bg: #0f0f23;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: #b8b9cf;
+            --accent-neon: #00ffff;
+            --purple-neon: #8b5cf6;
+            --pink-neon: #ec4899;
+            --matrix-green: #00ff00;
+            --cyber-orange: #ff5e00;
+            --quantum-purple: #8a2be2;
         }
-        .suggestion-item {
-            padding: 8px 12px;
-            cursor: pointer;
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
-        .suggestion-item:hover {
-            background-color: #f5f5f5;
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
         }
-        .history-item {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-        }
-        .history-item:hover {
-            background-color: #f8f9fa;
-        }
-        .gene-badge {
-            background-color: #6c757d;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.8em;
-        }
-        .variant-id {
-            font-family: monospace;
-            margin-left: 5px;
-        }
-        .timestamp {
-            color: #6c757d;
-        }
-        #toast-container {
+
+        /* Animated background */
+        body::before {
+            content: '';
             position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1100;
-        }
-        .toast {
-            margin-bottom: 10px;
-        }
-        .impact-visualization {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-        }
-        .data-preview {
-            margin-top: 20px;
-            display: none;
-        }
-        .data-preview table {
+            top: 0;
+            left: 0;
             width: 100%;
-        }
-        #training-logs, #model-logs {
-            height: 300px;
-            overflow-y: auto;
-            background-color: #f8f9fa;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 0.9em;
-        }
-        #variant-result-container {
-            margin-top: 20px;
-        }
-        .confidence-indicator-container {
-            height: 10px;
-            background-color: #e9ecef;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
-        #confidence-indicator {
             height: 100%;
+            background: radial-gradient(ellipse at top, rgba(102, 126, 234, 0.1) 0%, transparent 70%),
+                        radial-gradient(ellipse at bottom right, rgba(236, 72, 153, 0.1) 0%, transparent 70%);
+            z-index: -1;
+            animation: backgroundShift 20s ease-in-out infinite;
+        }
+
+        @keyframes backgroundShift {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        /* Navigation */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            backdrop-filter: blur(20px);
+            background: rgba(15, 15, 35, 0.8);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+            padding: 1rem 2rem;
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, var(--accent-neon), var(--purple-neon));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav-tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: 2px solid transparent;
+            border-radius: 25px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-tab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--primary-gradient);
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .nav-tab:hover::before,
+        .nav-tab.active::before {
+            left: 0;
+        }
+
+        .nav-tab:hover,
+        .nav-tab.active {
+            color: var(--text-primary);
+            border-color: var(--purple-neon);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
+        }
+
+        /* Main Content Container */
+        .main-container {
+            margin-top: 100px;
+            padding: 2rem;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Page Modules */
+        .page-module {
+            display: none;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .page-module.active {
+            display: block;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ====================== */
+        /* VARIANT ANALYSIS MODULE */
+        /* ====================== */
+        .analysis-module {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 20px;
+            padding: 3rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analysis-module::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+            animation: rotate 10s linear infinite;
+            z-index: -1;
+        }
+
+        .module-title {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, var(--accent-neon), var(--purple-neon), var(--pink-neon));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: var(--purple-neon);
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .variant-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .variant-input:focus {
+            outline: none;
+            border-color: var(--purple-neon);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+        }
+
+        .cyber-button {
+            background: var(--primary-gradient);
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .cyber-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        .results-display {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            margin-top: 2rem;
+            min-height: 200px;
+        }
+
+        /* ================== */
+        /* TRAINING MODULE */
+        /* ================== */
+       .training-module {
+    background: linear-gradient(135deg, #f0e68c 0%, #bdb76b 100%);
+    border-radius: 20px;
+    padding: 3rem;
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #556b2f;
+    box-shadow: 0 0 30px rgba(85, 107, 47, 0.3);
+}
+
+.training-module::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        linear-gradient(90deg, transparent 79px, rgba(85, 107, 47, 0.1) 81px, rgba(85, 107, 47, 0.1) 82px, transparent 84px),
+        linear-gradient(rgba(85, 107, 47, 0.05) 50%, transparent 50%);
+    background-size: 84px 4px;
+    animation: matrixRain 3s linear infinite;
+    z-index: -1;
+}
+
+@keyframes matrixRain {
+    0% { transform: translateY(-100px); }
+    100% { transform: translateY(100px); }
+}
+
+.matrix-title {
+    font-size: 2.5rem;
+    color: #556b2f;
+    text-shadow: 0 0 10px rgba(85, 107, 47, 0.3);
+    margin-bottom: 2rem;
+    font-family: 'Courier New', monospace;
+    text-align: center;
+    letter-spacing: 2px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.training-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.matrix-card {
+    background: rgba(245, 245, 220, 0.9);
+    border-radius: 10px;
+    padding: 2rem;
+    font-family: 'Courier New', monospace;
+    color: #556b2f;
+    border: 2px solid #6b8e23;
+    box-shadow: inset 0 0 15px rgba(107, 142, 35, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.matrix-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, transparent 65%, rgba(107, 142, 35, 0.1) 70%, transparent 75%);
+    animation: scanline 6s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+}
+
+.matrix-input {
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid #6b8e23;
+    color: #2f4f4f;
+    padding: 0.75rem;
+    border-radius: 5px;
+    font-family: 'Courier New', monospace;
+    width: 100%;
+    margin-bottom: 1rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.matrix-input::placeholder {
+    color: rgba(85, 107, 47, 0.5);
+    font-weight: normal;
+}
+
+.matrix-button {
+    background: linear-gradient(45deg, #6b8e23, #556b2f);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border: 1px solid #2f4f4f;
+}
+
+.matrix-button:hover {
+    box-shadow: 0 0 20px rgba(85, 107, 47, 0.5);
+    transform: translateY(-2px);
+}
+
+.training-progress {
+    margin-top: 2rem;
+    border: 2px solid #6b8e23;
+    padding: 1rem;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.progress-bar {
+    height: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    border: 1px solid #556b2f;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6b8e23, #556b2f);
+    transition: width 0.5s ease;
+}
+
+.training-log {
+    height: 200px;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #6b8e23;
+    padding: 1rem;
+    font-family: 'Courier New', monospace;
+    color: #2f4f4f;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    font-weight: 700;
+}
+
+.log-entry {
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(85, 107, 47, 0.2);
+    padding-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.log-entry::before {
+    content: '>';
+    margin-right: 0.5rem;
+    color: #6b8e23;
+    font-weight: bold;
+}
+
+/* Digital clock-like elements */
+.digital-display {
+    font-family: 'Digital-7', 'Courier New', monospace;
+    background: rgba(0, 0, 0, 0.8);
+    color: #32cd32;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    text-shadow: 0 0 5px #32cd32;
+    border: 1px solid #32cd32;
+    box-shadow: inset 0 0 10px rgba(50, 205, 50, 0.3);
+}
+
+.digital-label {
+    font-family: 'Digital-7', 'Courier New', monospace;
+    color: #2f4f4f;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 0.3rem;
+}
+
+/* Add this to your head section if using Digital-7 font */
+@font-face {
+    font-family: 'Digital-7';
+    src: url('https://fonts.cdnfonts.com/css/digital-7') format('truetype');
+}
+
+        /* ================== */
+        /* DEPLOYMENT MODULE */
+        /* ================== */
+        .deployment-module {
+            background: linear-gradient(135deg, rgba(255, 94, 0, 0.1) 0%, rgba(255, 30, 0, 0.2) 100%);
+            border-radius: 20px;
+            padding: 3rem;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--cyber-orange);
+            box-shadow: 0 0 40px rgba(255, 94, 0, 0.1);
+        }
+
+        .deployment-module::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(255, 94, 0, 0.05),
+                    rgba(255, 94, 0, 0.05) 1px,
+                    transparent 1px,
+                    transparent 10px
+                );
+            animation: cyberScan 5s linear infinite;
+            z-index: -1;
+        }
+
+        @keyframes cyberScan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        .cyber-title {
+            font-size: 2.5rem;
+            color: var(--cyber-orange);
+            text-shadow: 0 0 20px rgba(255, 94, 0, 0.5);
+            margin-bottom: 2rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .deployment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .cyber-card {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 2rem;
+            border: 1px solid var(--cyber-orange);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cyber-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--cyber-orange);
+            box-shadow: 0 0 10px var(--cyber-orange);
+        }
+
+        .cyber-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--cyber-orange);
+            box-shadow: 0 0 10px var(--cyber-orange);
+        }
+
+        .cyber-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--cyber-orange);
             border-radius: 5px;
-            background-color: #0d6efd;
-            width: 0%;
-            transition: width 0.5s;
+            padding: 1rem;
+            color: var(--cyber-orange);
+            margin-bottom: 1rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .cyber-input::placeholder {
+            color: rgba(255, 94, 0, 0.5);
+        }
+
+        .cyber-button {
+            background: linear-gradient(90deg, var(--cyber-orange), #ff3c00);
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 5px;
+            color: black;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .cyber-button:hover {
+            box-shadow: 0 0 30px rgba(255, 94, 0, 0.5);
+            transform: translateY(-3px);
+        }
+
+        .deployment-status {
+            margin-top: 2rem;
+            padding: 1rem;
+            border: 1px solid var(--cyber-orange);
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255, 94, 0, 0.2);
+        }
+
+        .status-label {
+            color: var(--cyber-orange);
+            font-weight: 600;
+        }
+
+        .status-value {
+            color: white;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* ================== */
+        /* MONITORING MODULE */
+        /* ================== */
+        .monitoring-module {
+            background: linear-gradient(135deg, rgba(0, 150, 255, 0.1) 0%, rgba(0, 50, 150, 0.2) 100%);
+            border-radius: 20px;
+            padding: 3rem;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--accent-neon);
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.1);
+        }
+
+        .monitoring-module::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    45deg,
+                    transparent,
+                    transparent 5px,
+                    rgba(0, 255, 255, 0.05) 5px,
+                    rgba(0, 255, 255, 0.05) 10px
+                );
+            animation: hologramShift 15s linear infinite;
+            z-index: -1;
+        }
+
+        @keyframes hologramShift {
+            0% { transform: translateX(-100px) translateY(-100px); }
+            100% { transform: translateX(100px) translateY(100px); }
+        }
+
+        .holo-title {
+            font-size: 2.5rem;
+            color: var(--accent-neon);
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            margin-bottom: 2rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .holo-card {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--accent-neon);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .holo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 255, 255, 0.2);
+        }
+
+        .holo-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .holo-card:hover::before {
+            opacity: 1;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-neon);
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            margin: 1rem 0;
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .chart-container {
+            margin-top: 2rem;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--accent-neon);
+            border-radius: 10px;
+            padding: 1rem;
+            position: relative;
+        }
+
+        .chart-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-neon);
+            font-size: 1.2rem;
+        }
+
+        /* ================== */
+        /* INTEGRATIONS MODULE */
+        /* ================== */
+        .integrations-module {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.1) 0%, rgba(75, 0, 130, 0.2) 100%);
+            border-radius: 20px;
+            padding: 3rem;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--quantum-purple);
+            box-shadow: 0 0 40px rgba(138, 43, 226, 0.1);
+        }
+
+        .integrations-module::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(138, 43, 226, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(75, 0, 130, 0.1) 0%, transparent 50%);
+            animation: quantumPulse 8s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        @keyframes quantumPulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .quantum-title {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, var(--quantum-purple), #4b0082, #9932cc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 2rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .integrations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .quantum-card {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid var(--quantum-purple);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .quantum-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(138, 43, 226, 0.2);
+        }
+
+        .quantum-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: conic-gradient(from 90deg at 40% -25%, var(--quantum-purple), #4b0082, var(--quantum-purple));
+            opacity: 0.1;
+            z-index: -1;
+        }
+
+        .integration-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--quantum-purple);
+        }
+
+        .integration-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        .integration-description {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .integration-status {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status-active {
+            background: rgba(0, 255, 0, 0.2);
+            color: #00ff00;
+            border: 1px solid #00ff00;
+        }
+
+        .status-inactive {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff0000;
+            border: 1px solid #ff0000;
+        }
+
+        .connect-button {
+            background: linear-gradient(45deg, var(--quantum-purple), #9932cc);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+            display: inline-block;
+        }
+
+        .connect-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(138, 43, 226, 0.3);
+        }
+
+        /* Common Elements */
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--accent-neon);
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 968px) {
+            .nav-tabs {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            
+            .main-container {
+                padding: 1rem;
+            }
+            
+            .module-title, .matrix-title, .cyber-title, .holo-title, .quantum-title {
+                font-size: 2rem;
+            }
+            
+            .two-column,
+            .training-grid,
+            .deployment-grid,
+            .integrations-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .nav-tabs {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .nav-tab {
+                text-align: center;
+            }
         }
     </style>
 </head>
-<body class="bg-light">
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-2 bg-dark text-white p-3 min-vh-100">
-                <div class="d-flex flex-column">
-                    <div class="text-center mb-4">
-                        <h4>QuorumED</h4>
-                        <small class="text-muted">Genomic Analysis</small>
-                    </div>
-                    <ul class="nav nav-pills flex-column mb-auto">
-                        <li class="nav-item">
-                            <a href="#analysis" class="nav-link active" data-bs-toggle="tab">
-                                <i class="fas fa-dna me-2"></i>Variant Analysis
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#training" class="nav-link" data-bs-toggle="tab">
-                                <i class="fas fa-brain me-2"></i>Model Training
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#deployment" class="nav-link" data-bs-toggle="tab">
-                                <i class="fas fa-rocket me-2"></i>Deployment
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#monitoring" class="nav-link" data-bs-toggle="tab">
-                                <i class="fas fa-chart-line me-2"></i>Monitoring
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#integrations" class="nav-link" data-bs-toggle="tab">
-                                <i class="fas fa-plug me-2"></i>Integrations
-                            </a>
-                        </li>
-                    </ul>
-                    <hr>
-                    <div class="dropdown">
-                        <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user-circle me-2 fs-4"></i>
-                            <span id="username">Guest</span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
-                            <li><a class="dropdown-item" href="#">Profile</a></li>
-                            <li><a class="dropdown-item" href="#">Settings</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" id="logoutLink">Sign out</a></li>
-                        </ul>
-                    </div>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-dna"></i> QuorumED
+            </div>
+            <div class="nav-tabs">
+                <div class="nav-tab active" data-tab="analysis">
+                    <i class="fas fa-dna"></i> Variant Analysis
+                </div>
+                <div class="nav-tab" data-tab="training">
+                    <i class="fas fa-brain"></i> Model Training
+                </div>
+                <div class="nav-tab" data-tab="deployment">
+                    <i class="fas fa-rocket"></i> Deployment
+                </div>
+                <div class="nav-tab" data-tab="monitoring">
+                    <i class="fas fa-chart-line"></i> Monitoring
+                </div>
+                <div class="nav-tab" data-tab="integrations">
+                    <i class="fas fa-plug"></i> Integrations
                 </div>
             </div>
+        </div>
+    </nav>
 
-            <!-- Main Content -->
-            <div class="col-md-10 p-4">
-                <div class="tab-content" id="mainTabs">
-                    <!-- Analysis Tab -->
-                    <div class="tab-pane fade show active" id="analysis">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card mb-4">
-                                    <div class="card-header bg-primary text-white">
-                                        <h5 class="mb-0">Variant Information</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <form id="variant-form">
-                                            <div class="mb-3">
-                                                <label for="gene-input" class="form-label">Gene</label>
-                                                <input type="text" class="form-control" id="gene-input" placeholder="e.g. BRCA1">
-                                                <div id="gene-suggestions" class="gene-suggestions-container"></div>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="variant-input" class="form-label">Variant ID</label>
-                                                <input type="text" class="form-control" id="variant-input" placeholder="e.g. chr17:41276045:G>A">
-                                            </div>
-                                            <div class="row">
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="aa-change-input" class="form-label">Amino Acid Change</label>
-                                                    <input type="text" class="form-control" id="aa-change-input" placeholder="e.g. p.Arg1443Ter">
-                                                </div>
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="sift-input" class="form-label">SIFT Score (0-1)</label>
-                                                    <input type="number" class="form-control" id="sift-input" min="0" max="1" step="0.01" placeholder="0.01">
-                                                </div>
-                                            </div>
-                                            <div class="row">
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="polyphen-input" class="form-label">PolyPhen Score (0-1)</label>
-                                                    <input type="number" class="form-control" id="polyphen-input" min="0" max="1" step="0.01" placeholder="0.95">
-                                                </div>
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="af-input" class="form-label">Allele Frequency (0-1)</label>
-                                                    <input type="number" class="form-control" id="af-input" min="0" max="1" step="0.0001" placeholder="0.0001">
-                                                </div>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="conservation-input" class="form-label">Conservation Score (0-1)</label>
-                                                <input type="number" class="form-control" id="conservation-input" min="0" max="1" step="0.1" placeholder="0.9">
-                                            </div>
-                                            <button type="button" class="btn btn-primary" id="analyze-variant-btn">
-                                                <i class="fas fa-search me-2"></i>Analyze Variant
-                                            </button>
-                                        </form>
-                                    </div>
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Variant Analysis Module -->
+        <div id="analysis" class="page-module active">
+            <div class="analysis-module">
+                <h1 class="module-title">Genomic Variant Analysis</h1>
+                
+                <div class="two-column">
+                    <div>
+                        <div class="glass-card">
+                            <h3 style="margin-bottom: 1.5rem; color: var(--accent-neon);">
+                                <i class="fas fa-dna"></i> Variant Information
+                            </h3>
+                            <form id="variant-form">
+                                <div class="form-group">
+                                    <label class="form-label">Gene</label>
+                                    <input type="text" class="variant-input" id="gene-input" placeholder="e.g. BRCA1">
                                 </div>
+                                <div class="form-group">
+                                    <label class="form-label">Variant ID</label>
+                                    <input type="text" class="variant-input" id="variant-input" placeholder="e.g. chr17:41276045:G>A">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Amino Acid Change</label>
+                                    <input type="text" class="variant-input" id="aa-change-input" placeholder="e.g. p.Arg1443Ter">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">SIFT Score (0-1)</label>
+                                    <input type="number" class="variant-input" id="sift-input" min="0" max="1" step="0.01" placeholder="0.01">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">PolyPhen Score (0-1)</label>
+                                    <input type="number" class="variant-input" id="polyphen-input" min="0" max="1" step="0.01" placeholder="0.95">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Allele Frequency (0-1)</label>
+                                    <input type="number" class="variant-input" id="af-input" min="0" max="1" step="0.0001" placeholder="0.0001">
+                                </div>
+                                <button type="button" class="cyber-button" id="analyze-variant-btn">
+                                    <i class="fas fa-search"></i> Analyze Variant
+                                </button>
+                            </form>
+                        </div>
 
-                                <div class="card">
-                                    <div class="card-header bg-secondary text-white">
-                                        <h5 class="mb-0">Analysis History</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div id="variant-history"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="card mb-4">
-                                    <div class="card-header bg-success text-white">
-                                        <h5 class="mb-0">Analysis Results</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div id="variant-result-container" style="display: none;">
-                                            <h4 class="mb-3">Variant Analysis Report</h4>
-                                            
-                                            <div class="mb-4">
-                                                <h5>Variant Impact</h5>
-                                                <div id="impact-result"></div>
-                                                <div class="confidence-indicator-container">
-                                                    <div id="confidence-indicator"></div>
-                                                </div>
-                                                <button class="btn btn-outline-secondary btn-sm me-2" id="export-impact-btn">
-                                                    <i class="fas fa-download me-1"></i>Export Impact
-                                                </button>
-                                            </div>
-                                            
-                                            <div class="mb-4">
-                                                <h5>Therapeutic Approach</h5>
-                                                <div id="therapy-result"></div>
-                                                <div class="mt-3">
-                                                    <h6>Recommended Drugs</h6>
-                                                    <ul class="list-group" id="drug-list"></ul>
-                                                </div>
-                                                <button class="btn btn-outline-secondary btn-sm mt-2" id="export-therapy-btn">
-                                                    <i class="fas fa-download me-1"></i>Export Therapy
-                                                </button>
-                                            </div>
-                                            
-                                            <div class="row">
-                                                <div class="col-md-6 mb-3">
-                                                    <div class="card">
-                                                        <div class="card-header bg-info text-white">
-                                                            <h6 class="mb-0">Molecular Impact</h6>
-                                                        </div>
-                                                        <div class="card-body">
-                                                            <p id="molecular-impact" class="card-text small">No data available</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6 mb-3">
-                                                    <div class="card">
-                                                        <div class="card-header bg-info text-white">
-                                                            <h6 class="mb-0">Clinical Impact</h6>
-                                                        </div>
-                                                        <div class="card-body">
-                                                            <p id="clinical-impact" class="card-text small">No data available</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="card mb-3">
-                                                <div class="card-header bg-warning text-dark">
-                                                    <h6 class="mb-0">Monitoring Guidance</h6>
-                                                </div>
-                                                <div class="card-body">
-                                                    <p id="monitoring-guidance" class="card-text small">No monitoring guidance available</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="glass-card">
+                            <h3 style="margin-bottom: 1.5rem; color: var(--purple-neon);">
+                                <i class="fas fa-history"></i> Analysis History
+                            </h3>
+                            <div id="variant-history" style="max-height: 300px; overflow-y: auto;"></div>
                         </div>
                     </div>
 
-                    <!-- Training Tab -->
-                    <div class="tab-pane fade" id="training">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="card mb-4">
-                                    <div class="card-header bg-primary text-white">
-                                        <h5 class="mb-0">Projects</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <button class="btn btn-primary mb-3" id="new-project-btn">
-                                            <i class="fas fa-plus me-2"></i>New Project
-                                        </button>
-                                        <div class="list-group" id="project-list"></div>
-                                    </div>
-                                </div>
+                    <div>
+                        <div class="glass-card">
+                            <h3 style="margin-bottom: 1.5rem; color: var(--pink-neon);">
+                                <i class="fas fa-chart-bar"></i> Analysis Results
+                            </h3>
+                            <div id="variant-result-container" style="display: none;">
+                                <div id="impact-result" class="results-display"></div>
+                                <div id="therapy-result" class="results-display"></div>
+                                <button class="cyber-button" id="export-results-btn" style="margin-top: 1rem;">
+                                    <i class="fas fa-download"></i> Export Results
+                                </button>
                             </div>
-
-                            <div class="col-md-8">
-                                <div class="card mb-4">
-                                    <div class="card-header bg-success text-white">
-                                        <h5 class="mb-0">Model Training</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <label class="form-label">Project Status: <span id="project-status" class="badge bg-secondary">Not started</span></label>
-                                        </div>
-                                        
-                                        <div class="row mb-3">
-                                            <div class="col-md-6">
-                                                <label for="training-data-source" class="form-label">Data Source</label>
-                                                <input type="text" class="form-control" id="training-data-source" placeholder="e.g. mindsdb.file_storage.genomic_variants">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="target-column" class="form-label">Target Column</label>
-                                                <input type="text" class="form-control" id="target-column" placeholder="e.g. therapeutic_response">
-                                            </div>
-                                        </div>
-                                        
-                                        <button class="btn btn-sm btn-outline-secondary mb-3" id="preview-data-btn">
-                                            <i class="fas fa-eye me-1"></i>Preview Data
-                                        </button>
-                                        
-                                        <div class="data-preview">
-                                            <table class="table table-sm">
-                                                <thead>
-                                                    <tr id="preview-headers"></tr>
-                                                </thead>
-                                                <tbody id="preview-rows"></tbody>
-                                            </table>
-                                        </div>
-                                        
-                                        <hr>
-                                        
-                                        <h5 class="mb-3">Training Parameters</h5>
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="model-architecture" class="form-label">Model Architecture</label>
-                                                <select class="form-select" id="model-architecture">
-                                                    <option value="classifier">Classifier</option>
-                                                    <option value="regressor">Regressor</option>
-                                                    <option value="llm">LLM Fine-tuning</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="training-engine" class="form-label">Training Engine</label>
-                                                <select class="form-select" id="training-engine">
-                                                    <option value="lightwood">Lightwood</option>
-                                                    <option value="pytorch">PyTorch</option>
-                                                    <option value="tensorflow">TensorFlow</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="row">
-                                            <div class="col-md-4 mb-3">
-                                                <label for="epochs" class="form-label">Epochs</label>
-                                                <input type="number" class="form-control" id="epochs" value="10" min="1">
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="batch-size" class="form-label">Batch Size</label>
-                                                <input type="number" class="form-control" id="batch-size" value="32" min="1">
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="learning-rate" class="form-label">Learning Rate</label>
-                                                <input type="range" class="form-range" id="learning-rate" min="0.0001" max="0.1" step="0.0001" value="0.001">
-                                                <div>Value: <span id="learning-rate-value">0.001</span></div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="validation-split" class="form-label">Validation Split</label>
-                                                <input type="range" class="form-range" id="validation-split" min="0.1" max="0.5" step="0.01" value="0.2">
-                                                <div>Value: <span id="validation-split-value">20%</span></div>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <div class="form-check form-switch mb-2">
-                                                    <input class="form-check-input" type="checkbox" id="transfer-learning" checked>
-                                                    <label class="form-check-label" for="transfer-learning">Transfer Learning</label>
-                                                </div>
-                                                <div class="form-check form-switch mb-2">
-                                                    <input class="form-check-input" type="checkbox" id="early-stopping" checked>
-                                                    <label class="form-check-label" for="early-stopping">Early Stopping</label>
-                                                </div>
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="enable-gpu">
-                                                    <label class="form-check-label" for="enable-gpu">Enable GPU</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="d-flex justify-content-between">
-                                            <button class="btn btn-success" id="start-training-btn">
-                                                <i class="fas fa-play me-2"></i>Start Training
-                                            </button>
-                                            <button class="btn btn-danger" id="stop-training-btn" style="display: none;">
-                                                <i class="fas fa-stop me-2"></i>Stop Training
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="card">
-                                    <div class="card-header bg-secondary text-white">
-                                        <h5 class="mb-0">Training Logs</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div id="training-logs"></div>
-                                        <div class="d-flex justify-content-end mt-2">
-                                            <button class="btn btn-sm btn-outline-secondary me-2" id="clear-logs">
-                                                <i class="fas fa-trash me-1"></i>Clear Logs
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-primary" id="export-logs">
-                                                <i class="fas fa-download me-1"></i>Export Logs
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Deployment Tab -->
-                    <div class="tab-pane fade" id="deployment">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="card mb-4">
-                                    <div class="card-header bg-primary text-white">
-                                        <h5 class="mb-0">Deployed Models</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <button class="btn btn-sm btn-outline-light mb-3" id="refresh-deployments">
-                                            <i class="fas fa-sync-alt me-1"></i>Refresh
-                                        </button>
-                                        <div class="list-group" id="deployed-models-list"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-8">
-                                <div class="card mb-4">
-                                    <div class="card-header bg-success text-white">
-                                        <h5 class="mb-0">Deploy Model</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row mb-3">
-                                            <div class="col-md-6">
-                                                <label for="model-to-deploy" class="form-label">Select Model</label>
-                                                <select class="form-select" id="model-to-deploy"></select>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="deployment-name" class="form-label">Deployment Name</label>
-                                                <input type="text" class="form-control" id="deployment-name" placeholder="e.g. Production Oncology API">
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="row mb-3">
-                                            <div class="col-md-6">
-                                                <label for="deployment-version" class="form-label">Version</label>
-                                                <input type="text" class="form-control" id="deployment-version" placeholder="e.g. 1.0.0" value="1.0.0">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-check form-switch pt-4">
-                                                    <input class="form-check-input" type="checkbox" id="enable-monitoring" checked>
-                                                    <label class="form-check-label" for="enable-monitoring">Enable Monitoring</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <button class="btn btn-success" id="deploy-model-btn">
-                                            <i class="fas fa-rocket me-2"></i>Deploy Model
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <div class="card mb-4">
-                                    <div class="card-header bg-info text-white">
-                                        <h5 class="mb-0">API Endpoint</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="input-group mb-3">
-                                            <input type="text" class="form-control" id="api-endpoint" placeholder="Endpoint will appear here after deployment" readonly>
-                                            <button class="btn btn-outline-secondary" type="button" id="copy-api-endpoint">
-                                                <i class="fas fa-copy"></i>
-                                            </button>
-                                            <button class="btn btn-outline-primary" type="button" id="test-endpoint">
-                                                <i class="fas fa-play"></i> Test
-                                            </button>
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label class="form-label">API Key</label>
-                                            <div class="input-group">
-                                                <input type="password" class="form-control" id="api-key" placeholder="API key will be generated after deployment" readonly>
-                                                <button class="btn btn-outline-secondary" type="button" id="show-api-key">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-outline-danger" type="button" id="regenerate-api-key">
-                                                    <i class="fas fa-sync-alt"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label class="form-label">Example Request</label>
-                                            <pre id="example-request" class="bg-light p-3 rounded">{
-    "model": "[MODEL_ID]",
-    "input": {
-        "gene": "BRCA1",
-        "variant_id": "chr17:41276045:G>A",
-        "sift_score": 0.01,
-        "polyphen_score": 0.95
-    }
-}</pre>
-                                            <button class="btn btn-sm btn-outline-secondary" id="copy-example-request">
-                                                <i class="fas fa-copy me-1"></i>Copy Example
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Monitoring Tab -->
-                    <div class="tab-pane fade" id="monitoring">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="card mb-4">
-                                    <div class="card-header bg-primary text-white">
-                                        <h5 class="mb-0">Active Models</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <button class="btn btn-sm btn-outline-light mb-3" id="refresh-models">
-                                            <i class="fas fa-sync-alt me-1"></i>Refresh
-                                        </button>
-                                        <div class="list-group" id="active-models-list"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-8">
-                                <div class="card mb-4">
-                                    <div class="card-header bg-success text-white">
-                                        <h5 class="mb-0">Performance Metrics</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="btn-group btn-group-sm mb-3">
-                                            <button type="button" class="btn btn-outline-secondary active" data-range="1h">1h</button>
-                                            <button type="button" class="btn btn-outline-secondary" data-range="24h">24h</button>
-                                            <button type="button" class="btn btn-outline-secondary" data-range="7d">7d</button>
-                                            <button type="button" class="btn btn-outline-secondary" data-range="30d">30d</button>
-                                        </div>
-                                        
-                                        <div class="row mb-3">
-                                            <div class="col-md-6">
-                                                <div class="card">
-                                                    <div class="card-header bg-info text-white">
-                                                        <h6 class="mb-0">Requests</h6>
-                                                    </div>
-                                                    <div class="card-body">
-                                                        <canvas id="requestsChart"></canvas>
-                                                        <div class="mt-2">
-                                                            <span class="badge bg-primary">Total: <span id="request-count">0</span></span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="card">
-                                                    <div class="card-header bg-warning text-dark">
-                                                        <h6 class="mb-0">Latency</h6>
-                                                    </div>
-                                                    <div class="card-body">
-                                                        <canvas id="latencyChart"></canvas>
-                                                        <div class="mt-2">
-                                                            <span class="badge bg-primary">Avg: <span id="avg-latency">0</span>ms</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="card">
-                                                    <div class="card-header bg-danger text-white">
-                                                        <h6 class="mb-0">Errors</h6>
-                                                    </div>
-                                                    <div class="card-body">
-                                                        <canvas id="errorsChart"></canvas>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="card">
-                                                    <div class="card-header bg-secondary text-white">
-                                                        <h6 class="mb-0">Resource Usage</h6>
-                                                    </div>
-                                                    <div class="card-body">
-                                                        <canvas id="resourcesChart"></canvas>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="card">
-                                    <div class="card-header bg-secondary text-white">
-                                        <h5 class="mb-0">Model Logs</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div id="model-logs"></div>
-                                        <div class="d-flex justify-content-end mt-2">
-                                            <button class="btn btn-sm btn-outline-secondary me-2" id="clear-model-logs">
-                                                <i class="fas fa-trash me-1"></i>Clear Logs
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-primary" id="export-model-logs">
-                                                <i class="fas fa-download me-1"></i>Export Logs
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Integrations Tab -->
-                    <div class="tab-pane fade" id="integrations">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="card mb-4">
-                                    <div class="card-header bg-primary text-white">
-                                        <h5 class="mb-0">Connected Services</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <button class="btn btn-primary mb-3" id="add-integration-btn">
-                                            <i class="fas fa-plus me-2"></i>Add Integration
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary mb-3" id="refresh-integrations">
-                                            <i class="fas fa-sync-alt me-1"></i>Refresh
-                                        </button>
-                                        <div id="connected-services">
-                                            <div class="alert alert-info">No integrations connected</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-8">
-                                <div class="card">
-                                    <div class="card-header bg-success text-white">
-                                        <h5 class="mb-0">MindsDB Configuration</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <label for="mindsdb-api-key" class="form-label">API Key</label>
-                                            <input type="password" class="form-control" id="mindsdb-api-key" placeholder="Enter your MindsDB API key">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="mindsdb-base-url" class="form-label">Base URL</label>
-                                            <input type="text" class="form-control" id="mindsdb-base-url" placeholder="https://cloud.mindsdb.com/api/sql">
-                                        </div>
-                                        <div class="row mb-3">
-                                            <div class="col-md-6">
-                                                <label for="mindsdb-model-name" class="form-label">Model Name</label>
-                                                <input type="text" class="form-control" id="mindsdb-model-name" placeholder="Enter your model name">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="mindsdb-project" class="form-label">Project</label>
-                                                <input type="text" class="form-control" id="mindsdb-project" placeholder="mindsdb">
-                                            </div>
-                                        </div>
-                                        <div class="form-check mb-3">
-                                            <input class="form-check-input" type="checkbox" id="verify-connection">
-                                            <label class="form-check-label" for="verify-connection">Verify connection</label>
-                                        </div>
-                                        <button class="btn btn-success" id="save-mindsdb-config">
-                                            <i class="fas fa-save me-2"></i>Save Configuration
-                                        </button>
-                                        <button class="btn btn-outline-secondary" id="configure-mindsdb">
-                                            <i class="fas fa-cog me-2"></i>Advanced Settings
-                                        </button>
-                                    </div>
-                                </div>
+                            <div id="no-results" class="results-display" style="text-align: center; color: var(--text-secondary);">
+                                Run an analysis to see results here
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Login Modal -->
-    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="loginModalLabel">Login to QuorumED</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="mb-3">
-                            <label for="login-email" class="form-label">Email address</label>
-                            <input type="email" class="form-control" id="login-email" placeholder="name@example.com">
+        <!-- Training Module -->
+        <div id="training" class="page-module">
+            <div class="training-module">
+                <h1 class="matrix-title">>>> MODEL TRAINING SYSTEM <<<</h1>
+                
+                <div class="training-grid">
+                    <div class="matrix-card">
+                        <h3 style="margin-bottom: 1rem; color: var(--matrix-green);">TRAINING CONFIGURATION</h3>
+                        <div class="form-group">
+                            <label class="form-label" style="color: var(--matrix-green);">Data Source:</label>
+                            <input type="text" class="matrix-input" id="training-data-source" placeholder="Enter data source path">
                         </div>
-                        <div class="mb-3">
-                            <label for="login-password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="login-password">
+                        <div class="form-group">
+                            <label class="form-label" style="color: var(--matrix-green);">Target Column:</label>
+                            <input type="text" class="matrix-input" id="target-column" placeholder="therapeutic_response">
                         </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="remember-me">
-                            <label class="form-check-label" for="remember-me">Remember me</label>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="login-submit">Login</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- New Project Modal -->
-    <div class="modal fade" id="newProjectModal" tabindex="-1" aria-labelledby="newProjectModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="newProjectModalLabel">Create New Project</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="mb-3">
-                            <label for="project-name" class="form-label">Project Name</label>
-                            <input type="text" class="form-control" id="project-name" placeholder="e.g. Oncology Predictor">
-                        </div>
-                        <div class="mb-3">
-                            <label for="project-description" class="form-label">Description</label>
-                            <textarea class="form-control" id="project-description" rows="3" placeholder="Brief description of your project"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="project-template" class="form-label">Template</label>
-                            <select class="form-select" id="project-template">
-                                <option value="genomic">Genomic Variant Analysis</option>
-                                <option value="clinical">Clinical Data Analysis</option>
-                                <option value="custom">Custom</option>
+                        <div class="form-group">
+                            <label class="form-label" style="color: var(--matrix-green);">Model Type:</label>
+                            <select class="matrix-input" id="model-architecture">
+                                <option value="classifier">Neural Classifier</option>
+                                <option value="regressor">Deep Regressor</option>
+                                <option value="llm">LLM Fine-tuning</option>
                             </select>
                         </div>
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="enable-versioning" checked>
-                            <label class="form-check-label" for="enable-versioning">Enable Version Control</label>
+                        <div class="form-group">
+                            <label class="form-label" style="color: var(--matrix-green);">Epochs:</label>
+                            <input type="number" class="matrix-input" id="epochs" value="100" min="1">
                         </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="create-project-btn">Create Project</button>
-                </div>
-            </div>
-        </div>
-    </div>
+                        <button class="matrix-button" id="start-training-btn">
+                            <i class="fas fa-play"></i> INITIATE TRAINING
+                        </button>
+                        <button class="matrix-button" id="stop-training-btn" style="display: none; background: #ff0000;">
+                            <i class="fas fa-stop"></i> ABORT TRAINING
+                        </button>
+                    </div>
 
-    <!-- Test Endpoint Modal -->
-    <div class="modal fade" id="testEndpointModal" tabindex="-1" aria-labelledby="testEndpointModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="testEndpointModalLabel">Test API Endpoint</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label class="form-label">Input Data</label>
-                            <textarea class="form-control" id="test-input-data" rows="10">{
-    "gene": "BRCA1",
-    "variant_id": "chr17:41276045:G>A",
-    "sift_score": 0.01,
-    "polyphen_score": 0.95,
-    "allele_frequency": 0.0001
-}</textarea>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Response</label>
-                            <pre id="test-response" class="bg-light p-3 rounded" style="height: 250px; overflow: auto;">Response will appear here...</pre>
+                    <div class="matrix-card">
+                        <h3 style="margin-bottom: 1rem; color: var(--matrix-green);">TRAINING PROGRESS</h3>
+                        <div class="training-progress">
+                            <div class="form-group">
+                                <label class="form-label" style="color: var(--matrix-green);">Current Epoch:</label>
+                                <div id="current-epoch" style="color: white;">0/100</div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="color: var(--matrix-green);">Progress:</label>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="training-progress-bar"></div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="color: var(--matrix-green);">Current Loss:</label>
+                                <div id="current-loss" style="color: white;">-</div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="color: var(--matrix-green);">Training Log:</label>
+                                <div class="training-log" id="training-log">
+                                    <div class="log-entry">>>> SYSTEM READY <<<</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="send-test-request">Send Request</button>
+            </div>
+        </div>
+
+        <!-- Deployment Module -->
+        <div id="deployment" class="page-module">
+            <div class="deployment-module">
+                <h1 class="cyber-title">MODEL DEPLOYMENT CENTER</h1>
+                
+                <div class="deployment-grid">
+                    <div class="cyber-card">
+                        <h3 style="margin-bottom: 1rem; color: var(--cyber-orange);">DEPLOY NEW MODEL</h3>
+                        <div class="form-group">
+                            <label class="form-label" style="color: var(--cyber-orange);">Model Path:</label>
+                            <input type="text" class="cyber-input" id="model-path" placeholder="/models/trained_model.h5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="color: var(--cyber-orange);">Deployment Name:</label>
+                            <input type="text" class="cyber-input" id="deployment-name" placeholder="BRCA1_Predictor_v2">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="color: var(--cyber-orange);">Compute Type:</label>
+                            <select class="cyber-input" id="compute-type">
+                                <option value="cpu">CPU</option>
+                                <option value="gpu">GPU</option>
+                                <option value="tpu">TPU</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="color: var(--cyber-orange);">Replicas:</label>
+                            <input type="number" class="cyber-input" id="replicas" value="1" min="1" max="10">
+                        </div>
+                        <button class="cyber-button" id="deploy-model-btn">
+                            <i class="fas fa-rocket"></i> DEPLOY MODEL
+                        </button>
+                    </div>
+
+                    <div class="cyber-card">
+                        <h3 style="margin-bottom: 1rem; color: var(--cyber-orange);">DEPLOYMENT STATUS</h3>
+                        <div class="deployment-status">
+                            <div class="status-item">
+                                <span class="status-label">Active Deployments:</span>
+                                <span class="status-value" id="active-deployments">3</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Pending Deployments:</span>
+                                <span class="status-value" id="pending-deployments">0</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Failed Deployments:</span>
+                                <span class="status-value" id="failed-deployments">1</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">System Health:</span>
+                                <span class="status-value" id="system-health">Optimal</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cyber-card" style="margin-top: 2rem;">
+                    <h3 style="margin-bottom: 1rem; color: var(--cyber-orange);">ACTIVE DEPLOYMENTS</h3>
+                    <div id="deployments-list" style="max-height: 300px; overflow-y: auto;">
+                        <!-- Deployment items will be added here dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monitoring Module -->
+        <div id="monitoring" class="page-module">
+            <div class="monitoring-module">
+                <h1 class="holo-title">PERFORMANCE MONITORING</h1>
+                
+                <div class="metrics-grid">
+                    <div class="holo-card">
+                        <i class="fas fa-tachometer-alt" style="font-size: 2rem; color: var(--accent-neon);"></i>
+                        <div class="metric-value" id="requests-per-minute">1,245</div>
+                        <div class="metric-label">Requests / Minute</div>
+                    </div>
+                    <div class="holo-card">
+                        <i class="fas fa-clock" style="font-size: 2rem; color: var(--accent-neon);"></i>
+                        <div class="metric-value" id="avg-latency">42<span style="font-size: 1rem;">ms</span></div>
+                        <div class="metric-label">Average Latency</div>
+                    </div>
+                    <div class="holo-card">
+                        <i class="fas fa-microchip" style="font-size: 2rem; color: var(--accent-neon);"></i>
+                        <div class="metric-value" id="cpu-usage">68<span style="font-size: 1rem;">%</span></div>
+                        <div class="metric-label">CPU Usage</div>
+                    </div>
+                    <div class="holo-card">
+                        <i class="fas fa-memory" style="font-size: 2rem; color: var(--accent-neon);"></i>
+                        <div class="metric-value" id="memory-usage">4.2<span style="font-size: 1rem;">GB</span></div>
+                        <div class="metric-label">Memory Usage</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-placeholder">
+                        <i class="fas fa-chart-line" style="margin-right: 1rem;"></i>
+                        Performance Metrics Visualization
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Integrations Module -->
+        <div id="integrations" class="page-module">
+            <div class="integrations-module">
+                <h1 class="quantum-title">SYSTEM INTEGRATIONS</h1>
+                
+                <div class="integrations-grid">
+                    <div class="quantum-card">
+                        <div class="integration-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="integration-name">Genomic Databases</div>
+                        <div class="integration-description">
+                            Connect to public and private genomic databases including ClinVar, gnomAD, and COSMIC for comprehensive variant analysis.
+                        </div>
+                        <div class="integration-status status-active">Active</div>
+                        <button class="connect-button">
+                            <i class="fas fa-sync-alt"></i> Sync Now
+                        </button>
+                    </div>
+
+                    <div class="quantum-card">
+                        <div class="integration-icon">
+                            <i class="fas fa-cloud"></i>
+                        </div>
+                        <div class="integration-name">Cloud Storage</div>
+                        <div class="integration-description">
+                            Integrate with AWS S3, Google Cloud Storage, and Azure Blob Storage for seamless data transfer and backup.
+                        </div>
+                        <div class="integration-status status-active">Active</div>
+                        <button class="connect-button">
+                            <i class="fas fa-cog"></i> Configure
+                        </button>
+                    </div>
+
+                    <div class="quantum-card">
+                        <div class="integration-icon">
+                            <i class="fas fa-laptop-medical"></i>
+                        </div>
+                        <div class="integration-name">EHR Systems</div>
+                        <div class="integration-description">
+                            Connect with electronic health record systems like Epic, Cerner, and Allscripts for clinical data integration.
+                        </div>
+                        <div class="integration-status status-inactive">Inactive</div>
+                        <button class="connect-button">
+                            <i class="fas fa-plug"></i> Connect
+                        </button>
+                    </div>
+
+                    <div class="quantum-card">
+                        <div class="integration-icon">
+                            <i class="fas fa-flask"></i>
+                        </div>
+                        <div class="integration-name">Lab Systems</div>
+                        <div class="integration-description">
+                            Integrate with laboratory information systems (LIS) for automated test ordering and result reporting.
+                        </div>
+                        <div class="integration-status status-inactive">Inactive</div>
+                        <button class="connect-button">
+                            <i class="fas fa-plug"></i> Connect
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MindsDB Config Modal -->
-    <div class="modal fade" id="mindsdb-config-modal" tabindex="-1" aria-labelledby="mindsdbConfigModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="mindsdbConfigModalLabel">MindsDB Configuration</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="mb-3">
-                            <label for="mindsdb-api-key" class="form-label">API Key</label>
-                            <input type="password" class="form-control" id="mindsdb-api-key-modal" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="mindsdb-base-url" class="form-label">Base URL</label>
-                            <input type="text" class="form-control" id="mindsdb-base-url-modal" value="https://cloud.mindsdb.com/api/sql">
-                        </div>
-                        <div class="mb-3">
-                            <label for="mindsdb-model-name" class="form-label">Model Name</label>
-                            <input type="text" class="form-control" id="mindsdb-model-name-modal">
-                        </div>
-                        <div class="mb-3">
-                            <label for="mindsdb-project" class="form-label">Project</label>
-                            <input type="text" class="form-control" id="mindsdb-project-modal" value="mindsdb">
-                        </div>
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="verify-connection-modal">
-                            <label class="form-check-label" for="verify-connection-modal">Verify Connection</label>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="save-mindsdb-config-modal">Save Configuration</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Animation Container -->
-    <div id="animation-container" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; pointer-events: none; display: none;"></div>
-
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script>
-        // Application State
-        const state = {
-            auth: {
-                isAuthenticated: false,
-                token: null,
-                user: null
-            },
-            models: {
-                currentModel: 'mindsdb',
-                localModel: null,
-                customEndpoints: [],
-                mindsdbConfig: {
-                    apiKey: localStorage.getItem('mindsdb-api-key') || '',
-                    baseUrl: localStorage.getItem('mindsdb-base-url') || 'https://cloud.mindsdb.com/api/sql',
-                    model: localStorage.getItem('mindsdb-model') || '',
-                    project: localStorage.getItem('mindsdb-project') || 'mindsdb'
-                }
-            },
-            projects: [],
-            currentProject: null,
-            trainingJobs: [],
-            currentTrainingJob: null,
-            deployments: [],
-            currentDeployment: null,
-            metrics: {
-                requests: [],
-                latency: [],
-                errors: [],
-                resourceUsage: []
-            },
-            integrations: {
-                github: false,
-                slack: false,
-                databases: []
-            },
-            ui: {
-                activeTab: 'analysis',
-                darkMode: false
-            },
-            charts: {
-                requests: null,
-                latency: null,
-                errors: null,
-                resources: null
-            },
-            genomicData: {
-                variantCache: {},
-                therapyCache: {},
-                lastAnalysis: null,
-                apiEndpoints: {
-                    myVariant: "https://myvariant.info/v1/variant/",
-                    clinVar: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=clinvar&term=",
-                    civic: "https://civicdb.org/api/variants?gene=",
-                    ensembl: "http://rest.ensembl.org/lookup/id/"
-                }
-            }
-        };
-
-        // Initialize the application
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeAuth();
-            initializeUI();
-            setupEventListeners();
-            loadSampleData();
-            initializeCharts();
-            initializeGenomicUI();
-            
-            if (!state.auth.isAuthenticated) {
-                const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
-                loginModal.show();
-            }
+        // Tab switching functionality
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs and modules
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.page-module').forEach(m => m.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding module
+                tab.classList.add('active');
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
         });
 
-        function initializeAuth() {
-            const token = localStorage.getItem('authToken');
-            if (token) {
-                state.auth.token = token;
-                state.auth.isAuthenticated = true;
-                state.auth.user = {
-                    name: "Demo User",
-                    email: "demo@quorumed.com"
-                };
-                updateUserUI();
-            }
-        }
-
-        function updateUserUI() {
-            if (state.auth.isAuthenticated) {
-                document.getElementById('username').textContent = state.auth.user.name;
-            }
-        }
-
-        function initializeUI() {
-            // Initialize form values
-            document.getElementById('learning-rate-value').textContent = document.getElementById('learning-rate').value;
-            document.getElementById('validation-split-value').textContent = Math.round(document.getElementById('validation-split').value * 100) + '%';
+        // Variant Analysis Demo Functionality
+        document.getElementById('analyze-variant-btn').addEventListener('click', function() {
+            const gene = document.getElementById('gene-input').value || 'BRCA1';
+            const variant = document.getElementById('variant-input').value || 'chr17:41276045:G>A';
+            const aaChange = document.getElementById('aa-change-input').value || 'p.Arg1443Ter';
+            const sift = parseFloat(document.getElementById('sift-input').value) || 0.01;
+            const polyphen = parseFloat(document.getElementById('polyphen-input').value) || 0.95;
+            const af = parseFloat(document.getElementById('af-input').value) || 0.0001;
             
-            // Initialize MindsDB config values
-            document.getElementById('mindsdb-api-key').value = state.models.mindsdbConfig.apiKey;
-            document.getElementById('mindsdb-base-url').value = state.models.mindsdbConfig.baseUrl;
-            document.getElementById('mindsdb-model-name').value = state.models.mindsdbConfig.model;
-            document.getElementById('mindsdb-project').value = state.models.mindsdbConfig.project;
-        }
-
-        function initializeGenomicUI() {
-            // Gene suggestions functionality
-            const geneList = ['BRCA1', 'BRCA2', 'TP53', 'EGFR', 'KRAS', 'ALK', 'BRAF', 'HER2', 'PDGFRA'];
-            document.getElementById('gene-input').addEventListener('input', function() {
-                const input = this.value.toLowerCase();
-                const suggestions = geneList.filter(gene => 
-                    gene.toLowerCase().includes(input)
-                ).slice(0, 5);
-                
-                showGeneSuggestions(suggestions);
-            });
-        }
-
-        function showGeneSuggestions(suggestions) {
-            const suggestionContainer = document.getElementById('gene-suggestions');
-            if (!suggestionContainer) return;
+            // Show loading state
+            const btn = this;
+            btn.innerHTML = '<span class="loading"></span> Analyzing...';
+            btn.disabled = true;
             
-            if (suggestions.length === 0) {
-                suggestionContainer.style.display = 'none';
-                return;
-            }
-            
-            suggestionContainer.innerHTML = suggestions.map(gene => `
-                <div class="suggestion-item" onclick="selectGeneSuggestion('${gene}')">${gene}</div>
-            `).join('');
-            suggestionContainer.style.display = 'block';
-        }
-
-        function selectGeneSuggestion(gene) {
-            document.getElementById('gene-input').value = gene;
-            document.getElementById('gene-suggestions').style.display = 'none';
-        }
-
-        window.selectGeneSuggestion = selectGeneSuggestion;
-
-        function setupEventListeners() {
-            // Auth event listeners
-            document.getElementById('login-submit').addEventListener('click', handleLogin);
-            document.getElementById('logoutLink').addEventListener('click', handleLogout);
-            
-            // Variant analysis event listeners
-            document.getElementById('analyze-variant-btn').addEventListener('click', analyzeGenomicVariant);
-            document.getElementById('export-impact-btn').addEventListener('click', exportImpactAnalysis);
-            document.getElementById('export-therapy-btn').addEventListener('click', exportTherapyReport);
-            
-            // Project management event listeners
-            document.getElementById('new-project-btn').addEventListener('click', function() {
-                new bootstrap.Modal(document.getElementById('newProjectModal')).show();
-            });
-            document.getElementById('create-project-btn').addEventListener('click', createNewProject);
-            
-            // Training event listeners
-            document.getElementById('start-training-btn').addEventListener('click', startTrainingHandler);
-            document.getElementById('stop-training-btn').addEventListener('click', stopTrainingHandler);
-            document.getElementById('clear-logs').addEventListener('click', clearTrainingLogs);
-            document.getElementById('export-logs').addEventListener('click', exportTrainingLogs);
-            document.getElementById('preview-data-btn').addEventListener('click', previewTrainingData);
-            
-            // Deployment event listeners
-            document.getElementById('deploy-model-btn').addEventListener('click', deployMindsDBModel);
-            document.getElementById('copy-api-endpoint').addEventListener('click', copyApiEndpointToClipboard);
-            document.getElementById('test-endpoint').addEventListener('click', showTestEndpointModal);
-            document.getElementById('send-test-request').addEventListener('click', sendTestRequest);
-            document.getElementById('copy-example-request').addEventListener('click', copyExampleRequestToClipboard);
-            document.getElementById('show-api-key').addEventListener('click', toggleApiKeyVisibility);
-            document.getElementById('regenerate-api-key').addEventListener('click', regenerateApiKey);
-            document.getElementById('refresh-deployments').addEventListener('click', refreshDeployments);
-            
-            // Monitoring event listeners
-            document.getElementById('refresh-models').addEventListener('click', refreshActiveModels);
-            document.getElementById('clear-model-logs').addEventListener('click', clearModelLogs);
-            document.getElementById('export-model-logs').addEventListener('click', exportModelLogs);
-            
-            // Integrations event listeners
-            document.getElementById('add-integration-btn').addEventListener('click', addIntegration);
-            document.getElementById('refresh-integrations').addEventListener('click', refreshIntegrations);
-            document.getElementById('configure-mindsdb').addEventListener('click', function() {
-                new bootstrap.Modal(document.getElementById('mindsdb-config-modal')).show();
-            });
-            document.getElementById('save-mindsdb-config').addEventListener('click', saveMindsDBConfig);
-            document.getElementById('save-mindsdb-config-modal').addEventListener('click', saveMindsDBConfigModal);
-            
-            // Form control event listeners
-            document.getElementById('learning-rate').addEventListener('input', function() {
-                document.getElementById('learning-rate-value').textContent = this.value;
-            });
-            document.getElementById('validation-split').addEventListener('input', function() {
-                document.getElementById('validation-split-value').textContent = Math.round(this.value * 100) + '%';
-            });
-            
-            // Chart range buttons
-            document.querySelectorAll('[data-range]').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('[data-range]').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    updateCharts(this.getAttribute('data-range'));
-                });
-            });
-        }
-
-        async function analyzeGenomicVariant() {
-            const variantData = {
-                mutation_id: document.getElementById('variant-input').value.trim(),
-                gene: document.getElementById('gene-input').value.trim(),
-                amino_acid_change: document.getElementById('aa-change-input').value.trim(),
-                sift_score: parseFloat(document.getElementById('sift-input').value) || 0,
-                polyphen_score: parseFloat(document.getElementById('polyphen-input').value) || 0,
-                allele_frequency: parseFloat(document.getElementById('af-input').value) || 0,
-                conservation_score: parseFloat(document.getElementById('conservation-input').value) || 0
-            };
-
-            const validationError = validateVariantInput(variantData);
-            if (validationError) {
-                showToast(validationError, 'warning');
-                return;
-            }
-
-            setLoadingState(true);
-            document.getElementById('variant-result-container').style.display = 'none';
-
-            try {
-                const impact = await getVariantImpactAnalysis(variantData);
-                const therapy = await getVariantTherapeuticApproach(variantData);
-
-                updateVariantResultsUI(variantData, impact, therapy);
-                saveToVariantHistory(variantData, impact, therapy);
-                state.genomicData.lastAnalysis = { variant: variantData, impact, therapy };
-                showToast('Variant analysis completed', 'success');
-                
-            } catch (error) {
-                console.error('Analysis failed:', error);
-                showToast(`Analysis failed: ${error.message}`, 'danger');
-                document.getElementById('variant-result-container').innerHTML = `
-                    <div class="alert alert-danger">
-                        Analysis failed: ${error.message}
-                    </div>
-                `;
+            // Simulate analysis delay
+            setTimeout(() => {
+                // Show results
+                document.getElementById('no-results').style.display = 'none';
                 document.getElementById('variant-result-container').style.display = 'block';
-            } finally {
-                setLoadingState(false);
-            }
-        }
-
-        function validateVariantInput(variantData) {
-            const errors = [];
-            
-            if (!variantData.gene) {
-                errors.push('Gene name is required');
-            }
-            
-            if (!variantData.mutation_id) {
-                errors.push('Variant ID is required');
-            }
-            
-            if (variantData.sift_score < 0 || variantData.sift_score > 1) {
-                errors.push('SIFT score must be between 0 and 1');
-            }
-            
-            if (variantData.polyphen_score < 0 || variantData.polyphen_score > 1) {
-                errors.push('PolyPhen score must be between 0 and 1');
-            }
-            
-            if (variantData.allele_frequency < 0 || variantData.allele_frequency > 1) {
-                errors.push('Allele frequency must be between 0 and 1');
-            }
-            
-            if (variantData.conservation_score < 0 || variantData.conservation_score > 1) {
-                errors.push('Conservation score must be between 0 and 1');
-            }
-            
-            return errors.length === 0 ? null : errors.join(', ');
-        }
-
-        function setLoadingState(isLoading) {
-            const analyzeBtn = document.getElementById('analyze-variant-btn');
-            if (isLoading) {
-                analyzeBtn.disabled = true;
-                analyzeBtn.innerHTML = `
-                    <span class="spinner-border spinner-border-sm me-2" 
-                          role="status" aria-hidden="true"></span>
-                    Analyzing...
-                `;
-            } else {
-                analyzeBtn.disabled = false;
-                analyzeBtn.innerHTML = `
-                    <i class="fas fa-search me-2"></i>
-                    Analyze Variant
-                `;
-            }
-        }
-
-        async function getVariantImpactAnalysis(variantData) {
-            const cacheKey = `${variantData.gene}_${variantData.mutation_id}`;
-            if (state.genomicData.variantCache[cacheKey]) {
-                return state.genomicData.variantCache[cacheKey];
-            }
-
-            try {
-                const response = await axios.get(`${state.genomicData.apiEndpoints.myVariant}${variantData.mutation_id}`);
-                if (response.data) {
-                    const impact = parseMyVariantData(response.data, variantData);
-                    state.genomicData.variantCache[cacheKey] = impact;
-                    return impact;
-                }
-            } catch (error) {
-                console.error('MyVariant failed, trying ClinVar...', error);
-            }
-
-            try {
-                const clinVarUrl = `${state.genomicData.apiEndpoints.clinVar}${variantData.gene}+${variantData.mutation_id}`;
-                const response = await axios.get(clinVarUrl);
-                if (response.data) {
-                    const impact = parseClinVarData(response.data, variantData);
-                    state.genomicData.variantCache[cacheKey] = impact;
-                    return impact;
-                }
-            } catch (error) {
-                console.error('ClinVar failed, using local analysis...', error);
-            }
-
-            return analyzeVariantLocally(variantData);
-        }
-
-        function parseMyVariantData(data, variantData) {
-            const clinvar = data.clinvar || {};
-            const consequence = data.gnomad_exome?.consequence || "Unknown";
-            return {
-                variant: variantData.mutation_id,
-                gene: variantData.gene,
-                effect: clinvar.clinical_significance || "Unknown",
-                molecularImpact: consequence,
-                clinicalImpact: clinvar.review_status || "No data",
-                confidence: clinvar.stars ? clinvar.stars / 4 : 0.5,
-                pathogenicity: data.gnomad_exome?.af ? 1 - data.gnomad_exome.af : 0.5,
-                functionalImpact: clinvar.pathogenic ? "High" : "Low"
-            };
-        }
-
-        function parseClinVarData(data, variantData) {
-            const result = {
-                variant: variantData.mutation_id,
-                gene: variantData.gene,
-                effect: "Unknown",
-                molecularImpact: "Unknown",
-                clinicalImpact: "No data",
-                confidence: 0.5,
-                pathogenicity: 0.5,
-                functionalImpact: "Unknown"
-            };
-
-            try {
-                const resultList = data.result?.uids || [];
-                if (resultList.length > 0) {
-                    const uid = resultList[0];
-                    const summary = data.result[uid];
-                    
-                    result.effect = summary.clinical_significance?.description || "Unknown";
-                    result.clinicalImpact = summary.submission_count ? `${summary.submission_count} submissions` : "No submissions";
-                    result.confidence = summary.submission_count ? Math.min(summary.submission_count / 10, 0.9) : 0.5;
-                    
-                    if (summary.gene) {
-                        result.molecularImpact = `Variant in ${summary.gene.symbol} (${summary.gene.full_name})`;
-                    }
-                    
-                    if (result.effect.toLowerCase().includes('pathogenic')) {
-                        result.pathogenicity = 0.9;
-                        result.functionalImpact = "High";
-                    } else if (result.effect.toLowerCase().includes('benign')) {
-                        result.pathogenicity = 0.1;
-                        result.functionalImpact = "Low";
-                    }
-                }
-            } catch (e) {
-                console.error('Error parsing ClinVar data:', e);
-            }
-            
-            return result;
-        }
-
-        function analyzeVariantLocally(variantData) {
-            let effect = "Unknown";
-            let confidence = 0.5;
-            let molecularImpact = "Unknown";
-            let clinicalImpact = "Unknown";
-            
-            if (variantData.sift_score < 0.05 && variantData.polyphen_score > 0.9) {
-                effect = "Likely Pathogenic";
-                confidence = 0.85;
-                molecularImpact = "High likelihood of protein function disruption";
-                clinicalImpact = "Likely associated with disease phenotype";
-            } else if (variantData.sift_score < 0.1 || variantData.polyphen_score > 0.85) {
-                effect = "Possibly Pathogenic";
-                confidence = 0.7;
-                molecularImpact = "Possible protein function impact";
-                clinicalImpact = "May contribute to disease risk";
-            } else if (variantData.allele_frequency < 0.01) {
-                effect = "Variant of Uncertain Significance";
-                confidence = 0.6;
-                molecularImpact = "Unknown functional impact";
-                clinicalImpact = "Clinical significance uncertain";
-            } else {
-                effect = "Likely Benign";
-                confidence = 0.8;
-                molecularImpact = "Minimal expected functional impact";
-                clinicalImpact = "Unlikely to cause disease";
-            }
-            
-            if (variantData.conservation_score > 0.9) {
-                confidence = Math.min(confidence + 0.1, 0.95);
-                molecularImpact += " (Highly conserved position)";
-            }
-            
-            return {
-                variant: variantData.mutation_id,
-                gene: variantData.gene,
-                effect,
-                molecularImpact,
-                clinicalImpact,
-                confidence,
-                pathogenicity: variantData.sift_score < 0.05 ? 1 - variantData.sift_score : variantData.sift_score,
-                functionalImpact: effect.includes("Pathogenic") ? "High" : "Low"
-            };
-        }
-
-        async function getVariantTherapeuticApproach(variantData) {
-            const cacheKey = `${variantData.gene}_${variantData.mutation_id}`;
-            if (state.genomicData.therapyCache[cacheKey]) {
-                return state.genomicData.therapyCache[cacheKey];
-            }
-
-            try {
-                if (state.models.mindsdbConfig.apiKey && state.models.mindsdbConfig.model) {
-                    const therapy = await queryTherapyModel(variantData);
-                    if (therapy) {
-                        return therapy;
-                    }
-                }
                 
-                const response = await axios.get(
-                    `${state.genomicData.apiEndpoints.civic}${variantData.gene}&variant=${variantData.mutation_id}`
-                );
+                // Generate mock results based on inputs
+                const pathogenicity = sift < 0.05 && polyphen > 0.9 ? 'Pathogenic' : 
+                                    sift > 0.1 && polyphen < 0.5 ? 'Benign' : 'VUS';
                 
-                if (response.data?.records?.length > 0) {
-                    const therapy = parseCivicData(response.data.records[0], variantData);
-                    state.genomicData.therapyCache[cacheKey] = therapy;
-                    return therapy;
-                }
-            } catch (error) {
-                console.error('CIViC API failed, using local logic...', error);
-            }
-
-            return getLocalTherapyApproach(variantData);
-        }
-
-        async function queryTherapyModel(variantData) {
-            const fullModelName = state.models.mindsdbConfig.project 
-                ? `${state.models.mindsdbConfig.project}.${state.models.mindsdbConfig.model}`
-                : state.models.mindsdbConfig.model;
-
-            try {
-                const response = await axios.post(state.models.mindsdbConfig.baseUrl, {
-                    query: `
-                        SELECT recommended_therapy, therapy_rationale, evidence_level
-                        FROM ${fullModelName}
-                        WHERE 
-                            gene = '${variantData.gene}' AND
-                            mutation_id = '${variantData.mutation_id}' AND
-                            sift_score = ${variantData.sift_score} AND
-                            polyphen_score = ${variantData.polyphen_score}
-                        LIMIT 1
-                    `
-                }, {
-                    headers: {
-                        'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (response.data?.data?.length > 0) {
-                    const result = response.data.data[0];
-                    return {
-                        variant: variantData.mutation_id,
-                        gene: variantData.gene,
-                        intervention: result.recommended_therapy || "Standard therapy",
-                        rationale: result.therapy_rationale || "No specific rationale available",
-                        drugs: (result.recommended_therapy || "").split(',').map(d => d.trim()).filter(d => d),
-                        monitoring: "Follow standard monitoring protocol",
-                        evidence: result.evidence_level || "Moderate",
-                        trials: ["Consider clinical trial enrollment"]
-                    };
-                }
-                return null;
-            } catch (error) {
-                console.error('Error querying therapy model:', error);
-                return null;
-            }
-        }
-
-        function parseCivicData(data, variantData) {
-            const evidenceItems = data.evidence_items || [];
-            const therapeuticEvidence = evidenceItems.filter(e => e.evidence_type === 'Predictive');
-            
-            let drugs = new Set();
-            let evidenceLevels = [];
-            let clinicalTrials = [];
-            
-            therapeuticEvidence.forEach(e => {
-                if (e.drugs && e.drugs.length > 0) {
-                    e.drugs.forEach(d => drugs.add(d));
-                }
-                if (e.evidence_level) {
-                    evidenceLevels.push(e.evidence_level);
-                }
-                if (e.source && e.source.citation_id && e.source.source_type === 'PubMed') {
-                    clinicalTrials.push(`https://pubmed.ncbi.nlm.nih.gov/${e.source.citation_id}`);
-                }
-            });
-            
-            const evidenceLevel = evidenceLevels.length > 0 
-                ? evidenceLevels.reduce((a, b) => a.length > b.length ? a : b) 
-                : "No evidence";
-            
-            return {
-                variant: variantData.mutation_id,
-                gene: variantData.gene,
-                intervention: drugs.size > 0 ? Array.from(drugs).join(', ') : "Standard therapy",
-                rationale: therapeuticEvidence.length > 0 
-                    ? therapeuticEvidence[0].description 
-                    : "No specific rationale available",
-                drugs: Array.from(drugs),
-                monitoring: "Standard monitoring recommended",
-                evidence: evidenceLevel,
-                trials: clinicalTrials.length > 0 ? clinicalTrials : ["No clinical trials identified"]
-            };
-        }
-
-        function getLocalTherapyApproach(variantData) {
-            const gene = variantData.gene.toUpperCase();
-            const therapies = {
-                'BRCA1': ['PARP inhibitors', 'Platinum-based chemotherapy'],
-                'BRCA2': ['PARP inhibitors', 'Platinum-based chemotherapy'],
-                'EGFR': ['Osimertinib', 'Gefitinib', 'Erlotinib'],
-                'ALK': ['Crizotinib', 'Alectinib', 'Ceritinib'],
-                'KRAS': ['Sotorasib', 'Adagrasib'],
-                'BRAF': ['Vemurafenib', 'Dabrafenib', 'Trametinib'],
-                'HER2': ['Trastuzumab', 'Pertuzumab', 'Ado-trastuzumab emtansine'],
-                'PDGFRA': ['Imatinib', 'Sunitinib', 'Regorafenib']
-            };
-            
-            const defaultTherapies = ['Standard chemotherapy', 'Immunotherapy if indicated'];
-            
-            return {
-                variant: variantData.mutation_id,
-                gene: variantData.gene,
-                intervention: therapies[gene] ? therapies[gene].join(', ') : defaultTherapies.join(', '),
-                rationale: therapies[gene] 
-                    ? `Targeted therapy based on ${gene} mutation` 
-                    : "Standard therapy recommended",
-                drugs: therapies[gene] || defaultTherapies,
-                monitoring: therapies[gene] 
-                    ? "Monitor for targeted therapy response and side effects" 
-                    : "Standard monitoring recommended",
-                evidence: "Theoretical",
-                trials: ["Consider clinical trial enrollment for novel therapies"]
-            };
-        }
-
-        function updateVariantResultsUI(variant, impact, therapy) {
-            document.getElementById('impact-result').innerHTML = createImpactVisualization(impact);
-            document.getElementById('therapy-result').innerHTML = `
-                <h5>${therapy.intervention}</h5>
-                <p><strong>Rationale:</strong> ${therapy.rationale}</p>
-            `;
-            document.getElementById('drug-list').innerHTML = formatDrugList(therapy.drugs);
-            document.getElementById('confidence-indicator').style.width = `${impact.confidence * 100}%`;
-            document.getElementById('molecular-impact').textContent = impact.molecularImpact;
-            document.getElementById('clinical-impact').textContent = impact.clinicalImpact;
-            document.getElementById('monitoring-guidance').textContent = therapy.monitoring;
-            document.getElementById('variant-result-container').style.display = 'block';
-        }
-
-        function createImpactVisualization(impact) {
-            const severity = getVariantSeverity(impact);
-            const confidencePercent = Math.round(impact.confidence * 100);
-            
-            return `
-                <div class="impact-visualization mb-3">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="badge bg-${severity}">${impact.effect}</span>
-                        <small>Confidence: ${confidencePercent}%</small>
-                    </div>
-                    <div class="progress" style="height: 10px;">
-                        <div class="progress-bar bg-${severity}" 
-                             role="progressbar" 
-                             style="width: ${confidencePercent}%" 
-                             aria-valuenow="${confidencePercent}" 
-                             aria-valuemin="0" 
-                             aria-valuemax="100"></div>
-                    </div>
-                    <div class="mt-2">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card bg-light mb-2">
-                                    <div class="card-body p-2">
-                                        <h6 class="card-title">Molecular Impact</h6>
-                                        <p class="card-text small">${impact.molecularImpact}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card bg-light mb-2">
-                                    <div class="card-body p-2">
-                                        <h6 class="card-title">Clinical Impact</h6>
-                                        <p class="card-text small">${impact.clinicalImpact}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function getVariantSeverity(impact) {
-            if (impact.effect.toLowerCase().includes('pathogenic')) {
-                return 'danger';
-            } else if (impact.effect.toLowerCase().includes('benign')) {
-                return 'success';
-            } else if (impact.effect.toLowerCase().includes('uncertain')) {
-                return 'warning';
-            }
-            return 'secondary';
-        }
-
-        function formatDrugList(drugs) {
-            if (!drugs || drugs.length === 0) {
-                return '<li class="list-group-item">No specific drugs recommended</li>';
-            }
-            
-            return drugs.map(drug => {
-                const drugClass = drug.toLowerCase().includes('chemotherapy') ? 'text-danger' : 
-                                 drug.toLowerCase().includes('inhibitor') ? 'text-primary' : 
-                                 'text-success';
-                return `<li class="list-group-item ${drugClass}">${drug}</li>`;
-            }).join('');
-        }
-
-        function saveToVariantHistory(variant, impact, therapy) {
-            const historyItem = {
-                timestamp: new Date().toISOString(),
-                variant,
-                impact,
-                therapy
-            };
-            
-            let history = JSON.parse(localStorage.getItem('variantHistory') || '[]');
-            history.unshift(historyItem);
-            
-            if (history.length > 50) {
-                history = history.slice(0, 50);
-            }
-            
-            localStorage.setItem('variantHistory', JSON.stringify(history));
-            loadVariantHistory();
-        }
-
-        function loadVariantHistory() {
-            const history = JSON.parse(localStorage.getItem('variantHistory') || '[]');
-            
-            document.getElementById('variant-history').innerHTML = history.map(item => `
-                <div class="history-item" onclick="loadHistoryItem('${item.timestamp}')">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="gene-badge">${item.variant.gene}</span>
-                            <span class="variant-id">${item.variant.mutation_id}</span>
-                        </div>
-                        <small class="timestamp">${new Date(item.timestamp).toLocaleString()}</small>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function loadHistoryItem(timestamp) {
-            const history = JSON.parse(localStorage.getItem('variantHistory') || '[]');
-            const item = history.find(i => i.timestamp === timestamp);
-            
-            if (item) {
-                document.getElementById('variant-input').value = item.variant.mutation_id;
-                document.getElementById('gene-input').value = item.variant.gene;
-                document.getElementById('aa-change-input').value = item.variant.amino_acid_change;
-                document.getElementById('sift-input').value = item.variant.sift_score;
-                document.getElementById('polyphen-input').value = item.variant.polyphen_score;
-                document.getElementById('af-input').value = item.variant.allele_frequency;
-                document.getElementById('conservation-input').value = item.variant.conservation_score;
-                updateVariantResultsUI(item.variant, item.impact, item.therapy);
-            }
-        }
-
-        window.loadHistoryItem = loadHistoryItem;
-
-        function exportImpactAnalysis() {
-            if (!state.genomicData.lastAnalysis) {
-                showToast('No analysis to export', 'warning');
-                return;
-            }
-            
-            const data = {
-                metadata: {
-                    platform: "QuorumED Genomic Analysis",
-                    version: "1.0",
-                    date: new Date().toISOString()
-                },
-                variant: state.genomicData.lastAnalysis.variant,
-                impact: state.genomicData.lastAnalysis.impact
-            };
-            
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `variant_impact_${state.genomicData.lastAnalysis.variant.gene}_${state.genomicData.lastAnalysis.variant.mutation_id}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function exportTherapyReport() {
-            if (!state.genomicData.lastAnalysis) {
-                showToast('No therapy recommendations to export', 'warning');
-                return;
-            }
-            
-            const therapy = state.genomicData.lastAnalysis.therapy;
-            let report = `Therapeutic Recommendations Report\n`;
-            report += `================================\n\n`;
-            report += `Variant: ${therapy.variant}\n`;
-            report += `Gene: ${therapy.gene}\n\n`;
-            report += `Recommended Therapy: ${therapy.intervention}\n\n`;
-            report += `Rationale:\n${therapy.rationale}\n\n`;
-            report += `Specific Drugs:\n${therapy.drugs.join('\n')}\n\n`;
-            report += `Monitoring Guidance:\n${therapy.monitoring}\n\n`;
-            report += `Evidence Level: ${therapy.evidence}\n`;
-            report += `Clinical Trials: ${therapy.trials.join(', ')}\n`;
-            
-            const blob = new Blob([report], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `therapy_recommendations_${therapy.gene}_${therapy.variant}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        async function handleLogin() {
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            
-            try {
-                state.auth.token = 'demo-token-' + Date.now();
-                state.auth.user = {
-                    name: "Demo User",
-                    email: email
-                };
-                state.auth.isAuthenticated = true;
+                const impact = pathogenicity === 'Pathogenic' ? 'High' : 
+                               pathogenicity === 'Benign' ? 'Low' : 'Moderate';
                 
-                localStorage.setItem('authToken', state.auth.token);
-                const loginModal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
-                loginModal.hide();
-                updateUserUI();
-                showToast('Login successful');
+                const therapies = gene === 'BRCA1' || gene === 'BRCA2' ? 
+                    ['PARP inhibitors (Olaparib, Rucaparib)', 'Platinum-based chemotherapy'] : 
+                    ['Standard chemotherapy', 'Immunotherapy'];
                 
-            } catch (error) {
-                console.error('Login failed:', error);
-                showToast('Login failed. Please check your credentials.', 'danger');
-            }
-        }
-
-        function handleLogout() {
-            state.auth.token = null;
-            state.auth.user = null;
-            state.auth.isAuthenticated = false;
-            localStorage.removeItem('authToken');
-            showToast('Logged out successfully');
-            const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
-            loginModal.show();
-        }
-
-        function createNewProject() {
-            const name = document.getElementById('project-name').value;
-            const description = document.getElementById('project-description').value;
-            const template = document.getElementById('project-template').value;
-            
-            if (!name) {
-                showToast('Project name is required', 'warning');
-                return;
-            }
-            
-            const newProject = {
-                id: 'proj-' + Date.now(),
-                name,
-                description,
-                template,
-                createdAt: new Date().toISOString(),
-                status: 'draft',
-                versionControl: document.getElementById('enable-versioning').checked
-            };
-            
-            state.projects.push(newProject);
-            updateProjectList();
-            const newProjectModal = bootstrap.Modal.getInstance(document.getElementById('newProjectModal'));
-            newProjectModal.hide();
-            showToast('Project created successfully');
-        }
-
-        function updateProjectList() {
-            const projectList = document.getElementById('project-list');
-            projectList.innerHTML = '';
-            
-            state.projects.forEach(project => {
-                const projectItem = document.createElement('a');
-                projectItem.href = '#';
-                projectItem.className = 'list-group-item list-group-item-action';
-                projectItem.innerHTML = `
-                    <div class="d-flex w-100 justify-content-between">
-                        <h6 class="mb-1">${project.name}</h6>
-                        <small>${formatDate(project.createdAt)}</small>
-                    </div>
-                    <p class="mb-1">${project.description || 'No description'}</p>
-                    <small class="text-muted">${project.template} template</small>
+                // Display results
+                document.getElementById('impact-result').innerHTML = `
+                    <h4 style="margin-bottom: 1rem; color: var(--purple-neon);">
+                        <i class="fas fa-exclamation-triangle"></i> Variant Impact
+                    </h4>
+                    <p><strong>Gene:</strong> ${gene}</p>
+                    <p><strong>Variant:</strong> ${variant}</p>
+                    <p><strong>Amino Acid Change:</strong> ${aaChange}</p>
+                    <p><strong>Predicted Pathogenicity:</strong> <span style="color: ${pathogenicity === 'Pathogenic' ? '#ff5555' : pathogenicity === 'Benign' ? '#55ff55' : '#ffff55'}">${pathogenicity}</span></p>
+                    <p><strong>Clinical Impact:</strong> ${impact}</p>
+                    <p><strong>Population Frequency:</strong> ${(af * 100).toFixed(4)}%</p>
                 `;
                 
-                projectItem.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    loadProject(project.id);
+                document.getElementById('therapy-result').innerHTML = `
+                    <h4 style="margin-bottom: 1rem; color: var(--pink-neon);">
+                        <i class="fas fa-pills"></i> Therapeutic Implications
+                    </h4>
+                    <p><strong>Potential Targeted Therapies:</strong></p>
+                    <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                        ${therapies.map(t => `<li>${t}</li>`).join('')}
+                    </ul>
+                    ${gene === 'BRCA1' || gene === 'BRCA2' ? 
+                      '<p style="margin-top: 0.5rem;"><strong>Clinical Trial Eligibility:</strong> PARP inhibitor trials may be appropriate</p>' : ''}
+                `;
+                
+                // Add to history
+                const historyItem = document.createElement('div');
+                historyItem.style.padding = '0.75rem';
+                historyItem.style.borderBottom = '1px solid rgba(255, 255, 255, 0.1)';
+                historyItem.style.cursor = 'pointer';
+                historyItem.innerHTML = `
+                    <strong>${gene} ${aaChange}</strong> - ${variant}<br>
+                    <small style="color: var(--text-secondary);">${new Date().toLocaleString()}</small>
+                `;
+                historyItem.addEventListener('click', () => {
+                    document.getElementById('gene-input').value = gene;
+                    document.getElementById('variant-input').value = variant;
+                    document.getElementById('aa-change-input').value = aaChange;
+                    document.getElementById('sift-input').value = sift;
+                    document.getElementById('polyphen-input').value = polyphen;
+                    document.getElementById('af-input').value = af;
                 });
+                document.getElementById('variant-history').prepend(historyItem);
                 
-                projectList.appendChild(projectItem);
-            });
-        }
+                // Reset button
+                btn.innerHTML = '<i class="fas fa-search"></i> Analyze Variant';
+                btn.disabled = false;
+            }, 1500);
+        });
+        
+        // Export results button
+        document.getElementById('export-results-btn').addEventListener('click', () => {
+            alert('Results exported to PDF (simulated)');
+        });
 
-        function loadProject(projectId) {
-            const project = state.projects.find(p => p.id === projectId);
-            if (!project) return;
+        // Training Module Demo Functionality
+        document.getElementById('start-training-btn').addEventListener('click', function() {
+            const startBtn = this;
+            const stopBtn = document.getElementById('stop-training-btn');
+            const progressBar = document.getElementById('training-progress-bar');
+            const currentEpoch = document.getElementById('current-epoch');
+            const currentLoss = document.getElementById('current-loss');
+            const trainingLog = document.getElementById('training-log');
             
-            state.currentProject = project;
-            document.getElementById('project-status').textContent = project.status === 'completed' ? 'Completed' : 'Ready';
-            document.getElementById('project-status').className = project.status === 'completed' ? 'badge bg-success' : 'badge bg-secondary';
-            showToast(`Project "${project.name}" loaded`);
-        }
-
-        async function startTrainingHandler() {
-            const trainingParams = {
-                epochs: parseInt(document.getElementById('epochs').value),
-                batchSize: parseInt(document.getElementById('batch-size').value),
-                learningRate: parseFloat(document.getElementById('learning-rate-value').textContent),
-                validationSplit: parseFloat(document.getElementById('validation-split').value),
-                engine: document.getElementById('training-engine').value,
-                modelType: document.getElementById('model-architecture').value,
-                enableTransferLearning: document.getElementById('transfer-learning').checked,
-                enableEarlyStopping: document.getElementById('early-stopping').checked,
-                enableGPU: document.getElementById('enable-gpu').checked
-            };
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-block';
             
-            await startMindsDBTraining(trainingParams);
-        }
-
-        async function startMindsDBTraining(params) {
-            if (!state.currentProject) {
-                showToast('Please create or select a project first', 'warning');
-                return;
-            }
-
-            const modelName = `quorum_${state.currentProject.id}_${Date.now()}`;
-            const targetColumn = document.getElementById('target-column').value;
-            const dataSource = document.getElementById('training-data-source').value;
+            const epochs = parseInt(document.getElementById('epochs').value) || 100;
+            let currentEpochCount = 0;
             
-            if (!targetColumn || !dataSource) {
-                showToast('Target column and data source are required', 'warning');
-                return;
-            }
+            trainingLog.innerHTML = '<div class="log-entry">>>> TRAINING INITIATED <<<</div>';
             
-            document.getElementById('project-status').textContent = 'Training';
-            document.getElementById('project-status').className = 'badge bg-warning';
-            document.getElementById('start-training-btn').disabled = true;
-            document.getElementById('stop-training-btn').style.display = 'inline-block';
-            document.getElementById('training-logs').innerHTML = '';
-            
-            try {
-                let query = `CREATE MODEL ${modelName}
-                            FROM ${dataSource}
-                            PREDICT ${targetColumn}`;
-                
-                let usingParams = {
-                    engine: params.engine || 'lightwood',
-                    epochs: params.epochs,
-                    batch_size: params.batchSize,
-                    learning_rate: params.learningRate,
-                    validation_split: params.validationSplit,
-                    early_stopping: params.enableEarlyStopping,
-                    gpu: params.enableGPU
-                };
-                
-                if (params.modelType === 'llm') {
-                    usingParams.model_name = 'gpt-4';
-                    usingParams.fine_tuning = true;
-                }
-                
-                query += ` USING ${JSON.stringify(usingParams)}`;
-                
-                const response = await axios.post(state.models.mindsdbConfig.baseUrl, {
-                    query: query
-                }, {
-                    headers: {
-                        'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                state.currentProject.mindsdbModel = modelName;
-                state.currentProject.trainingStatus = 'submitted';
-                state.currentTrainingJob = {
-                    id: 'train-' + Date.now(),
-                    modelName: modelName,
-                    status: 'training',
-                    startTime: new Date().toISOString(),
-                    params: params
-                };
-                
-                addTrainingLog('Training job submitted to MindsDB');
-                addTrainingLog(`Model name: ${modelName}`);
-                addTrainingLog(`Data source: ${dataSource}`);
-                addTrainingLog(`Target column: ${targetColumn}`);
-                addTrainingLog('Using parameters: ' + JSON.stringify(usingParams, null, 2));
-                
-                pollTrainingStatus(modelName);
-                
-            } catch (error) {
-                console.error('Training submission failed:', error);
-                document.getElementById('project-status').textContent = 'Failed';
-                document.getElementById('project-status').className = 'badge bg-danger';
-                document.getElementById('start-training-btn').disabled = false;
-                document.getElementById('stop-training-btn').style.display = 'none';
-                addTrainingLog(`Error: ${error.response?.data?.message || error.message}`);
-            }
-        }
-
-        async function stopTrainingHandler() {
-            if (!state.currentTrainingJob) {
-                showToast('No active training job to stop', 'warning');
-                return;
-            }
-            
-            try {
-                const response = await axios.post(state.models.mindsdbConfig.baseUrl, {
-                    query: `DROP MODEL ${state.currentTrainingJob.modelName}`
-                }, {
-                    headers: {
-                        'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                state.currentTrainingJob.status = 'stopped';
-                state.currentProject.trainingStatus = 'stopped';
-                document.getElementById('project-status').textContent = 'Stopped';
-                document.getElementById('project-status').className = 'badge bg-secondary';
-                document.getElementById('start-training-btn').disabled = false;
-                document.getElementById('stop-training-btn').style.display = 'none';
-                addTrainingLog('Training stopped by user');
-                
-            } catch (error) {
-                console.error('Failed to stop training:', error);
-                addTrainingLog(`Error stopping training: ${error.message}`);
-            }
-        }
-
-        async function pollTrainingStatus(modelName) {
-            const timeout = 1800;
-            const startTime = Date.now();
-            
-            const interval = setInterval(async () => {
-                if (Date.now() - startTime > timeout * 1000) {
-                    clearInterval(interval);
-                    document.getElementById('project-status').textContent = 'Timeout';
-                    document.getElementById('project-status').className = 'badge bg-danger';
-                    document.getElementById('start-training-btn').disabled = false;
-                    document.getElementById('stop-training-btn').style.display = 'none';
-                    addTrainingLog('Training timed out');
-                    state.currentTrainingJob.status = 'timeout';
-                    state.currentProject.trainingStatus = 'timeout';
+            const trainingInterval = setInterval(() => {
+                if (currentEpochCount >= epochs) {
+                    clearInterval(trainingInterval);
+                    trainingLog.innerHTML += '<div class="log-entry">>>> TRAINING COMPLETED <<<</div>';
+                    startBtn.style.display = 'inline-block';
+                    stopBtn.style.display = 'none';
                     return;
                 }
                 
-                try {
-                    const response = await axios.post(state.models.mindsdbConfig.baseUrl, {
-                        query: `SELECT status FROM models WHERE name = '${modelName}'`
-                    }, {
-                        headers: {
-                            'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    const status = response.data.data?.[0]?.status;
-                    
-                    if (status === 'complete') {
-                        clearInterval(interval);
-                        document.getElementById('project-status').textContent = 'Completed';
-                        document.getElementById('project-status').className = 'badge bg-success';
-                        document.getElementById('start-training-btn').disabled = false;
-                        document.getElementById('stop-training-btn').style.display = 'none';
-                        addTrainingLog('Training completed successfully!');
-                        state.currentTrainingJob.status = 'completed';
-                        state.currentTrainingJob.endTime = new Date().toISOString();
-                        state.currentProject.trainingStatus = 'completed';
-                        updateModelDeploymentDropdown();
-                        
-                        try {
-                            const accuracyRes = await axios.post(state.models.mindsdbConfig.baseUrl, {
-                                query: `SELECT accuracy FROM models WHERE name = '${modelName}'`
-                            }, {
-                                headers: {
-                                    'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                            
-                            const accuracy = accuracyRes.data.data?.[0]?.accuracy;
-                            if (accuracy) {
-                                addTrainingLog(`Model accuracy: ${accuracy}`);
-                            }
-                        } catch (accuracyError) {
-                            console.error('Error getting model accuracy:', accuracyError);
-                        }
-                    } else if (status === 'error') {
-                        clearInterval(interval);
-                        document.getElementById('project-status').textContent = 'Failed';
-                        document.getElementById('project-status').className = 'badge bg-danger';
-                        document.getElementById('start-training-btn').disabled = false;
-                        document.getElementById('stop-training-btn').style.display = 'none';
-                        addTrainingLog('Training failed - check your parameters and data');
-                        state.currentTrainingJob.status = 'failed';
-                        state.currentTrainingJob.endTime = new Date().toISOString();
-                        state.currentProject.trainingStatus = 'failed';
-                    } else {
-                        addTrainingLog(`Training in progress... Status: ${status || 'pending'}`);
-                    }
-                    
-                } catch (error) {
-                    console.error('Error checking training status:', error);
-                    clearInterval(interval);
-                    document.getElementById('project-status').textContent = 'Error';
-                    document.getElementById('project-status').className = 'badge bg-danger';
-                    document.getElementById('start-training-btn').disabled = false;
-                    document.getElementById('stop-training-btn').style.display = 'none';
-                    addTrainingLog(`Error checking status: ${error.message}`);
-                    state.currentTrainingJob.status = 'error';
-                    state.currentTrainingJob.endTime = new Date().toISOString();
-                    state.currentProject.trainingStatus = 'error';
+                currentEpochCount++;
+                const progress = (currentEpochCount / epochs) * 100;
+                const loss = (0.5 + Math.random() * 0.5).toFixed(4);
+                
+                progressBar.style.width = `${progress}%`;
+                currentEpoch.textContent = `${currentEpochCount}/${epochs}`;
+                currentLoss.textContent = loss;
+                
+                if (currentEpochCount % 10 === 0) {
+                    trainingLog.innerHTML += `<div class="log-entry">Epoch ${currentEpochCount}/${epochs} - Loss: ${loss}</div>`;
+                    trainingLog.scrollTop = trainingLog.scrollHeight;
                 }
-            }, 5000);
-        }
-
-        function addTrainingLog(message) {
-            const logEntry = document.createElement('div');
-            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            document.getElementById('training-logs').appendChild(logEntry);
-            document.getElementById('training-logs').scrollTop = document.getElementById('training-logs').scrollHeight;
-        }
-
-        function clearTrainingLogs() {
-            document.getElementById('training-logs').innerHTML = '';
-        }
-
-        function exportTrainingLogs() {
-            const logs = document.getElementById('training-logs').textContent;
-            const blob = new Blob([logs], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `training-logs-${new Date().toISOString().split('T')[0]}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        async function previewTrainingData() {
-            const dataSource = document.getElementById('training-data-source').value;
-            if (!dataSource) {
-                showToast('Please enter a data source first', 'warning');
-                return;
-            }
+            }, 100);
             
-            try {
-                const response = await axios.post(state.models.mindsdbConfig.baseUrl, {
-                    query: `SELECT * FROM ${dataSource} LIMIT 5`
-                }, {
-                    headers: {
-                        'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                const previewContainer = document.querySelector('.data-preview');
-                const headersRow = document.getElementById('preview-headers');
-                const dataRows = document.getElementById('preview-rows');
-                
-                previewContainer.style.display = 'block';
-                headersRow.innerHTML = '';
-                dataRows.innerHTML = '';
-                
-                if (response.data.data && response.data.data.length > 0) {
-                    const firstRow = response.data.data[0];
-                    Object.keys(firstRow).forEach(key => {
-                        const th = document.createElement('th');
-                        th.textContent = key;
-                        headersRow.appendChild(th);
-                    });
-                    
-                    response.data.data.forEach(row => {
-                        const tr = document.createElement('tr');
-                        Object.values(row).forEach(value => {
-                            const td = document.createElement('td');
-                            td.textContent = value;
-                            tr.appendChild(td);
-                        });
-                        dataRows.appendChild(tr);
-                    });
-                }
-                
-            } catch (error) {
-                console.error('Error previewing data:', error);
-                showToast('Failed to preview data: ' + (error.response?.data?.message || error.message), 'danger');
-            }
-        }
+            stopBtn.addEventListener('click', function() {
+                clearInterval(trainingInterval);
+                trainingLog.innerHTML += '<div class="log-entry">>>> TRAINING ABORTED <<<</div>';
+                startBtn.style.display = 'inline-block';
+                stopBtn.style.display = 'none';
+            }, {once: true});
+        });
 
-        async function deployMindsDBModel() {
-            const modelId = document.getElementById('model-to-deploy').value;
-            const deploymentName = document.getElementById('deployment-name').value;
-            const version = document.getElementById('deployment-version').value;
+        // Deployment Module Demo Functionality
+        document.getElementById('deploy-model-btn').addEventListener('click', function() {
+            const modelPath = document.getElementById('model-path').value || '/models/trained_model.h5';
+            const deploymentName = document.getElementById('deployment-name').value || 'BRCA1_Predictor_v2';
+            const computeType = document.getElementById('compute-type').value;
+            const replicas = document.getElementById('replicas').value || 1;
             
-            if (!deploymentName) {
-                showToast('Deployment name is required', 'warning');
-                return;
-            }
+            const deploymentsList = document.getElementById('deployments-list');
+            const deploymentItem = document.createElement('div');
+            deploymentItem.style.padding = '1rem';
+            deploymentItem.style.borderBottom = '1px solid rgba(255, 94, 0, 0.3)';
+            deploymentItem.style.display = 'flex';
+            deploymentItem.style.justifyContent = 'space-between';
+            deploymentItem.style.alignItems = 'center';
             
-            if (!modelId) {
-                showToast('Please select a model to deploy', 'warning');
-                return;
-            }
-
-            try {
-                const newDeployment = {
-                    id: 'dep-' + Date.now(),
-                    modelId,
-                    name: deploymentName,
-                    version: version || '1.0.0',
-                    status: 'active',
-                    createdAt: new Date().toISOString(),
-                    endpoint: `${state.models.mindsdbConfig.baseUrl}?model=${modelId}`,
-                    monitoring: document.getElementById('enable-monitoring').checked
-                };
-                
-                state.deployments.push(newDeployment);
-                updateDeploymentsList();
-                
-                showToast('Model deployed successfully');
-                document.getElementById('api-endpoint').value = newDeployment.endpoint;
-                document.getElementById('example-request').textContent = document.getElementById('example-request').textContent.replace('[MODEL_ID]', modelId);
-                
-                const apiKey = 'sk_' + generateRandomString(32);
-                document.getElementById('api-key').value = apiKey;
-                
-                state.currentDeployment = newDeployment;
-                
-            } catch (error) {
-                console.error('Deployment failed:', error);
-                showToast('Deployment failed: ' + (error.response?.data?.message || error.message), 'danger');
-            }
-        }
-
-        function generateRandomString(length) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let result = '';
-            for (let i = 0; i < length; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
-        }
-
-        function updateDeploymentsList() {
-            const deployedModelsList = document.getElementById('deployed-models-list');
-            deployedModelsList.innerHTML = '';
-            
-            state.deployments.forEach(deployment => {
-                const deploymentItem = document.createElement('a');
-                deploymentItem.href = '#';
-                deploymentItem.className = 'list-group-item list-group-item-action';
-                deploymentItem.innerHTML = `
-                    <div class="d-flex w-100 justify-content-between">
-                        <h6 class="mb-1">${deployment.name}</h6>
-                        <span class="badge bg-success">
-                            ${deployment.status}
-                        </span>
-                    </div>
-                    <p class="mb-1">Model: ${deployment.modelId}</p>
-                    <small class="text-muted">Version: ${deployment.version} | ${formatDate(deployment.createdAt)}</small>
-                `;
-                
-                deploymentItem.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    loadDeployment(deployment.id);
-                });
-                
-                deployedModelsList.appendChild(deploymentItem);
-            });
-            
-            updateModelDeploymentDropdown();
-        }
-
-        function loadDeployment(deploymentId) {
-            const deployment = state.deployments.find(d => d.id === deploymentId);
-            if (!deployment) return;
-            
-            state.currentDeployment = deployment;
-            document.getElementById('deployment-name').value = deployment.name;
-            document.getElementById('deployment-version').value = deployment.version;
-            document.getElementById('api-endpoint').value = deployment.endpoint;
-            document.getElementById('enable-monitoring').checked = deployment.monitoring;
-            
-            const modelSelect = document.getElementById('model-to-deploy');
-            modelSelect.value = deployment.modelId;
-            
-            document.getElementById('example-request').textContent = document.getElementById('example-request').textContent.replace(/models\/.*?\//, `models/${deployment.modelId}/`);
-        }
-
-        function updateModelDeploymentDropdown() {
-            const modelToDeploy = document.getElementById('model-to-deploy');
-            modelToDeploy.innerHTML = '';
-            
-            state.projects.forEach(project => {
-                if (project.trainingStatus === 'completed' && project.mindsdbModel) {
-                    const option = document.createElement('option');
-                    option.value = project.mindsdbModel;
-                    option.textContent = `${project.name} (${project.mindsdbModel})`;
-                    modelToDeploy.appendChild(option);
-                }
-            });
-            
-            if (state.currentDeployment) {
-                modelToDeploy.value = state.currentDeployment.modelId;
-            }
-        }
-
-        function copyApiEndpointToClipboard() {
-            navigator.clipboard.writeText(document.getElementById('api-endpoint').value);
-            showToast('API endpoint copied to clipboard');
-        }
-
-        function copyExampleRequestToClipboard() {
-            navigator.clipboard.writeText(document.getElementById('example-request').textContent);
-            showToast('Example request copied to clipboard');
-        }
-
-        function toggleApiKeyVisibility() {
-            const apiKeyInput = document.getElementById('api-key');
-            apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
-            document.getElementById('show-api-key').innerHTML = apiKeyInput.type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
-        }
-
-        function regenerateApiKey() {
-            const newApiKey = 'sk_' + generateRandomString(32);
-            document.getElementById('api-key').value = newApiKey;
-            showToast('New API key generated');
-        }
-
-        function showTestEndpointModal() {
-            if (!state.currentDeployment) {
-                showToast('Please deploy a model first', 'warning');
-                return;
-            }
-            
-            document.getElementById('test-input-data').value = '{\n    "input": "Your test data here"\n}';
-            document.getElementById('test-response').textContent = 'Response will appear here...';
-            new bootstrap.Modal(document.getElementById('testEndpointModal')).show();
-        }
-
-        async function sendTestRequest() {
-            if (!state.currentDeployment) {
-                showToast('No deployment selected', 'warning');
-                return;
-            }
-            
-            const inputData = document.getElementById('test-input-data').value;
-            const apiKey = document.getElementById('api-key').value;
-            
-            try {
-                const parsedInput = JSON.parse(inputData);
-                document.getElementById('test-response').textContent = 'Sending request...';
-                
-                // Simulate API call
-                setTimeout(() => {
-                    document.getElementById('test-response').textContent = JSON.stringify({
-                        success: true,
-                        prediction: "Sample prediction result",
-                        confidence: 0.95,
-                        model: state.currentDeployment.modelId,
-                        timestamp: new Date().toISOString()
-                    }, null, 2);
-                }, 1000);
-                
-            } catch (error) {
-                document.getElementById('test-response').textContent = `Error: Invalid JSON input\n\n${error.message}`;
-            }
-        }
-
-        function refreshDeployments() {
-            showToast('Deployments refreshed');
-        }
-
-        function refreshActiveModels() {
-            showToast('Active models refreshed');
-        }
-
-        function clearModelLogs() {
-            document.getElementById('model-logs').innerHTML = '';
-        }
-
-        function exportModelLogs() {
-            const logs = document.getElementById('model-logs').textContent;
-            const blob = new Blob([logs], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `model-logs-${new Date().toISOString().split('T')[0]}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function addIntegration() {
-            showToast('Integration feature coming soon!', 'info');
-        }
-
-        function refreshIntegrations() {
-            showToast('Integrations refreshed');
-        }
-
-        function saveMindsDBConfig() {
-            const apiKey = document.getElementById('mindsdb-api-key').value;
-            const baseUrl = document.getElementById('mindsdb-base-url').value;
-            const model = document.getElementById('mindsdb-model-name').value;
-            const project = document.getElementById('mindsdb-project').value;
-            const verifyConnection = document.getElementById('verify-connection').checked;
-            
-            if (!apiKey) {
-                showToast('API key is required', 'warning');
-                return;
-            }
-            
-            state.models.mindsdbConfig = {
-                apiKey,
-                baseUrl: baseUrl || 'https://cloud.mindsdb.com/api/sql',
-                model,
-                project
-            };
-            
-            localStorage.setItem('mindsdb-api-key', apiKey);
-            localStorage.setItem('mindsdb-base-url', state.models.mindsdbConfig.baseUrl);
-            localStorage.setItem('mindsdb-model', model);
-            localStorage.setItem('mindsdb-project', project);
-            
-            if (verifyConnection) {
-                verifyMindsDBConnection();
-            } else {
-                showToast('MindsDB configuration saved');
-            }
-        }
-
-        function saveMindsDBConfigModal() {
-            const apiKey = document.getElementById('mindsdb-api-key-modal').value;
-            const baseUrl = document.getElementById('mindsdb-base-url-modal').value;
-            const model = document.getElementById('mindsdb-model-name-modal').value;
-            const project = document.getElementById('mindsdb-project-modal').value;
-            const verifyConnection = document.getElementById('verify-connection-modal').checked;
-            
-            if (!apiKey) {
-                showToast('API key is required', 'warning');
-                return;
-            }
-            
-            state.models.mindsdbConfig = {
-                apiKey,
-                baseUrl: baseUrl || 'https://cloud.mindsdb.com/api/sql',
-                model,
-                project
-            };
-            
-            localStorage.setItem('mindsdb-api-key', apiKey);
-            localStorage.setItem('mindsdb-base-url', state.models.mindsdbConfig.baseUrl);
-            localStorage.setItem('mindsdb-model', model);
-            localStorage.setItem('mindsdb-project', project);
-            
-            // Update main form values
-            document.getElementById('mindsdb-api-key').value = apiKey;
-            document.getElementById('mindsdb-base-url').value = baseUrl;
-            document.getElementById('mindsdb-model-name').value = model;
-            document.getElementById('mindsdb-project').value = project;
-            
-            if (verifyConnection) {
-                verifyMindsDBConnection();
-            } else {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('mindsdb-config-modal'));
-                modal.hide();
-                showToast('MindsDB configuration saved');
-            }
-        }
-
-        async function verifyMindsDBConnection() {
-            try {
-                const response = await axios.post(state.models.mindsdbConfig.baseUrl, {
-                    query: 'SHOW DATABASES'
-                }, {
-                    headers: {
-                        'Authorization': `Bearer ${state.models.mindsdbConfig.apiKey}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (response.data) {
-                    showToast('Connection verified successfully', 'success');
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('mindsdb-config-modal'));
-                    modal.hide();
-                } else {
-                    showToast('Connection failed: Invalid response', 'danger');
-                }
-            } catch (error) {
-                console.error('Connection verification failed:', error);
-                showToast('Connection failed: ' + (error.response?.data?.message || error.message), 'danger');
-            }
-        }
-
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString();
-        }
-
-        function showToast(message, type = 'success') {
-            const toastContainer = document.getElementById('toast-container');
-            if (!toastContainer) return;
-            
-            const toast = document.createElement('div');
-            toast.className = `toast show align-items-center text-white bg-${type} border-0`;
-            toast.setAttribute('role', 'alert');
-            toast.setAttribute('aria-live', 'assertive');
-            toast.setAttribute('aria-atomic', 'true');
-            
-            toast.innerHTML = `
-                <div class="d-flex">
-                    <div class="toast-body">${message}</div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            deploymentItem.innerHTML = `
+                <div>
+                    <strong style="color: var(--cyber-orange);">${deploymentName}</strong><br>
+                    <small>${modelPath} | ${computeType.toUpperCase()} | ${replicas} replica(s)</small>
+                </div>
+                <div style="background: rgba(0, 255, 0, 0.2); color: #00ff00; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem;">
+                    Deploying...
                 </div>
             `;
             
-            toastContainer.appendChild(toast);
+            deploymentsList.prepend(deploymentItem);
             
+            // Update deployment status
+            const pendingDeployments = document.getElementById('pending-deployments');
+            pendingDeployments.textContent = parseInt(pendingDeployments.textContent) + 1;
+            
+            // Simulate deployment completion
             setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 150);
+                deploymentItem.innerHTML = `
+                    <div>
+                        <strong style="color: var(--cyber-orange);">${deploymentName}</strong><br>
+                        <small>${modelPath} | ${computeType.toUpperCase()} | ${replicas} replica(s)</small>
+                    </div>
+                    <div style="background: rgba(0, 255, 0, 0.2); color: #00ff00; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem;">
+                        Active
+                    </div>
+                `;
+                
+                pendingDeployments.textContent = parseInt(pendingDeployments.textContent) - 1;
+                const activeDeployments = document.getElementById('active-deployments');
+                activeDeployments.textContent = parseInt(activeDeployments.textContent) + 1;
             }, 3000);
-        }
+        });
 
-        function initializeCharts() {
-            // Initialize empty charts
-            state.charts.requests = initializeChart('requestsChart', 'Requests per minute', 'line');
-            state.charts.latency = initializeChart('latencyChart', 'Response latency (ms)', 'bar');
-            state.charts.errors = initializeChart('errorsChart', 'Error rate', 'doughnut');
-            state.charts.resources = initializeChart('resourcesChart', 'Resource usage', 'radar');
-        }
-
-        function initializeChart(canvasId, label, type) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            return new Chart(ctx, {
-                type: type,
-                data: {
-                    labels: Array.from({length: 12}, (_, i) => i + 1),
-                    datasets: [{
-                        label: label,
-                        data: Array.from({length: 12}, () => 0),
-                        backgroundColor: getChartColors(type),
-                        borderColor: type === 'line' ? 'rgba(75, 192, 192, 1)' : undefined,
-                        borderWidth: type === 'line' ? 2 : 1
-                    }]
-                },
-                options: getChartOptions(type)
-            });
-        }
-
-        function getChartColors(type) {
-            switch(type) {
-                case 'line':
-                    return 'rgba(75, 192, 192, 0.2)';
-                case 'bar':
-                    return 'rgba(54, 162, 235, 0.2)';
-                case 'doughnut':
-                    return [
-                        'rgba(255, 99, 132, 0.2)',
-                        'rgba(54, 162, 235, 0.2)',
-                        'rgba(255, 206, 86, 0.2)',
-                        'rgba(75, 192, 192, 0.2)',
-                        'rgba(153, 102, 255, 0.2)'
-                    ];
-                case 'radar':
-                    return 'rgba(153, 102, 255, 0.2)';
-                default:
-                    return 'rgba(201, 203, 207, 0.2)';
-            }
-        }
-
-        function getChartOptions(type) {
-            const commonOptions = {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    title: {
-                        display: true,
-                        text: type === 'line' ? 'Requests per minute' : 
-                              type === 'bar' ? 'Response latency (ms)' :
-                              type === 'doughnut' ? 'Error rate' : 'Resource usage'
-                    }
-                }
-            };
-
-            if (type === 'line' || type === 'bar') {
-                commonOptions.scales = {
-                    y: {
-                        beginAtZero: true
-                    }
-                };
-            }
-
-            return commonOptions;
-        }
-
-        function updateCharts(timeRange) {
-            // Simulate updating charts with new data based on time range
-            const now = Date.now();
-            const data = {
-                requests: generateRandomData(12, 50, 200),
-                latency: generateRandomData(12, 10, 500),
-                errors: generateRandomData(5, 1, 20),
-                resources: generateRandomData(6, 10, 90)
-            };
-            
-            // Update request count and average latency
-            const totalRequests = data.requests.reduce((a, b) => a + b, 0);
-            const avgLatency = Math.round(data.latency.reduce((a, b) => a + b, 0) / data.latency.length);
-            
-            document.getElementById('request-count').textContent = totalRequests;
-            document.getElementById('avg-latency').textContent = avgLatency;
-            
-            // Update charts
-            state.charts.requests.data.datasets[0].data = data.requests;
-            state.charts.latency.data.datasets[0].data = data.latency;
-            state.charts.errors.data.datasets[0].data = data.errors;
-            state.charts.resources.data.datasets[0].data = data.resources;
-            
-            state.charts.requests.update();
-            state.charts.latency.update();
-            state.charts.errors.update();
-            state.charts.resources.update();
-        }
-
-        function generateRandomData(count, min, max) {
-            return Array.from({length: count}, () => 
-                Math.floor(Math.random() * (max - min + 1)) + min
-            );
-        }
-
-        function loadSampleData() {
-            if (localStorage.getItem('sampleDataLoaded')) return;
-            
-            // Load sample projects
-            state.projects.push({
-                id: 'proj-sample1',
-                name: 'Oncology Variant Analysis',
-                description: 'Predict therapeutic response for cancer variants',
-                template: 'genomic',
-                createdAt: new Date('2023-01-15').toISOString(),
-                status: 'completed',
-                mindsdbModel: 'quorum_oncology_predictor',
-                trainingStatus: 'completed'
-            });
-            
-            state.projects.push({
-                id: 'proj-sample2',
-                name: 'Rare Disease Classifier',
-                description: 'Classify variants in rare genetic diseases',
-                template: 'genomic',
-                createdAt: new Date('2023-02-20').toISOString(),
-                status: 'draft'
-            });
-            
-            // Load sample deployments
-            state.deployments.push({
-                id: 'dep-sample1',
-                modelId: 'quorum_oncology_predictor',
-                name: 'Production Oncology API',
-                version: '1.2.0',
-                status: 'active',
-                createdAt: new Date('2023-03-10').toISOString(),
-                endpoint: 'https://cloud.mindsdb.com/api/sql?model=quorum_oncology_predictor',
-                monitoring: true
-            });
-            
-            // Load sample variant history
-            const sampleHistory = [
-                {
-                    timestamp: new Date('2023-05-01T14:30:00').toISOString(),
-                    variant: {
-                        mutation_id: 'chr17:41276045:G>A',
-                        gene: 'BRCA1',
-                        amino_acid_change: 'p.Arg1443Ter',
-                        sift_score: 0.01,
-                        polyphen_score: 0.99,
-                        allele_frequency: 0.0001,
-                        conservation_score: 0.95
-                    },
-                    impact: {
-                        variant: 'chr17:41276045:G>A',
-                        gene: 'BRCA1',
-                        effect: 'Pathogenic',
-                        molecularImpact: 'Nonsense mutation leading to premature stop codon',
-                        clinicalImpact: 'Associated with hereditary breast and ovarian cancer',
-                        confidence: 0.95,
-                        pathogenicity: 0.95,
-                        functionalImpact: 'High'
-                    },
-                    therapy: {
-                        variant: 'chr17:41276045:G>A',
-                        gene: 'BRCA1',
-                        intervention: 'PARP inhibitors, Platinum-based chemotherapy',
-                        rationale: 'BRCA1 mutations confer sensitivity to PARP inhibitors due to synthetic lethality',
-                        drugs: ['Olaparib', 'Rucaparib', 'Cisplatin'],
-                        monitoring: 'Monitor for myelosuppression and gastrointestinal toxicity',
-                        evidence: 'FDA-approved',
-                        trials: ['NCT04239014', 'NCT03586661']
-                    }
-                }
+        // Monitoring Module Demo - Simulate changing metrics
+        function updateMonitoringMetrics() {
+            const metrics = [
+                { id: 'requests-per-minute', min: 800, max: 2000 },
+                { id: 'avg-latency', min: 30, max: 80 },
+                { id: 'cpu-usage', min: 40, max: 90 },
+                { id: 'memory-usage', min: 3.5, max: 5.0 }
             ];
             
-            localStorage.setItem('variantHistory', JSON.stringify(sampleHistory));
-            localStorage.setItem('sampleDataLoaded', 'true');
+            metrics.forEach(metric => {
+                const element = document.getElementById(metric.id);
+                const currentValue = parseFloat(element.textContent.replace(/[^0-9.]/g, ''));
+                const newValue = currentValue + (Math.random() * 20 - 10);
+                const clampedValue = Math.min(metric.max, Math.max(metric.min, newValue));
+                
+                if (metric.id === 'memory-usage') {
+                    element.textContent = clampedValue.toFixed(1) + element.textContent.replace(/[0-9.]/g, '');
+                } else {
+                    element.textContent = Math.round(clampedValue) + element.textContent.replace(/[0-9.]/g, '');
+                }
+            });
             
-            updateProjectList();
-            updateDeploymentsList();
-            loadVariantHistory();
+            setTimeout(updateMonitoringMetrics, 3000);
         }
+        
+        // Start updating metrics when monitoring tab is active
+        document.querySelector('.nav-tab[data-tab="monitoring"]').addEventListener('click', function() {
+            setTimeout(updateMonitoringMetrics, 1000);
+        }, {once: true});
     </script>
 </body>
 </html>

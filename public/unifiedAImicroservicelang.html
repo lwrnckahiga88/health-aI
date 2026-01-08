@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Langflow Builder - AI Workflow Microservice (Unified PWA)</title>
+  <meta name="theme-color" content="#6366f1"/>
+  <meta name="description" content="Visual AI workflow builder microservice for app developers" />
+  <link rel="manifest" id="manifest-placeholder">
+
+  <!-- Tailwind & Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- pdf.js and mammoth for file parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.9.179/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.5.2/mammoth.browser.min.js"></script>
+
+  <!-- Xenova Transformers (optional LLM in-browser) -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
+
+  <style>
+    :root { --bg:#0f0f23; --panel:#1a1a2e; --node:#16213e; --node-border:#3b4d6b; --edge:#22d3ee; --accent:#6366f1; --success:#10b981; --warning:#f59e0b; --error:#ef4444; --text:#e2e8f0; }
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    .app{display:flex;flex-direction:column;height:100vh}
+    .panel{background:var(--panel);border-bottom:1px solid var(--node-border)}
+    .btn{background:var(--node);border:1px solid var(--node-border);border-radius:8px;padding:8px 12px;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+    .btn.primary{background:var(--accent);color:white;border-color:var(--accent)}
+    .btn.success{background:var(--success);color:white;border-color:var(--success)}
+    .btn.warning{background:var(--warning);color:#111827;border-color:var(--warning)}
+    .btn.danger{background:var(--error);color:white;border-color:var(--error)}
+    .sidebar{width:300px;background:var(--panel);border-right:1px solid var(--node-border);display:flex;flex-direction:column}
+    .sidebar-section{padding:16px;border-bottom:1px solid var(--node-border)}
+    .node-palette{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .palette-item{padding:10px;background:var(--node);border:1px solid var(--node-border);border-radius:8px;cursor:pointer;text-align:center}
+    .palette-item:hover{border-color:var(--accent)}
+    #canvas{flex:1;position:relative;overflow:auto;background:
+      radial-gradient(circle at 25% 25%, rgba(99,102,241,0.05) 0%, transparent 40%),
+      radial-gradient(circle at 75% 75%, rgba(16,185,129,0.03) 0%, transparent 40%),
+      linear-gradient(180deg,var(--bg)0%,#070718100%);}
+    #edges{position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none}
+    .node{position:absolute;width:220px;background:var(--node);border:1px solid var(--node-border);border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+    .node .head{display:flex;justify-content:space-between;align-items:center;padding:4px}
+    .node .title{font-weight:700}
+    .node .meta{font-size:12px;color:rgba(255,255,255,0.65)}
+    .node textarea{width:100%;height:84px;background:#071025;border:1px solid #142033;color:#fff;padding:6px;border-radius:6px;font-size:12px}
+    .port{position:absolute;width:12px;height:12px;border-radius:999px;background:var(--node-border);border:3px solid var(--node);cursor:crosshair}
+    .port.input{left:-8px;top:50%;transform:translateY(-50%)}
+    .port.output{right:-8px;top:50%;transform:translateY(-50%)}
+    .toast{position:fixed;right:20px;bottom:20px;background:var(--panel);border:1px solid var(--node-border);padding:12px;border-radius:8px;transform:translateX(300px);transition:transform .25s}
+    .toast.show{transform:translateX(0)}
+    .logs{padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;max-height:220px;overflow:auto;font-family:monospace;font-size:13px}
+    .file-drop{border:1px dashed rgba(255,255,255,0.06);padding:8px;border-radius:6px;text-align:center;color:rgba(255,255,255,0.6)}
+    /* Small helpers */
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <div class="panel p-4 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <h1 class="text-lg font-bold"><i class="fa fa-project-diagram text-indigo-400"></i> Langflow Builder</h1>
+        <div class="text-sm text-gray-400">AI Workflow Microservice — Unified PWA</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="saveFlow" class="btn primary"><i class="fa fa-save"></i> Save Flow</button>
+        <button id="deployFlow" class="btn success"><i class="fa fa-rocket"></i> Deploy</button>
+        <button id="runFlow" class="btn warning"><i class="fa fa-play"></i> Run</button>
+        <button id="stopFlow" class="btn danger" disabled><i class="fa fa-stop"></i> Stop</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex:1;min-height:0">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-section">
+          <div style="font-weight:700;margin-bottom:8px">Component Library</div>
+          <div class="node-palette" id="palette">
+            <div class="palette-item" data-type="LLM"><i class="fa fa-brain"></i><div>LLM</div></div>
+            <div class="palette-item" data-type="Prompt"><i class="fa fa-comment"></i><div>Prompt</div></div>
+            <div class="palette-item" data-type="Data"><i class="fa fa-database"></i><div>Data</div></div>
+            <div class="palette-item" data-type="API"><i class="fa fa-plug"></i><div>API</div></div>
+            <div class="palette-item" data-type="Transform"><i class="fa fa-cogs"></i><div>Transform</div></div>
+            <div class="palette-item" data-type="Conditional"><i class="fa fa-code-branch"></i><div>Logic</div></div>
+            <div class="palette-item" data-type="Memory"><i class="fa fa-memory"></i><div>Memory</div></div>
+            <div class="palette-item" data-type="Output"><i class="fa fa-share"></i><div>Output</div></div>
+            <div class="palette-item" data-type="Pandemic"><i class="fa fa-virus"></i><div>Pandemic</div></div>
+            <div class="palette-item" data-type="WebScraper"><i class="fa fa-globe"></i><div>WebScraper</div></div>
+            <div class="palette-item" data-type="File"><i class="fa fa-file"></i><div>File</div></div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div style="font-weight:700;margin-bottom:8px">Flow Settings</div>
+          <label class="text-sm text-gray-400">Flow name</label>
+          <input id="flowName" placeholder="My Flow" style="width:100%;padding:8px;border-radius:6px;border:1px solid #223; background:#0b1220;color:#fff;margin-bottom:8px"/>
+          <label class="text-sm text-gray-400">Description</label>
+          <textarea id="flowDesc" rows="3" style="width:100%;padding:8px;border-radius:6px;border:1px solid #223;background:#0b1220;color:#fff"></textarea>
+        </div>
+
+        <div class="sidebar-section" style="flex:1;display:flex;flex-direction:column;gap:8px">
+          <div style="font-weight:700">Execution Logs</div>
+          <div id="logContainer" class="logs"></div>
+        </div>
+      </div>
+
+      <!-- Canvas -->
+      <div id="canvas" style="flex:1;position:relative">
+        <svg id="edges"></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Inline Manifest -->
+  <script id="inline-manifest" type="application/json">
+  {
+    "name":"Langflow ClinVARnet Unified PWA",
+    "short_name":"LangflowPWA",
+    "start_url":".",
+    "display":"standalone",
+    "background_color":"#0f0f23",
+    "theme_color":"#6366f1",
+    "icons":[
+      {"src":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAARUlEQVQoz2NkoBAwUqifgYGBoYGB4z//f3+YzDMyM8+fP/58xDgaHn4AgJw2xCuQT3I5QHgVqRwiEyMQwCDJg1DoA7uHgVJcxiFlS5ghZ2Xj8Aw0T9DScmInRj4gZCqEcQvN/LxzMwkzRzODtG6Ng4vPnz8fBwRnz/+/3+H9mT1ZEXjDkgwRBogmAPx/Gdg5HhA8k2wxhLB+3IEFL8lIgaD8cPnmM1Zf3v/jww8cPHz+eMmD7hyMnbyyNjY3xBiOhjgD5L0JYSAIAbP0xC5WFT0RAAAAAElFTkSuQmCC","sizes":"16x16","type":"image/png"}
+    ]
+  }
+  </script>
+
+  <!-- Inline Service Worker -->
+  <script id="inline-sw" type="application/javascript">
+  const CACHE_NAME = 'langflow-clinvarnet-cache-v1';
+  const PRECACHE_RESOURCES = ['.'];
+  self.addEventListener('install', event => {
+    event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_RESOURCES)));
+    self.skipWaiting();
+  });
+  self.addEventListener('activate', event => { event.waitUntil(self.clients.claim()); });
+  self.addEventListener('fetch', event => {
+    event.respondWith(
+      caches.match(event.request).then(resp => resp || fetch(event.request).then(r => {
+        try { caches.open(CACHE_NAME).then(cache => cache.put(event.request, r.clone())); } catch(e){}
+        return r;
+      })).catch(()=>caches.match('./'))
+    );
+  });
+  </script>
+
+  <script type="module">
+  // === Unified Langflow Builder: single-file implementation ===
+
+  // DOM helpers
+  const canvas = document.getElementById('canvas');
+  const edgesSvg = document.getElementById('edges');
+  const palette = document.getElementById('palette');
+  const logContainer = document.getElementById('logContainer');
+  const toastEl = document.getElementById('toast');
+
+  function toast(msg, type='info', ms=2500){
+    toastEl.textContent = msg;
+    toastEl.className = 'toast show ' + (type||'');
+    setTimeout(()=> toastEl.className = 'toast', ms);
+  }
+
+  function log(msg, level='info'){
+    const d = document.createElement('div');
+    d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    d.className = 'log-entry';
+    if(level==='success') d.style.color='#86efac';
+    if(level==='error') d.style.color='#fca5a5';
+    logContainer.appendChild(d); logContainer.scrollTop = logContainer.scrollHeight;
+  }
+
+  // Graph state
+  let NODE_COUNTER = 1;
+  let nodes = []; // {id, type, x, y, label, params, el, files, output}
+  let edges = []; // {fromId, toId}
+  let connectMode = false;
+  let draggingNode = null;
+  let dragOffset = {x:0,y:0};
+  let connectingFrom = null;
+  let xenovaModel = null, xenovaTokenizer = null;
+  let running = false;
+  let runInterval = null;
+
+  // Load Xenova model in background (non-blocking)
+  (async function loadXenova(){
+    try{
+      if(window.transformers){
+        const { AutoTokenizer, AutoModelForCausalLM } = window.transformers;
+        toast('Loading offline LLM (may take time)...', 'info', 4000);
+        xenovaTokenizer = await AutoTokenizer.from_pretrained('Xenova/gpt2-small',{cacheDir:'transformers-cache'});
+        xenovaModel = await AutoModelForCausalLM.from_pretrained('Xenova/gpt2-small',{cacheDir:'transformers-cache'});
+        toast('Offline LLM ready', 'success', 2000);
+        log('Xenova LLM loaded', 'success');
+      } else {
+        log('Xenova not available', 'error');
+      }
+    }catch(e){ console.error(e); log('LLM load failed', 'error'); toast('LLM load failed', 'error', 3000); }
+  })();
+
+  // Utility: create node DOM
+  function createNodeElement(node){
+    const el = document.createElement('div');
+    el.className = 'node';
+    el.style.left = node.x + 'px';
+    el.style.top = node.y + 'px';
+    el.dataset.id = node.id;
+    el.innerHTML = `
+      <div class="head">
+        <div>
+          <div class="title" style="font-weight:700">${node.label}</div>
+          <div class="meta">${node.type}</div>
+        </div>
+        <div>
+          <button class="btn small" data-action="delete" title="Delete" style="padding:4px 8px; margin-left:8px">✕</button>
+        </div>
+      </div>
+      <div class="body" style="padding:6px">
+        <textarea class="cfg" data-id="${node.id}">${JSON.stringify(node.params||{}, null, 2)}</textarea>
+        <div style="height:8px"></div>
+        <div class="file-drop" style="font-size:12px">Drag files here (pdf/docx/csv/txt)</div>
+      </div>
+      <div class="port input"></div>
+      <div class="port output"></div>
+    `;
+    // attach
+    canvas.appendChild(el);
+    node.el = el;
+    // ports
+    const inPort = el.querySelector('.port.input');
+    const outPort = el.querySelector('.port.output');
+    inPort.addEventListener('mousedown', ev => { ev.stopPropagation(); /* potential for connecting input */ });
+    outPort.addEventListener('mousedown', ev => {
+      ev.stopPropagation();
+      if(!connectMode) return;
+      connectingFrom = node.id;
+      startDragLine(ev, node);
+    });
+
+    // delete button
+    el.querySelector('button[data-action="delete"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeNode(node.id);
+    });
+
+    // drag
+    el.addEventListener('mousedown', ev => {
+      if(ev.target.closest('textarea') || ev.target.closest('.file-drop') || ev.target.closest('.port') || ev.target.closest('button')) return;
+      draggingNode = node;
+      dragOffset.x = ev.clientX - el.offsetLeft;
+      dragOffset.y = ev.clientY - el.offsetTop;
+      el.classList.add('selected');
+    });
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+
+    // config textarea change
+    const ta = el.querySelector('textarea.cfg');
+    ta.addEventListener('change', e => {
+      try {
+        node.params = JSON.parse(e.target.value);
+        log(`${node.label} params updated`);
+      } catch (err) {
+        toast('Invalid JSON in params', 'error');
+      }
+    });
+
+    // file drop
+    const drop = el.querySelector('.file-drop');
+    drop.addEventListener('dragover', ev => { ev.preventDefault(); drop.style.borderColor = '#99f' });
+    drop.addEventListener('dragleave', ev => { drop.style.borderColor = ''; });
+    drop.addEventListener('drop', async ev => {
+      ev.preventDefault();
+      drop.style.borderColor = '';
+      const f = ev.dataTransfer.files[0];
+      if(!f) return;
+      node.files = node.files || [];
+      const fileObj = { name: f.name, blob: f, extractedText: null };
+      node.files.push(fileObj);
+      toast(`File ${f.name} attached to ${node.label}`, 'success');
+      log(`File attached to ${node.label}: ${f.name}`);
+      // attempt extraction
+      await extractFileText(fileObj);
+    });
+
+    return el;
+  }
+
+  // Mouse move/up handlers for dragging and connecting
+  let dragLinePath = null;
+  function onMouseMove(e){
+    if(draggingNode){
+      draggingNode.el.style.left = (e.clientX - dragOffset.x) + 'px';
+      draggingNode.el.style.top = (e.clientY - dragOffset.y) + 'px';
+      redrawEdges();
+    }
+    if(connectingFrom){
+      updateDragLine(e);
+    }
+  }
+  function onMouseUp(e){
+    if(draggingNode){
+      draggingNode.el.classList.remove('selected');
+      // update node position
+      const n = nodes.find(x=>x.id===draggingNode.id);
+      n.x = draggingNode.el.offsetLeft;
+      n.y = draggingNode.el.offsetTop;
+      draggingNode = null;
+      saveWorkflowToLocal();
+    }
+    if(connectingFrom){
+      // find node under mouse
+      const target = nodes.find(n=>{
+        const r = n.el.getBoundingClientRect();
+        return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      });
+      if(target && target.id !== connectingFrom){
+        // create edge
+        edges.push({ fromId: connectingFrom, toId: target.id });
+        toast('Connected nodes', 'success');
+        log(`Edge created: ${connectingFrom} -> ${target.id}`);
+        redrawEdges();
+        saveWorkflowToLocal();
+      }
+    }
+    stopDragLine();
+  }
+
+  // start/stop drag line
+  function startDragLine(ev, node){
+    if(dragLinePath) dragLinePath.remove();
+    dragLinePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    dragLinePath.setAttribute('stroke', '#facc15');
+    dragLinePath.setAttribute('fill', 'none');
+    dragLinePath.setAttribute('stroke-dasharray','6,6');
+    dragLinePath.setAttribute('stroke-width','2');
+    edgesSvg.appendChild(dragLinePath);
+    updateDragLine(ev);
+  }
+  function updateDragLine(ev){
+    if(!draggingNode && !connectingFrom) return;
+    const fromNode = nodes.find(n => n.id === connectingFrom);
+    if(!fromNode) return;
+    const rect = canvas.getBoundingClientRect();
+    const x1 = fromNode.el.offsetLeft + fromNode.el.offsetWidth - 8;
+    const y1 = fromNode.el.offsetTop + fromNode.el.offsetHeight/2;
+    const x2 = ev.clientX - rect.left;
+    const y2 = ev.clientY - rect.top;
+    const dx = Math.abs(x2 - x1);
+    const c1 = x1 + Math.min(140, dx*0.5);
+    const c2 = x2 - Math.min(140, dx*0.5);
+    const d = `M ${x1} ${y1} C ${c1} ${y1} ${c2} ${y2} ${x2} ${y2}`;
+    dragLinePath.setAttribute('d', d);
+  }
+  function stopDragLine(){
+    if(dragLinePath){ dragLinePath.remove(); dragLinePath = null; }
+    connectingFrom = null;
+  }
+
+  // Add node from palette
+  palette.querySelectorAll('.palette-item').forEach(item=>{
+    item.addEventListener('click', () => {
+      const type = item.dataset.type;
+      const nx = 60 + Math.random()*400;
+      const ny = 60 + Math.random()*300;
+      const id = 'node-' + (NODE_COUNTER++);
+      const node = {
+        id, type, x: nx, y: ny,
+        label: type + ' ' + id.split('-')[1],
+        params: {},
+        files: [],
+        output: null,
+        el: null
+      };
+      // default params per type
+      if(type==='Pandemic'){ node.params = { beta:0.3, sigma:1/5.1, gamma:1/10, mu:0.001, days:120, interventionDay:30, initial:{S:999900,E:50,I:50,R:0,D:0} };}
+      if(type==='LLM'){ node.params = { prompt: 'Summarize the data succinctly' }; }
+      nodes.push(node);
+      createNodeElement(node);
+      redrawEdges();
+      saveWorkflowToLocal();
+      updateCounts();
+    });
+  });
+
+  function removeNode(id){
+    const idx = nodes.findIndex(n=>n.id===id);
+    if(idx>=0){
+      try{ canvas.removeChild(nodes[idx].el); } catch(e){}
+      nodes.splice(idx,1);
+      edges = edges.filter(e => e.fromId !== id && e.toId !== id);
+      saveWorkflowToLocal(); redrawEdges(); updateCounts(); log(`Node ${id} removed`);
+    }
+  }
+
+  // Draw edges
+  function redrawEdges(){
+    // clear
+    edgesSvg.innerHTML = '';
+    edges.forEach(e=>{
+      const from = nodes.find(n=>n.id===e.fromId);
+      const to = nodes.find(n=>n.id===e.toId);
+      if(!from || !to) return;
+      const x1 = from.el.offsetLeft + from.el.offsetWidth - 8;
+      const y1 = from.el.offsetTop + from.el.offsetHeight/2;
+      const x2 = to.el.offsetLeft + 8;
+      const y2 = to.el.offsetTop + to.el.offsetHeight/2;
+      const dx = Math.abs(x2-x1);
+      const c1 = x1 + Math.min(140, dx*0.5);
+      const c2 = x2 - Math.min(140, dx*0.5);
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d', `M ${x1} ${y1} C ${c1} ${y1} ${c2} ${y2} ${x2} ${y2}`);
+      path.setAttribute('class','flow-edge');
+      edgesSvg.appendChild(path);
+    });
+  }
+
+  // Persist workflow locally
+  function saveWorkflowToLocal(){
+    try{
+      const serial = nodes.map(n => ({
+        id:n.id, type:n.type, x:n.el ? n.el.offsetLeft : n.x, y:n.el ? n.el.offsetTop : n.y,
+        label:n.label, params:n.params, files: (n.files||[]).map(f => ({name:f.name})), output:n.output
+      }));
+      localStorage.setItem('langflow_nodes', JSON.stringify(serial));
+      localStorage.setItem('langflow_edges', JSON.stringify(edges));
+      log('Workflow saved locally', 'success');
+    }catch(e){ log('Save failed', 'error'); }
+  }
+
+  function loadWorkflowFromLocal(){
+    try{
+      const sn = JSON.parse(localStorage.getItem('langflow_nodes')||'[]');
+      const se = JSON.parse(localStorage.getItem('langflow_edges')||'[]');
+      // clear current
+      nodes.forEach(n=>{ try{ canvas.removeChild(n.el); }catch(e){} });
+      nodes = []; edges = [];
+      NODE_COUNTER = 1;
+      if(sn.length){
+        sn.forEach(obj=>{
+          const node = {
+            id: obj.id, type: obj.type, x: obj.x, y: obj.y, label: obj.label,
+            params: obj.params || {}, files: [], output: obj.output
+          };
+          nodes.push(node);
+          createNodeElement(node);
+          // update NODE_COUNTER
+          const numeric = parseInt(node.id.split('-')[1]);
+          if(!isNaN(numeric)) NODE_COUNTER = Math.max(NODE_COUNTER, numeric+1);
+        });
+      }
+      if(se.length) edges = se;
+      redrawEdges(); updateCounts(); log('Workflow loaded from local storage', 'success');
+    }catch(e){ log('Load failed', 'error'); }
+  }
+  // Try autoload
+  loadWorkflowFromLocal();
+
+  function updateCounts(){
+    document.getElementById('node-count').textContent = `${nodes.length} nodes`;
+    document.getElementById('edge-count').textContent = `${edges.length} connections`;
+  }
+
+  // Execution: simple topological-ish run (no cycles handling here)
+  async function executeNode(node){
+    log(`Executing ${node.label}`);
+    // LLM execution
+    if(node.type === 'LLM'){
+      const prompt = (node.params && node.params.prompt) ? node.params.prompt : '';
+      // incorporate any attached files' extracted text
+      let fileText = '';
+      if(node.files && node.files.length){
+        node.files.forEach(f => { if(f.extractedText) fileText += '\n' + f.extractedText.substring(0,2000); });
+      }
+      const combined = prompt + '\n' + fileText;
+      if(xenovaTokenizer && xenovaModel){
+        try{
+          const ids = await xenovaTokenizer.encode(combined);
+          const out = await xenovaModel.generate(ids, { max_new_tokens: 120 });
+          const decoded = await xenovaTokenizer.decode(out[0]);
+          node.output = decoded;
+        } catch(e){ node.output = '[LLM error]'; console.error(e); }
+      } else {
+        // fallback: simple echo
+        node.output = '[LLM-FALLBACK] ' + combined.substring(0,600);
+      }
+      log(`${node.label} done`);
+    }
+    // Pandemic model
+    else if(node.type === 'Pandemic'){
+      // run SEIRD using node.params
+      const p = node.params || {};
+      const beta = Number(p.beta || 0.3);
+      const sigma = Number(p.sigma || (1/5.1));
+      const gamma = Number(p.gamma || (1/10));
+      const mu = Number(p.mu || 0.001);
+      const days = Number(p.days || 120);
+      const interventionDay = Number(p.interventionDay || 30);
+      const init = p.initial || { S:999900, E:50, I:50, R:0, D:0 };
+      let S=Number(init.S), E=Number(init.E), I=Number(init.I), R=Number(init.R), D=Number(init.D);
+      const series = [];
+      for(let day=0; day<days; day++){
+        const effBeta = day>=interventionDay ? beta * (1 - (p.alpha||0)) : beta;
+        const N = S+E+I+R;
+        const newE = (effBeta * S * I / N);
+        const newI = sigma * E;
+        const newR = gamma * I;
+        const newD = mu * I;
+        S = Math.max(S - newE, 0);
+        E = Math.max(E + newE - newI, 0);
+        I = Math.max(I + newI - newR - newD, 0);
+        R = Math.max(R + newR, 0);
+        D = Math.max(D + newD, 0);
+        series.push({ day, S, E, I, R, D });
+      }
+      node.output = { summary: `Simulated ${days} days`, series };
+      node.simulation = series; // for export
+      log(`${node.label} simulated ${series.length} days`, 'success');
+    }
+    // WebScraper
+    else if(node.type === 'WebScraper'){
+      const urls = node.params && node.params.urls ? (Array.isArray(node.params.urls) ? node.params.urls : [node.params.urls]) : [];
+      const results = [];
+      for(const u of urls){
+        try{
+          const r = await fetch(u);
+          const text = await r.text();
+          // optionally call LLM to structure
+          let structured = text.substring(0,1000);
+          if(xenovaTokenizer && xenovaModel){
+            const ids = await xenovaTokenizer.encode('Structure into JSON:\n' + text.substring(0,4000));
+            const out = await xenovaModel.generate(ids, { max_new_tokens: 200 });
+            structured = await xenovaTokenizer.decode(out[0]);
+          }
+          results.push({ url:u, structured });
+        }catch(e){ results.push({ url:u, error: 'fetch failed' }); }
+      }
+      node.output = results;
+      log(`${node.label} scraped ${results.length} urls`, 'success');
+    }
+    // File node - ensure file text extracted
+    else if(node.type === 'File'){
+      if(node.files && node.files.length){
+        for(const f of node.files) {
+          if(!f.extractedText) await extractFileText(f);
+        }
+        node.output = node.files.map(f => ({ name: f.name, excerpt: (f.extractedText||'').substring(0,1000) }));
+        log(`${node.label} processed ${node.files.length} files`);
+      } else node.output = 'No files attached';
+    }
+    // API node - simple fetch
+    else if(node.type === 'API'){
+      try{
+        const method = node.params.method || 'GET';
+        const url = node.params.url || '';
+        const body = node.params.body ? JSON.stringify(node.params.body) : undefined;
+        const headers = node.params.headers || {};
+        const resp = await fetch(url, { method, headers, body });
+        const json = await resp.text();
+        node.output = json;
+      }catch(e){ node.output = 'API error'; log('API node error: ' + e.message, 'error'); }
+    }
+    // default: echo node.params
+    else {
+      node.output = node.params;
+    }
+
+    // propagate output to downstream nodes in a basic way
+    edges.filter(ed => ed.fromId === node.id).forEach(ed=>{
+      const dest = nodes.find(n => n.id === ed.toId);
+      if(dest){
+        dest.params.input = node.output;
+      }
+    });
+
+    // show node output in toast briefly
+    // toast(`${node.label} output`, 'info', 1200);
+    return node.output;
+  }
+
+  async function executeWorkflow(){
+    running = true;
+    document.getElementById('runFlow').disabled = true;
+    document.getElementById('stopFlow').disabled = false;
+    // naive order: execute nodes sequentially in nodes[] order
+    for(const node of nodes){
+      await executeNode(node);
+    }
+    running = false;
+    document.getElementById('runFlow').disabled = false;
+    document.getElementById('stopFlow').disabled = true;
+    toast('Workflow execution complete', 'success');
+  }
+
+  // Hook up Run/Stop/Save/Deploy/UI
+  document.getElementById('runFlow').addEventListener('click', () => {
+    executeWorkflow().catch(e=>{ log('Execution error: ' + e.message, 'error'); toast('Execution error','error'); });
+  });
+  document.getElementById('stopFlow').addEventListener('click', () => {
+    // For the simple sequential executor there's nothing to stop, but if we had streaming we would cancel
+    running = false;
+    if(runInterval) clearInterval(runInterval);
+    toast('Execution stopped', 'warning');
+  });
+  document.getElementById('saveFlow').addEventListener('click', () => { saveWorkflowToLocal(); toast('Flow saved locally','success'); });
+  document.getElementById('deployFlow').addEventListener('click', () => { toast('Deploy is a placeholder — integrate with your backend','info',3000); log('Deploy invoked'); });
+
+  // CSV export for pandemic nodes
+  function exportPandemicCSV(node){
+    if(!node.simulation) { toast('No simulation data to export', 'error'); return; }
+    const csv = ['day,S,E,I,R,D', ...node.simulation.map(r => `${r.day},${r.S},${r.E},${r.I},${r.R},${r.D}`)].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${node.label.replace(/\s+/g,'_')}_simulation.csv`;
+    a.click();
+    log(`Exported CSV for ${node.label}`, 'success');
+  }
+
+  // File extraction helper (pdf/docx/txt/csv)
+  async function extractFileText(fileObj){
+    try{
+      const name = (fileObj.name||'file').toLowerCase();
+      if(name.endsWith('.pdf')){
+        const ab = await fileObj.blob.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+        let txt = '';
+        for(let p=1;p<=pdf.numPages;p++){
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          txt += content.items.map(i=>i.str).join(' ') + '\n';
+        }
+        fileObj.extractedText = txt;
+        log(`Extracted text from ${fileObj.name}`, 'success');
+      } else if(name.endsWith('.docx') || name.endsWith('.doc')){
+        const ab = await fileObj.blob.arrayBuffer();
+        const res = await mammoth.extractRawText({ arrayBuffer: ab });
+        fileObj.extractedText = res.value;
+        log(`Extracted DOCX text: ${fileObj.name}`, 'success');
+      } else {
+        // treat as plain text/csv
+        const text = await fileObj.blob.text();
+        fileObj.extractedText = text;
+        log(`Loaded text file: ${fileObj.name}`, 'success');
+      }
+    } catch(e){ fileObj.extractedText = ''; log('File extract error: ' + e.message, 'error'); }
+  }
+
+  // Workflow export/import (JSON)
+  function exportWorkflowJSON(){
+    const nodesSer = nodes.map(n => ({
+      id:n.id, type:n.type, x:n.el? n.el.offsetLeft : n.x, y:n.el? n.el.offsetTop : n.y,
+      label:n.label, params:n.params, files: (n.files||[]).map(f => ({ name: f.name })), output:n.output
+    }));
+    const data = { nodes: nodesSer, edges };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'workflow_export.json'; a.click();
+  }
+  function importWorkflowJSON(file){
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try{
+        const obj = JSON.parse(ev.target.result);
+        // clear existing
+        nodes.forEach(n=>{ try{ canvas.removeChild(n.el);}catch(e){} });
+        nodes = []; edges = [];
+        NODE_COUNTER = 1;
+        if(Array.isArray(obj.nodes)) obj.nodes.forEach(nn=>{
+          const node = { id: nn.id || ('node-'+(NODE_COUNTER++)), type: nn.type, x: nn.x||80, y: nn.y||80, label: nn.label||nn.type, params: nn.params||{}, files: [], output: nn.output };
+          nodes.push(node); createNodeElement(node);
+          const nnum = parseInt(node.id.split('-')[1]); if(!isNaN(nnum)) NODE_COUNTER = Math.max(NODE_COUNTER, nnum+1);
+        });
+        if(Array.isArray(obj.edges)) edges = obj.edges;
+        redrawEdges(); saveWorkflowToLocal();
+        toast('Workflow imported', 'success');
+      }catch(e){ toast('Import failed', 'error'); }
+    };
+    reader.readAsText(file);
+  }
+
+  // UI file import/export wiring
+  // Export button
+  const exportBtn = document.createElement('button');
+  exportBtn.textContent = 'Export JSON';
+  exportBtn.className = 'btn';
+  exportBtn.style.marginLeft = '12px';
+  exportBtn.addEventListener('click', exportWorkflowJSON);
+  document.querySelector('.panel').appendChild(exportBtn);
+
+  // Import button
+  const importBtn = document.createElement('input');
+  importBtn.type = 'file';
+  importBtn.accept = 'application/json';
+  importBtn.style.display = 'none';
+  importBtn.addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if(f) importWorkflowJSON(f);
+  });
+  document.body.appendChild(importBtn);
+  const importUIbtn = document.querySelector('#btn-import');
+  importUIbtn.addEventListener('click', ()=> importBtn.click());
+
+  // Clear canvas
+  document.getElementById('btn-clear').addEventListener('click', ()=>{
+    if(!confirm('Clear all nodes and edges?')) return;
+    nodes.forEach(n=>{ try{ canvas.removeChild(n.el);}catch(e){} });
+    nodes = []; edges = []; NODE_COUNTER = 1; redrawEdges(); saveWorkflowToLocal(); updateCounts(); toast('Canvas cleared','success');
+  });
+
+  // Attempt to attach manifest & service worker from inline scripts
+  (function attachManifestAndSW(){
+    try{
+      const manifestText = document.getElementById('inline-manifest').textContent;
+      const blob = new Blob([manifestText], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      document.getElementById('manifest-placeholder').setAttribute('href', url);
+    }catch(e){ console.warn('manifest attach failed', e); }
+    try{
+      const swText = document.getElementById('inline-sw').textContent;
+      const blob = new Blob([swText], { type:'application/javascript' });
+      const swUrl = URL.createObjectURL(blob);
+      if('serviceWorker' in navigator){
+        navigator.serviceWorker.register(swUrl).then(()=> log('Service worker registered', 'success')).catch(err => log('SW registration failed: ' + err, 'error'));
+      }
+    }catch(e){ console.warn('sw attach failed', e); }
+  })();
+
+  // Update counts
+  function updateCounts(){ document.getElementById('node-count').textContent = `${nodes.length} nodes`; document.getElementById('edge-count').textContent = `${edges.length} connections`; }
+  // Periodically update UI counts
+  setInterval(updateCounts, 1000);
+
+  // Expose for debugging
+  window.langflow = { nodes, edges, saveWorkflowToLocal, loadWorkflowFromLocal, executeWorkflow, exportWorkflowJSON, extractFileText };
+
+  // Done
+  log('Langflow Unified PWA ready', 'success');
+
+  </script>
+</body>
+</html>

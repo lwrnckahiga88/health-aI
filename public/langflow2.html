@@ -1,0 +1,258 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowGraph Pro - Advanced Node Editor</title>
+<meta name="theme-color" content="#1e40af">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { background: #1f2937; color: white; font-family: sans-serif; }
+  .node { transition: all 0.2s ease; position: absolute; padding: 10px; border: 2px solid transparent; border-radius: 10px; cursor: grab; user-select: none; }
+  .node:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+  .node-port { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; transition: all 0.2s ease; display:inline-block; }
+  .node-port:hover { transform: scale(1.3); }
+  .input-port { background: #ef4444; border: 2px solid #dc2626; }
+  .output-port { background: #10b981; border: 2px solid #059669; }
+  .canvas-grid { background-image: radial-gradient(circle, #374151 1px, transparent 1px); background-size: 20px 20px; }
+  .node-executing { animation: pulse 2s infinite; border-color: #3b82f6; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.7;} }
+  .connection-line { stroke: #3b82f6; stroke-width: 2; fill: none; cursor:pointer; }
+  .connection-preview { stroke: #facc15; stroke-dasharray: 5,5; animation: dash 1s linear infinite; stroke-width:3; fill:none; }
+  @keyframes dash { to{stroke-dashoffset:-10;} }
+  .selected-node { border-color: #facc15; box-shadow: 0 0 15px #facc15; }
+</style>
+</head>
+<body class="flex flex-col h-screen">
+
+<header class="bg-gradient-to-r from-blue-600 to-purple-600 p-4 shadow-lg flex justify-between items-center">
+  <div>
+    <h1 class="text-2xl font-bold">⚡ FlowGraph Pro</h1>
+    <p class="text-blue-100 text-sm">Advanced Node-Based Workflow Editor</p>
+  </div>
+  <div class="text-sm bg-black bg-opacity-20 px-3 py-1 rounded">
+    <span id="nodeCount">0</span> nodes
+  </div>
+</header>
+
+<div class="flex flex-1 overflow-hidden">
+
+  <!-- Sidebar -->
+  <div class="w-80 bg-gray-800 border-r border-gray-700 p-4 overflow-y-auto">
+    <h3 class="text-lg font-semibold mb-3 text-blue-300">📦 Node Types</h3>
+    <div class="grid grid-cols-1 gap-2">
+      <button class="node-type-btn bg-green-600 hover:bg-green-500 p-3 rounded-lg text-left" data-type="input">📝 Input Node<br><small class="text-green-200">Text/Data Input</small></button>
+      <button class="node-type-btn bg-blue-600 hover:bg-blue-500 p-3 rounded-lg text-left" data-type="processor">⚙️ Processor<br><small class="text-blue-200">Transform Data</small></button>
+      <button class="node-type-btn bg-purple-600 hover:bg-purple-500 p-3 rounded-lg text-left" data-type="ai">🤖 AI Model<br><small class="text-purple-200">GPT/LLM</small></button>
+      <button class="node-type-btn bg-orange-600 hover:bg-orange-500 p-3 rounded-lg text-left" data-type="output">📤 Output<br><small class="text-orange-200">Display Results</small></button>
+      <button class="node-type-btn bg-yellow-600 hover:bg-yellow-500 p-3 rounded-lg text-left" data-type="embedder">🔢 Embedder<br><small class="text-yellow-200">Vector Embeddings</small></button>
+      <button class="node-type-btn bg-red-600 hover:bg-red-500 p-3 rounded-lg text-left" data-type="diagnostic">🩺 Diagnostic<br><small class="text-red-200">Health Analysis</small></button>
+    </div>
+
+    <h3 class="text-lg font-semibold mb-3 mt-6 text-blue-300">🎛️ Workflow</h3>
+    <div class="space-y-2">
+      <button id="runAllBtn" class="w-full bg-green-600 hover:bg-green-500 p-3 rounded-lg">▶️ Run All Nodes</button>
+      <button id="clearCanvasBtn" class="w-full bg-red-600 hover:bg-red-500 p-3 rounded-lg">🗑️ Clear Canvas</button>
+      <div class="flex space-x-2">
+        <button id="saveWorkflowBtn" class="flex-1 bg-blue-600 hover:bg-blue-500 p-3 rounded-lg">💾 Save</button>
+        <button id="loadWorkflowBtn" class="flex-1 bg-yellow-600 hover:bg-yellow-500 p-3 rounded-lg">📂 Load</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <div class="flex-1 relative overflow-hidden bg-gray-900 canvas-grid">
+    <svg id="connections" class="absolute w-full h-full top-0 left-0 pointer-events-none" style="z-index:1;"></svg>
+    <svg id="connectionPreviewSVG" class="absolute w-full h-full top-0 left-0 pointer-events-none" style="z-index:4;"></svg>
+    <div id="canvas" class="absolute w-full h-full" style="z-index:2;"></div>
+  </div>
+
+</div>
+
+<!-- Console -->
+<div class="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 h-48 flex flex-col">
+  <div class="flex justify-between items-center p-3 border-b border-gray-600">
+    <h3 class="text-lg font-semibold text-blue-300">📊 Console Output</h3>
+    <button id="clearLogBtn" class="bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-sm">Clear</button>
+  </div>
+  <div id="output" class="flex-1 p-3 overflow-y-auto text-sm font-mono bg-gray-900 text-green-400"></div>
+</div>
+
+<script>
+class FlowGraphApp {
+  constructor() {
+    this.canvas = document.getElementById('canvas');
+    this.connectionsSVG = document.getElementById('connections');
+    this.previewSVG = document.getElementById('connectionPreviewSVG');
+    this.outputDiv = document.getElementById('output');
+    this.nodes = new Map();
+    this.connections = [];
+    this.selectedNodes = new Set();
+    this.connectionStart = null;
+    this.dragNode = null;
+    this.offset = {x:0,y:0};
+    this.nodeTypes = {
+      input:{color:'bg-green-600',icon:'📝',name:'Input'},
+      processor:{color:'bg-blue-600',icon:'⚙️',name:'Processor'},
+      ai:{color:'bg-purple-600',icon:'🤖',name:'AI Model'},
+      output:{color:'bg-orange-600',icon:'📤',name:'Output'},
+      embedder:{color:'bg-yellow-600',icon:'🔢',name:'Embedder'},
+      diagnostic:{color:'bg-red-600',icon:'🩺',name:'Diagnostic'}
+    };
+    this.initialize();
+  }
+
+  initialize() {
+    document.querySelectorAll('.node-type-btn').forEach(btn => {
+      btn.addEventListener('click', e=>this.createNode(e.currentTarget.dataset.type));
+    });
+    document.getElementById('runAllBtn').addEventListener('click', ()=>this.runAllNodes());
+    document.getElementById('clearCanvasBtn').addEventListener('click', ()=>this.clearCanvas());
+    document.getElementById('saveWorkflowBtn').addEventListener('click', ()=>this.saveWorkflow());
+    document.getElementById('loadWorkflowBtn').addEventListener('click', ()=>this.loadWorkflow());
+    document.getElementById('clearLogBtn').addEventListener('click', ()=>this.clearLog());
+    this.canvas.addEventListener('mousemove', e=>this.handleCanvasMouseMove(e));
+    this.canvas.addEventListener('mouseup', e=>this.stopDrag());
+    this.updateNodeCount();
+  }
+
+  generateId(){ return 'n'+Math.floor(Math.random()*100000); }
+
+  appendLog(msg){
+    const p=document.createElement('div'); p.textContent=msg; this.outputDiv.appendChild(p);
+    this.outputDiv.scrollTop=this.outputDiv.scrollHeight;
+  }
+
+  updateNodeCount(){ document.getElementById('nodeCount').textContent=this.nodes.size; }
+
+  createNode(type){
+    const id=this.generateId();
+    const nodeType=this.nodeTypes[type];
+    const nodeEl=document.createElement('div');
+    nodeEl.className=`node ${nodeType.color}`;
+    nodeEl.style.left=`${100+Math.random()*300}px`;
+    nodeEl.style.top=`${100+Math.random()*200}px`;
+    nodeEl.setAttribute('data-id',id);
+    nodeEl.innerHTML=`<div class="flex justify-between items-center font-bold">${nodeType.icon} ${nodeType.name}</div>
+      <div class="mt-2 flex justify-between"><span class="node-port input-port" data-port="input"></span><span class="node-port output-port" data-port="output"></span></div>`;
+    
+    this.canvas.appendChild(nodeEl);
+    this.nodes.set(id,{id,type,el:nodeEl,x:parseInt(nodeEl.style.left),y:parseInt(nodeEl.style.top)});
+    this.updateNodeCount();
+
+    nodeEl.querySelectorAll('.node-port').forEach(port=>{
+      port.addEventListener('mousedown', e=>{
+        e.stopPropagation();
+        this.connectionStart={nodeId:id,port:port.dataset.port};
+      });
+    });
+
+    nodeEl.addEventListener('mousedown', e=>{
+      if(e.target.classList.contains('node-port')) return;
+      this.dragNode=id;
+      this.offset.x=e.offsetX; this.offset.y=e.offsetY;
+      nodeEl.classList.add('selected-node');
+    });
+
+    nodeEl.addEventListener('mouseup', e=>{
+      this.dragNode=null;
+      nodeEl.classList.remove('selected-node');
+    });
+  }
+
+  handleCanvasMouseMove(e){
+    if(this.dragNode){
+      const node=this.nodes.get(this.dragNode);
+      node.x=e.clientX-this.offset.x;
+      node.y=e.clientY-this.offset.y;
+      node.el.style.left=node.x+'px';
+      node.el.style.top=node.y+'px';
+      this.updateConnections();
+    }
+    if(this.connectionStart){
+      this.drawConnectionPreview(e.clientX,e.clientY);
+    }
+  }
+
+  stopDrag(){
+    this.dragNode=null;
+    this.connectionStart=null;
+    this.previewSVG.innerHTML='';
+  }
+
+  drawConnectionPreview(mx,my){
+    this.previewSVG.innerHTML='';
+    const startNode=this.nodes.get(this.connectionStart.nodeId);
+    const startEl=startNode.el;
+    const rect=startEl.getBoundingClientRect();
+    const startX=rect.left+rect.width/2;
+    const startY=rect.top+rect.height/2;
+    const line=document.createElementNS("http://www.w3.org/2000/svg",'path');
+    line.setAttribute('class','connection-preview');
+    line.setAttribute('d',`M${startX},${startY} L${mx},${my}`);
+    this.previewSVG.appendChild(line);
+  }
+
+  updateConnections(){
+    this.connectionsSVG.innerHTML='';
+    this.connections.forEach(conn=>{
+      const startNode=this.nodes.get(conn.from.nodeId);
+      const endNode=this.nodes.get(conn.to.nodeId);
+      if(!startNode||!endNode) return;
+      const startRect=startNode.el.getBoundingClientRect();
+      const endRect=endNode.el.getBoundingClientRect();
+      const startX=startRect.left+startRect.width/2;
+      const startY=startRect.top+startRect.height/2;
+      const endX=endRect.left+endRect.width/2;
+      const endY=endRect.top+endRect.height/2;
+      const path=document.createElementNS("http://www.w3.org/2000/svg",'path');
+      path.setAttribute('class','connection-line');
+      path.setAttribute('d',`M${startX},${startY} L${endX},${endY}`);
+      this.connectionsSVG.appendChild(path);
+    });
+  }
+
+  runAllNodes(){
+    this.appendLog('Running all nodes...');
+    this.nodes.forEach(node=>{
+      node.el.classList.add('node-executing');
+      setTimeout(()=>{ node.el.classList.remove('node-executing'); this.appendLog(`Node ${node.id} executed.`); },500);
+    });
+  }
+
+  clearCanvas(){
+    this.nodes.forEach(n=>n.el.remove());
+    this.nodes.clear();
+    this.connections=[];
+    this.updateNodeCount();
+    this.connectionsSVG.innerHTML='';
+    this.appendLog('Canvas cleared.');
+  }
+
+  saveWorkflow(){
+    const data={
+      nodes:Array.from(this.nodes.values()).map(n=>({id:n.id,type:n.type,x:n.x,y:n.y})),
+      connections:this.connections
+    };
+    localStorage.setItem('flowgraph',JSON.stringify(data));
+    this.appendLog('Workflow saved to localStorage.');
+  }
+
+  loadWorkflow(){
+    const data=JSON.parse(localStorage.getItem('flowgraph'));
+    if(!data) return this.appendLog('No saved workflow.');
+    this.clearCanvas();
+    data.nodes.forEach(n=>this.createNode(n.type));
+    this.appendLog('Workflow loaded.');
+  }
+
+  clearLog(){ this.outputDiv.innerHTML=''; }
+}
+
+window.onload=()=>new FlowGraphApp();
+</script>
+</body>
+</html>
+
+

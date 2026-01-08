@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Universal Flow Builder PWA v4.3 + Langflow DAO</title>
+<meta name="theme-color" content="#0ea5e9" />
+<meta name="description" content="Offline-capable node editor with deterministic workflow execution, integrated Langflow DAO governance UI" />
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Ethers.js for blockchain interactions -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.min.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
+<style>
+:root { --bg:#0f172a; --panel:#0b1220; --node:#111827; --node-border:#334155; --edge:#22d3ee; --accent:#0ea5e9; --good:#10b981; --warn:#f59e0b; --bad:#ef4444; }
+html, body { height: 100%; background: var(--bg); color: white; margin: 0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+.app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+#canvas-wrap { position: relative; height: 520px; background: var(--panel); overflow: hidden; }
+#canvas { position:absolute; inset:0; }
+#edges { position:absolute; inset:0; pointer-events:none; }
+.node { position:absolute; width:220px; min-height:160px; background:var(--node); border:1px solid var(--node-border); border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.25); transition:transform .2s, border-color .3s; cursor:grab; }
+.node.selected { transform:scale(1.04); border-color:var(--accent); }
+.node.executing { border-color:#facc15; animation: pulse 1s infinite alternate; }
+@keyframes pulse { 0% { box-shadow:0 0 0px #facc15; } 100% { box-shadow:0 0 12px #facc15; } }
+.node .head { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid #1f2937; border-radius:12px 12px 0 0; background:linear-gradient(90deg, #0b1220, #0f1b35); }
+.node .title { font-weight:600; font-size:.9rem; }
+.node .body { padding:8px 10px; font-size:.75rem; }
+.node .status { margin-top:4px; font-size:0.7rem; }
+#toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--panel); color:#e2e8f0; border-left:6px solid var(--good); border-radius:10px; padding:10px 14px; box-shadow:0 10px 24px rgba(0,0,0,.4); display:none; z-index:9999; }
+#toast.show { display:block; }
+.btn { padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer; border:none; }
+.btn.primary { background:#0ea5e9; }
+.btn.accent { background:#ec4899; }
+.btn.success { background:#10b981; }
+.btn.warn { background:#f59e0b; }
+#log { height:120px; background:#0b1220; overflow-y:auto; padding:10px; font-family:monospace; }
+/* Governance panel */
+#governance { position:fixed; right:16px; top:80px; width:360px; max-height:70vh; overflow:auto; background:rgba(11,17,32,.9); border:1px solid #1f2a3a; border-radius:10px; padding:12px; z-index:999; }
+#governance h3{ margin:0 0 8px 0; }
+.proposal{ border:1px solid #172033; padding:8px; border-radius:8px; margin-bottom:8px; }
+.small{ font-size:0.8rem; color:#94a3b8; }
+.input-small{ width:100%; padding:8px; border-radius:6px; background:rgba(255,255,255,0.02); border:1px solid #172033; color:#e2e8f0; }
+.tx-status{ font-size:0.8rem; color:#94a3b8; margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="panel p-4 flex items-center justify-between">
+    <div class="flex gap-2 items-center">
+      <button id="add-input" class="btn primary">Add Input Node</button>
+      <button id="add-llm" class="btn accent">Add LLM Node</button>
+      <button id="run" class="btn success">Run Workflow</button>
+      <button id="auto-run" class="btn warn">Toggle Auto-Run</button>
+    </div>
+    <div class="flex items-center gap-3">
+      <div id="wallet-status" class="small">Not connected</div>
+      <input id="dao-address-input" class="input-small" placeholder="DAO contract address (set before connect)" style="width:260px;margin-right:8px;" />
+      <button id="connect-wallet" class="btn primary">Connect Wallet</button>
+      <button id="refresh-proposals" class="btn">Refresh Proposals</button>
+    </div>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="canvas"></canvas>
+    <svg id="edges"></svg>
+  </div>
+
+  <pre id="log"></pre>
+</div>
+
+<div id="toast">Toast</div>
+
+<!-- Governance Sidebar -->
+<div id="governance">
+  <h3>Langflow DAO</h3>
+  <div class="small">Contract: <span id="dao-address">Not set</span></div>
+  <div class="tx-status" id="last-tx"></div>
+  <hr class="my-2" />
+  <div style="margin-top:8px;">
+    <strong>Create Proposal</strong>
+    <div class="small">Title</div>
+    <input id="proposal-title" class="input-small my-1" />
+    <div class="small">Description</div>
+    <textarea id="proposal-desc" class="input-small my-1" rows="4"></textarea>
+    <div class="flex gap-2" style="margin-top:6px;"><button id="create-proposal" class="btn primary">Create (on-chain)</button><button id="create-prop-sim" class="btn">Create (simulate)</button></div>
+  </div>
+  <hr class="my-2" />
+  <div>
+    <strong>Proposals</strong>
+    <div id="proposals-list" style="margin-top:8px;"></div>
+  </div>
+</div>
+
+<script type="module">
+// ========== Langflow + DAO Integration (Full) ===========
+import { AutoTokenizer, AutoModelForCausalLM } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js';
+
+// ---------- Basic local AI loader (keeps previous behavior) ----------
+let tokenizer, model, modelReady=false;
+(async()=>{
+  try{
+    toast('Loading local AI model...');
+    tokenizer = await AutoTokenizer.from_pretrained('Xenova/gpt2-small', { cacheDir: 'transformers-cache' });
+    model = await AutoModelForCausalLM.from_pretrained('Xenova/gpt2-small', { cacheDir: 'transformers-cache' });
+    modelReady=true; toast('Local AI model ready');
+  } catch(e){ console.error(e); toast('AI model load failed, using offline simulation mode', false); }
+})();
+
+// ---------- UI helpers ----------
+const logEl=document.getElementById('log');
+const toastEl=document.getElementById('toast');
+function toast(msg, ok=true){ toastEl.textContent=msg; toastEl.style.borderLeftColor=ok?'#10b981':'#ef4444'; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'),3000); }
+function log(msg){ const d=document.createElement('div'); d.textContent=msg; logEl.appendChild(d); logEl.scrollTop=logEl.scrollHeight; }
+
+// ---------- Canvas & Flow logic (kept from original) ----------
+let NODE_ID=1, nodes=[], edges=[], autoRun=false, autoTimer;
+const typeColors={Input:'#22c55e', LLM:'#ec4899'};
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+function resizeCanvas(){ canvas.width=canvas.parentElement.offsetWidth; canvas.height=canvas.parentElement.offsetHeight; drawEdges(); }
+window.addEventListener('resize',resizeCanvas); resizeCanvas();
+
+function drawEdges(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.strokeStyle=typeColors['LLM']; ctx.lineWidth=2; edges.forEach(e=>{ const fromNode=nodes.find(n=>n.id===e.from); const toNode=nodes.find(n=>n.id===e.to); if(fromNode && toNode){ const fx=fromNode.el.offsetLeft+fromNode.el.offsetWidth/2; const fy=fromNode.el.offsetTop+fromNode.el.offsetHeight/2; const tx=toNode.el.offsetLeft+toNode.el.offsetWidth/2; const ty=toNode.el.offsetTop+toNode.el.offsetHeight/2; ctx.beginPath(); ctx.moveTo(fx,fy); // simple straight line for clarity
+      ctx.lineTo(tx,ty); ctx.stroke(); } }); }
+
+function addNode(type,x=100,y=100,label=null,params={}){ const id=`node-${NODE_ID++}`; const el=document.createElement('div'); el.className='node'; el.style.left=`${x}px`; el.style.top=`${y}px`; el.innerHTML=`<div class='head'><div class='title'>${label||type}</div></div><div class='body'>Params: ${JSON.stringify(params)}</div><div class='status status-idle'>Idle</div>`; el.dataset.type=type; el.dataset.id=id; nodes.push({id,type,params,el,status:'idle',data:null}); document.getElementById('canvas-wrap').appendChild(el); // connect on double click to previous node
+  el.addEventListener('dblclick',()=>{ if(nodes.length>1){ const targetNode=nodes[nodes.length-2]; edges.push({from:targetNode.id,to:id}); drawEdges(); toast(`Connected ${targetNode.id} -> ${id}`); } }); }
+
+async function executeNode(node,input){ updateNodeStatus(node,'running'); let output;
+  if(node.type==='Input') output=node.params.value||'Sample Input';
+  else if(node.type==='LLM'){
+    if(modelReady){ try{
+        const encoded = await tokenizer.encode(input||node.params.value||'', { addSpecialTokens:true });
+        const result = await model.generate(encoded, { max_length:50 });
+        output = await tokenizer.decode(result[0], { skipSpecialTokens:true });
+      } catch(err){ console.warn('LLM exec failed',err); output=`[Simulated offline LLM output for '${input}']`; }
+    } else output=`[Simulated offline LLM output for '${input}']`;
+  }
+  node.data=output; updateNodeStatus(node,'success'); log(`${node.type} Node (${node.id}) output: ${output}`); return output; }
+
+function updateNodeStatus(node,status){ node.status=status; const statusDiv=node.el.querySelector('.status'); statusDiv.className=`node-status status-${status}`; statusDiv.innerHTML=`<i class='fa fa-circle'></i> ${status.charAt(0).toUpperCase()+status.slice(1)}`; if(status==='running') node.el.classList.add('executing'); else node.el.classList.remove('executing'); }
+
+async function runWorkflow(){ log('--- Running Workflow ---'); for(const node of nodes){ let inputData=null; const incomingEdges=edges.filter(e=>e.to===node.id); if(incomingEdges.length>0) inputData=incomingEdges.map(e=>nodes.find(n=>n.id===e.from).data).join(' '); await executeNode(node,inputData); } log('--- Workflow Complete ---'); }
+
+function triggerAutoRun(){ if(autoRun) runWorkflow(); }
+
+document.getElementById('add-input').onclick=()=>{ addNode('Input',100,100,'Input',{value:'Hello World'}); triggerAutoRun(); };
+document.getElementById('add-llm').onclick=()=>{ addNode('LLM',350,100,'LLM'); triggerAutoRun(); };
+document.getElementById('run').onclick=runWorkflow;
+document.getElementById('auto-run').onclick=()=>{ autoRun=!autoRun; if(autoRun){ autoTimer=setInterval(runWorkflow,5000); toast('Auto-Run enabled'); } else{ clearInterval(autoTimer); toast('Auto-Run disabled'); } };
+
+// Drag & Move Nodes
+let dragNode=null, offsetX=0, offsetY=0;
+document.getElementById('canvas-wrap').addEventListener('mousedown', e=>{ const target=e.target.closest('.node'); if(target){ dragNode=nodes.find(n=>n.id===target.dataset.id); offsetX=e.offsetX; offsetY=e.offsetY; } });
+document.getElementById('canvas-wrap').addEventListener('mousemove', e=>{ if(dragNode){ dragNode.el.style.left=`${e.clientX-offsetX}px`; dragNode.el.style.top=`${e.clientY-offsetY}px`; drawEdges(); triggerAutoRun(); } });
+document.addEventListener('mouseup', ()=>{ dragNode=null; });
+
+// ========== DAO Integration (Frontend) ===========
+// NOTE: This UI expects a simple DAO contract deployed that matches the ABI below.
+// You can set the DAO contract address in the input on the header before connecting.
+
+let provider, signer, daoContract; // ethers.js objects
+let DAO_ABI = [
+  "function createProposal(string title, string description) public returns (uint256)",
+  "function getProposalCount() public view returns (uint256)",
+  "function getProposal(uint256 id) public view returns (string title, string description, uint256 forVotes, uint256 againstVotes, uint8 state)",
+  "function vote(uint256 id, bool support) public",
+  "event ProposalCreated(uint256 id, string title, string description)",
+  "event Voted(address voter, uint256 proposalId, bool support)"
+];
+
+function setDaoAddressUI(addr){ document.getElementById('dao-address').textContent = addr || 'Not set'; }
+
+async function connectWallet(){ if(window.ethereum){ provider = new ethers.BrowserProvider(window.ethereum); try{ await provider.send('eth_requestAccounts', []); signer = await provider.getSigner(); const address = await signer.getAddress(); document.getElementById('wallet-status').textContent = 'Connected: ' + address.slice(0,8) + '...'; toast('Wallet connected'); // set DAO address from input if present
+        const addrInput = document.getElementById('dao-address-input').value.trim(); if(addrInput) setDao(addrInput);
+        if(window._DAO_ADDRESS) setDao(window._DAO_ADDRESS); // allow preset
+      } catch(err){ console.error('Wallet connect failed',err); toast('Wallet connection failed', false); return; }
+    } else { toast('No wallet found (install MetaMask)', false); }
+}
+
+function setDao(address){ if(!address) return; try{ daoContract = new ethers.Contract(address, DAO_ABI, signer || provider); window.DAO_CONTRACT_ADDRESS = address; document.getElementById('dao-address').textContent = address; toast('DAO address set'); loadProposals(); } catch(e){ console.error('setting DAO failed', e); toast('Failed to set DAO contract', false); } }
+
+// Helpers to map proposal state uint -> readable
+function proposalStateText(s){ // commonly 0 = Pending/Active, 1 = Active/Queued, 2 = Executed, 3 = Defeated etc — depends on contract
+  switch(Number(s)){
+    case 0: return 'Pending';
+    case 1: return 'Active';
+    case 2: return 'Succeeded';
+    case 3: return 'Defeated';
+    case 4: return 'Executed';
+    default: return 'Unknown';
+  }
+}
+
+async function loadProposals(){ const listEl=document.getElementById('proposals-list'); listEl.innerHTML='Loading...'; try{
+    if(!daoContract){ listEl.innerHTML='<div class="small">No DAO contract configured.</div>'; return; }
+    const countBn = await daoContract.getProposalCount(); const count = Number(countBn);
+    listEl.innerHTML='';
+    for(let i=0;i<count;i++){
+      try{
+        const p = await daoContract.getProposal(i);
+        // p: [title, description, forVotes, againstVotes, state]
+        const div=document.createElement('div'); div.className='proposal'; div.innerHTML=`<div style="font-weight:700">#${i} ${p[0]}</div><div class='small'>${p[1]}</div><div class='small'>For: ${p[2]} • Against: ${p[3]}</div><div class='small'>State: ${proposalStateText(p[4])}</div><div style="margin-top:6px"><button data-id='${i}' class='btn primary vote-yes'>Vote Yes</button> <button data-id='${i}' class='btn warn vote-no'>Vote No</button></div>`;
+        listEl.appendChild(div);
+      } catch(err){ console.error('proposal read failed', err); }
+    }
+  } catch(e){ console.error(e); listEl.innerHTML='<div class="small">Failed to fetch proposals</div>'; }
+}
+
+async function createProposalOnChain(title, desc){ if(!daoContract) return toast('DAO contract not configured', false); try{ const tx = await daoContract.createProposal(title, desc); document.getElementById('last-tx').textContent = `Creating proposal — tx sent ${tx.hash}`; toast('Creating proposal — confirm in wallet'); const receipt = await tx.wait(); document.getElementById('last-tx').textContent = `Proposal created — tx ${receipt.transactionHash}`; toast('Proposal created'); await loadProposals(); } catch(e){ console.error(e); toast('Create proposal failed', false); } }
+
+// Simulated create (local only)
+function createProposalSim(title, desc){ const listEl=document.getElementById('proposals-list'); const idx = listEl.children.length; const div=document.createElement('div'); div.className='proposal'; div.innerHTML=`<div style="font-weight:700">#${idx} ${title}</div><div class='small'>${desc}</div><div class='small'>For: 0 • Against: 0</div><div class='small'>State: Pending</div><div style="margin-top:6px"><button data-id='${idx}' class='btn primary vote-yes'>Vote Yes</button> <button data-id='${idx}' class='btn warn vote-no'>Vote No</button></div>`; listEl.appendChild(div); toast('Proposal (simulated) created'); }
+
+async function voteOnChain(id, support){ if(!daoContract) return toast('DAO contract not configured', false); try{ const tx = await daoContract.vote(id, support); document.getElementById('last-tx').textContent = `Submitting vote — tx sent ${tx.hash}`; toast('Submitting vote — confirm wallet'); await tx.wait(); document.getElementById('last-tx').textContent = `Vote submitted — proposal ${id}`; toast('Vote submitted'); await loadProposals(); } catch(e){ console.error(e); toast('Vote failed', false); } }
+
+// UI wiring
+document.getElementById('connect-wallet').addEventListener('click', connectWallet);
+document.getElementById('refresh-proposals').addEventListener('click', loadProposals);
+document.getElementById('create-proposal').addEventListener('click', ()=>{ const t=document.getElementById('proposal-title').value; const d=document.getElementById('proposal-desc').value; if(!t||!d) return toast('Title and description required', false); createProposalOnChain(t,d); });
+document.getElementById('create-prop-sim').addEventListener('click', ()=>{ const t=document.getElementById('proposal-title').value; const d=document.getElementById('proposal-desc').value; if(!t||!d) return toast('Title and description required', false); createProposalSim(t,d); });
+
+document.getElementById('proposals-list').addEventListener('click', (e)=>{ const yes = e.target.closest('.vote-yes'); const no = e.target.closest('.vote-no'); if(yes){ const id=Number(yes.dataset.id); voteOnChain(id, true); } if(no){ const id=Number(no.dataset.id); voteOnChain(id, false); } });
+
+// Allow user to set DAO address manually via input and press Enter
+const daoInput=document.getElementById('dao-address-input'); daoInput.addEventListener('change', (e)=>{ const addr=e.target.value.trim(); if(addr) setDao(addr); });
+
+// Initialize proposals area (empty until connect or simulate)
+document.getElementById('proposals-list').innerHTML='<div class="small">Set DAO address and connect wallet or create a simulated proposal to begin.</div>';
+
+// Listen to events if contract set
+async function startEventListeners(){ if(!daoContract) return; try{
+  daoContract.on('ProposalCreated', (id, title, description)=>{ toast('ProposalCreated event: ' + id); loadProposals(); });
+  daoContract.on('Voted', (voter, proposalId, support)=>{ toast(`Voted: ${voter} on ${proposalId} (${support})`); loadProposals(); });
+} catch(e){ console.warn('event listen failed', e); } }
+
+// wrap setDao to start listeners
+const origSetDao = setDao; setDao = function(address){ origSetDao(address); setTimeout(()=>startEventListeners(),1000); };
+
+// ---------- Service Worker for offline PWA ----------
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').then(()=>console.log('Service Worker registered')).catch(err=>console.warn('SW registration failed:', err)); }
+
+// ---------- Expose variables for debugging ----------
+window._langflow = { nodes, edges, connectWallet, loadProposals, createProposalOnChain, voteOnChain, setDao };
+</script>
+</body>
+</html>

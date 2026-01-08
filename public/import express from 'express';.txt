@@ -1,0 +1,46 @@
+import express from 'express';
+import { pipeline } from '@xenova/transformers';
+
+const app = express();
+const port = 3001;
+
+// Middleware to parse JSON requests
+app.use(express.json());
+
+// Load the model once during server startup
+let generator;
+
+(async () => {
+  try {
+    generator = await pipeline('text-generation', 'Xenova/gpt2');
+    console.log('Text generation model loaded successfully');
+  } catch (error) {
+    console.error('Error loading text generation model:', error);
+  }
+})();
+
+// Route to generate text
+app.post('/generate-text', async (req, res) => {
+  if (!generator) {
+    return res.status(500).json({ error: 'Text generation model not loaded' });
+  }
+
+  const { text, max_new_tokens, do_sample, top_k } = req.body;
+
+  try {
+    const output = await generator(text, {
+      max_new_tokens: max_new_tokens || 20,
+      do_sample: do_sample || true,
+      top_k: top_k || 5,
+    });
+    res.json(output);
+  } catch (error) {
+    console.error('Error generating text:', error);
+    res.status(500).json({ error: 'Error generating text' });
+  }
+});
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
