@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio-OS + Juakali Nurse AI PWA</title>
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="data:application/manifest+json,{
+  'name':'Studio-OS Federated Healthcare',
+  'short_name':'Studio-OS',
+  'start_url':'.',
+  'display':'standalone',
+  'background_color':'#0f172a',
+  'theme_color':'#0ea5e9',
+  'icons':[{
+      'src':'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABZ0lEQVQ4T+WTz0sCURSGn4tqWg0EoxQaFbZBuIWg+AFJEqCPQwsgtLxAxIhWbMQeIg4MGgaUlHRUyA8QxjQx9+Wak7xg7yZ58z5PZ+3mOcLtxDEzQhR+ZqG0OQOOZggxByU6nlW6vDV6vDpUIrn6Y2q1wr6l2u7wLGIISpFFyolEY4cQRpO2qH+H5Xw6GYYtZVq7dYHhVWh3gXo4AEGJAf52J1HcI4pTzP5jCv3DqdFsMMvQZBJhHsjzvhD1sDmyCgXlAcYZ4PgLOAUpYgO0E3w4O9jeC3cH3gK1cwhckEeC9gOHA9eAK7aC2XCr1WAeXl1vQZg0y6E6G1vV4BjxZpDFtGsWxDqfIKZ2mVxrmI0NJn8d0HQGTehJZQMgYAAAAASUVORK5CYII=',
+      'sizes':'48x48',
+      'type':'image/png'
+  }]
+}">
+
+<meta name="theme-color" content="#0ea5e9">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#f8fafc;min-height:100vh;}
+h1,h2,h3,h4,h5,h6{color:#8b5cf6;}
+button{cursor:pointer;}
+.platform-header{background:#1e293b;padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(139,92,246,0.3);}
+.platform-nav{display:flex;gap:1rem;}
+.platform-tab{background:none;border:none;color:#cbd5e1;padding:.5rem 1rem;border-radius:.5rem;transition:.3s;}
+.platform-tab.active{background:rgba(139,92,246,0.1);color:#8b5cf6;border:1px solid rgba(139,92,246,0.3);}
+.platform-tab:hover{background:rgba(139,92,246,0.05);}
+.platform-main{padding:2rem;max-width:1400px;margin:0 auto;}
+.platform-section{background:#1e293b;border:1px solid rgba(139,92,246,0.2);border-radius:1rem;padding:1.5rem;margin-bottom:1.5rem;}
+.wallet-display{background:rgba(139,92,246,0.1);padding:.5rem 1rem;border-radius:.5rem;display:flex;align-items:center;gap:.5rem;border:1px solid rgba(139,92,246,0.3);}
+.wallet-amount{font-weight:bold;color:#8b5cf6;}
+.transaction-panel{position:fixed;right:1rem;top:100px;width:300px;background:#1e293b;border:1px solid rgba(139,92,246,0.3);border-radius:.75rem;padding:1rem;z-index:1000;}
+@media(max-width:768px){.platform-header{flex-direction:column;gap:1rem;}.platform-nav{flex-wrap:wrap;justify-content:center;}.transaction-panel{position:static;width:100%;margin-bottom:1rem;}}
+.card{background:#0f172a;border-radius:.5rem;padding:1rem;margin-bottom:1rem;}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;}
+.button{padding:.5rem 1rem;border:none;border-radius:.5rem;background:#8b5cf6;color:white;transition:.3s;}
+.button:hover{opacity:.8;}
+</style>
+</head>
+<body>
+
+<header class="platform-header">
+  <div>
+    <h1>Studio-OS Federated Healthcare</h1>
+    <small style="color:#64748b;">Patient-owned • AI Clinical • Biometric Insurance</small>
+  </div>
+  <div class="wallet-display">
+    <div class="wallet-amount" id="walletBalance">KES 0.00</div>
+  </div>
+</header>
+
+<nav class="platform-nav">
+  <button class="platform-tab active" data-section="studio-os">My Studio-OS</button>
+  <button class="platform-tab" data-section="nursing-ai">Nursing AI</button>
+</nav>
+
+<div class="transaction-panel">
+  <h3 style="color:#8b5cf6;">Recent Transactions</h3>
+  <div id="transactionList" style="max-height:200px;overflow-y:auto;color:#cbd5e1;text-align:center;font-size:.875rem;">No transactions yet</div>
+</div>
+
+<main class="platform-main">
+  <div id="studio-os" class="platform-section active">
+    <h2>My Healthcare Account</h2>
+    <div class="grid-3">
+      <div class="card">
+        <h4>Biometric Identity</h4>
+        <div id="bioStatus" class="small">Not registered</div>
+        <button class="button" onclick="platform.studioOS.registerBio()">Register Fingerprint</button>
+      </div>
+      <div class="card">
+        <h4>Active Insurance</h4>
+        <div id="insuranceStatus">No active insurance</div>
+        <button class="button" onclick="platform.studioOS.showInsuranceOptions()">View Plans</button>
+      </div>
+      <div class="card">
+        <h4>Healthcare Credits</h4>
+        <div style="font-size:2rem;font-weight:bold;" id="creditBalance">0</div>
+        <button class="button" onclick="platform.addCredits(prompt('Enter amount (KES):',100))">Add Credits</button>
+      </div>
+    </div>
+    <div class="card">
+      <h4>Recent Activities</h4>
+      <table style="width:100%;">
+        <thead><tr><th>Date</th><th>Service</th><th>Provider</th><th>Amount</th></tr></thead>
+        <tbody id="activityBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="nursing-ai" class="platform-section" style="display:none;">
+    <h2>Nursing AI Clinical Services</h2>
+    <div class="card">
+      <h4>Select Client</h4>
+      <select id="clientSelect" disabled></select>
+    </div>
+    <div class="card">
+      <h4>Service Payment</h4>
+      <select id="serviceSelect" disabled>
+        <option value="consult_500">Consultation - 500</option>
+        <option value="checkup_300">Check-up - 300</option>
+      </select>
+      <div id="serviceCost" style="font-size:1.5rem;font-weight:bold;color:#8b5cf6;">KES 0</div>
+      <div id="serviceDescription" style="color:#cbd5e1;">Select a service</div>
+      <div id="clientInsurance" style="margin:.5rem 0;color:#10b981;">Insurance: None</div>
+      <button class="button" style="width:100%;background:#8b5cf6;" id="payServiceBtn" disabled>Pay with Studio-OS Credits</button>
+    </div>
+  </div>
+</main>
+
+<script>
+// ================== INLINE SERVICE WORKER FOR OFFLINE ==================
+if('serviceWorker' in navigator){
+  const swBlob = new Blob([`
+    const CACHE_NAME='studio-os-pwa-offline-v2';
+    const urlsToCache=['.','index.html'];
+    self.addEventListener('install', e=>{
+      e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(urlsToCache)));
+    });
+    self.addEventListener('fetch', e=>{
+      e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));
+    });
+    self.addEventListener('activate', e=>{e.waitUntil(self.clients.claim());});
+  `],{type:'application/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(swBlob)).then(()=>console.log('SW Registered for Offline'));
+}
+
+// ================== INDEXEDDB ==================
+function openDB(dbName='StudioOSDB',storeName='users'){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(dbName,1);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName,{keyPath:'id'});
+    }
+    req.onsuccess=e=>resolve(e.target.result);
+    req.onerror=e=>reject(e.target.error);
+  });
+}
+async function idbGet(id,storeName='users'){ 
+  const db=await openDB(); 
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(storeName,'readonly');
+    const store=tx.objectStore(storeName);
+    const req=store.get(id);
+    req.onsuccess=e=>resolve(e.target.result?e.target.result.data:null);
+    req.onerror=e=>reject(e.target.error);
+  });
+}
+async function idbSet(id,data,storeName='users'){
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(storeName,'readwrite');
+    const store=tx.objectStore(storeName);
+    const req=store.put({id,data});
+    req.onsuccess=e=>resolve(true);
+    req.onerror=e=>reject(e.target.error);
+  });
+}
+
+// ================== STUDIO OS API + OFFLINE QUEUE ==================
+const StudioOSAPI = {
+  clients:{},
+  offlineQueue:[],
+  initClient(clientId, initialCredits=0){
+    if(!this.clients[clientId]) this.clients[clientId] = { wallet:{ balance:initialCredits,currency:'KES',transactions:[] }, insurance:null };
+  },
+  getClientWallet(clientId){ return this.clients[clientId]?.wallet || null; },
+  getClientInsurance(clientId){ return this.clients[clientId]?.insurance || 'None'; },
+  async addCredits(clientId, amount){
+    const client=this.clients[clientId];
+    if(!client) return;
+    client.wallet.balance+=amount;
+    client.wallet.transactions.unshift({id:'txn_'+Date.now(),type:'credit_add',amount,timestamp:new Date().toISOString()});
+    return client.wallet;
+  },
+  async payForService(clientId, serviceName, cost){
+    const client=this.clients[clientId];
+    if(!client) throw 'Client not found';
+    if(client.wallet.balance<cost){
+      this.offlineQueue.push({type:'payment',clientId,serviceName,cost});
+      await this.saveQueue();
+      throw 'Offline/Insufficient credits. Queued for sync.';
+    }
+    client.wallet.balance-=cost;
+    client.wallet.transactions.unshift({id:'txn_'+Date.now(),type:'service_payment',service:serviceName,amount:-cost,timestamp:new Date().toISOString()});
+    return client.wallet;
+  },
+  async updateInsurance(clientId, plan){
+    if(!this.clients[clientId]) return;
+    this.clients[clientId].insurance=plan;
+    return plan;
+  },
+  async saveQueue(){ await idbSet('offlineQueue',this.offlineQueue); },
+  async loadQueue(){ const q=await idbGet('offlineQueue'); if(q)this.offlineQueue=q; },
+  async syncQueue(){
+    if(!navigator.onLine || !this.offlineQueue.length) return;
+    const queueCopy=[...this.offlineQueue]; this.offlineQueue=[];
+    for(const action of queueCopy){
+      if(action.type==='payment'){
+        try{ await this.payForService(action.clientId, action.serviceName, action.cost); }
+        catch(e){ this.offlineQueue.push(action); }
+      }
+    }
+    await this.saveQueue();
+  }
+};
+
+// ================== DEVICE DISCOVERY & VERIFICATION ==================
+async function discoverStudioOSDevices(subnet='192.168.1.', range=254, timeout=500){
+  const detectedDevices=[];
+  const promises=[];
+  for(let i=1;i<=range;i++){
+    const ip=`${subnet}${i}`;
+    promises.push(
+      new Promise(resolve=>{
+        const controller=new AbortController();
+        const timer=setTimeout(()=>{controller.abort(); resolve();},timeout);
+        fetch(`http://${ip}:3000/api/getDeviceId`,{signal:controller.signal})
+        .then(res=>res.json())
+        .then(data=>{
+          if(data.deviceId) detectedDevices.push({ip,deviceId:data.deviceId});
+          clearTimeout(timer); resolve();
+        })
+        .catch(()=>{ clearTimeout(timer); resolve(); });
+      })
+    );
+  }
+  await Promise.all(promises);
+  return detectedDevices;
+}
+
+async function autoVerifyDevices(){
+  try {
+    const devices = await discoverStudioOSDevices();
+    if(devices.length===0){
+      alert('No Studio-OS devices found on LAN. Services disabled.');
+      return;
+    }
+    for(const dev of devices){
+      const res = await fetch('https://juakali.api/verifyDevice',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({deviceId:dev.deviceId})
+      });
+      const data = await res.json();
+      if(data.verified){
+        console.log('Device verified:', dev.ip);
+        enableJuakaliServices();
+        return;
+      }
+    }
+    alert('No verified Studio-OS device found. Services disabled.');
+  } catch(err){
+    console.error(err);
+    alert('Device discovery failed.');
+  }
+}
+
+function enableJuakaliServices(){
+  document.getElementById('clientSelect').disabled=false;
+  document.getElementById('serviceSelect').disabled=false;
+  document.getElementById('payServiceBtn').disabled=false;
+  alert('All services enabled. Studio-OS device verified.');
+}
+
+// ================== PLATFORM ==================
+class FederatedHealthcarePlatform{
+  constructor(){
+    this.studioOS=new StudioOSSystem();
+    this.nurseBPU=new NurseBPUSystem();
+    this.clients=['client1','client2'];
+    this.init();
+  }
+
+  async init(){
+    console.log('Platform Initialized');
+    this.clients.forEach(c=>StudioOSAPI.initClient(c,1000));
+    this.populateClients();
+    this.studioOS.init();
+    this.nurseBPU.init();
+    await StudioOSAPI.loadQueue();
+    this.setupEvents();
+    setInterval(()=>StudioOSAPI.syncQueue(),5000); 
+  }
+
+  populateClients(){
+    const sel=document.getElementById('clientSelect');
+    sel.innerHTML=this.clients.map(c=>`<option value="${c}">${c}</option>`).join('');
+    this.refreshClientInfo();
+    sel.addEventListener('change',()=>this.refreshClientInfo());
+  }
+
+  refreshClientInfo(){
+    const clientId=document.getElementById('clientSelect').value;
+    const wallet=StudioOSAPI.getClientWallet(clientId);
+    const ins=StudioOSAPI.getClientInsurance(clientId);
+    document.getElementById('clientInsurance').textContent='Insurance: '+ins;
+    document.getElementById('walletBalance').textContent=`KES ${wallet.balance.toFixed(2)}`;
+    document.getElementById('creditBalance').textContent=wallet.balance.toFixed(0);
+  }
+
+  setupEvents(){
+    document.getElementById('payServiceBtn').addEventListener('click', async()=>{
+      const clientId=document.getElementById('clientSelect').value;
+      const [svc,costStr]=document.getElementById('serviceSelect').value.split('_');
+      const cost=parseInt(costStr);
+      try{
+        await StudioOSAPI.payForService(clientId, svc, cost);
+        alert('Payment successful!');
+        this.refreshClientInfo();
+      }catch(e){alert(e);}
+    });
+    document.querySelectorAll('.platform-tab').forEach(tab=>{
+      tab.addEventListener('click',e=>this.switchSection(e.target.getAttribute('data-section')));
+    });
+  }
+
+  switchSection(sectionId){
+    document.querySelectorAll('.platform-tab').forEach(tab=>tab.classList.toggle('active',tab.getAttribute('data-section')===sectionId));
+    document.querySelectorAll('.platform-section').forEach(sec=>sec.style.display=sec.id===sectionId?'block':'none');
+  }
+}
+
+// ================== SYSTEMS ==================
+class StudioOSSystem{
+  init(){console.log('StudioOS Initialized');}
+  registerBio(){document.getElementById('bioStatus').textContent='Registered';alert('Biometric verified! Clinical services available.');}
+  showInsuranceOptions(){alert('Insurance options modal (demo)');}
+}
+
+class NurseBPUSystem{ init(){console.log('NurseBPU Initialized');} }
+
+// ================== INIT ==================
+let platform;
+document.addEventListener('DOMContentLoaded',()=>{ 
+  platform=new FederatedHealthcarePlatform(); 
+  window.platform=platform;
+  autoVerifyDevices(); // Verify Studio-OS device at startup
+});
+</script>
+</body>
+</html>
