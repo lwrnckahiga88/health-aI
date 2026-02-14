@@ -1,0 +1,121 @@
+// server.js
+const express = require('express');
+const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config(); // Load environment variables from .env file
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ===== MIDDLEWARE =====
+app.use(cors()); // Allow cross-origin requests from your frontend (Vercel)
+app.use(express.json()); // Parse JSON request bodies
+
+// ===== SUPABASE SETUP =====
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+let supabase = null;
+if (supabaseUrl && supabaseKey) {
+  supabase = createClient(supabaseUrl, supabaseKey);
+  console.log('✅ Connected to Supabase');
+} else {
+  console.warn('⚠️  Supabase credentials not found. Using in‑memory fallback. Data will not persist across restarts.');
+}
+
+// ===== IN-MEMORY FALLBACK (if Supabase is not configured) =====
+const memoryStore = new Map(); // key: deviceId, value: { verified: boolean, registeredAt: string }
+
+// ===== HELPER: Get device from database or memory =====
+async function getDevice(deviceId) {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('devices')
+      .select('verified, registered_at')
+      .eq('id', deviceId)
+      .single();
+    if (error) return null;
+    return { verified: data.verified, registeredAt: data.registered_at };
+  } else {
+    return memoryStore.get(deviceId) || null;
+  }
+}
+
+// ===== HELPER: Save device to database or memory =====
+async function saveDevice(deviceId, verified) {
+  const record = { verified, registeredAt: new Date().toISOString() };
+  if (supabase) {
+    const { error } = await supabase
+      .from('devices')
+      .upsert({ id: deviceId, verified, registered_at: record.registeredAt });
+    if (error) throw error;
+  } else {
+    memoryStore.set(deviceId, record);
+  }
+  return record;
+}
+
+// ===== ENDPOINTS =====
+
+/**
+ * POST /registerDevice
+ * Expected JSON body: { "deviceId": "dev_abc123", "verified": true }
+ * The Android app calls this after biometric verification.
+ */
+app.post('/registerDevice', async (req, res) => {
+  const { deviceId, verified } = req.body;
+
+  if (!deviceId) {
+    return res.status(400).json({ success: false, error: 'deviceId is required' });
+  }
+
+  try {
+    await saveDevice(deviceId, verified === true);
+    console.log(`✅ Device registered: ${deviceId}, verified: ${verified === true}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('❌ Error saving device:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /verifyDevice
+ * Expected JSON body: { "clientId": "dev_abc123" }
+ * Returns { success: true, verified: boolean }
+ */
+app.post('/verifyDevice', async (req, res) => {
+  const { clientId } = req.body;
+
+  if (!clientId) {
+    return res.status(400).json({ success: false, error: 'clientId is required' });
+  }
+
+  try {
+    const device = await getDevice(clientId);
+
+    if (!device) {
+      return res.status(404).json({ success: false, error: 'Device not found' });
+    }
+
+    res.json({ success: true, verified: device.verified === true });
+  } catch (err) {
+    console.error('❌ Error verifying device:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /health – simple health check
+ */
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ===== START SERVER =====
+app.listen(PORT, () => {
+  console.log(`🚀 Studio OS TPA backend running on port ${PORT}`);
+  if (!supabase) {
+    console.log('⚠️  Using in‑memory storage – data will be lost on restart.');
+  }
+});
